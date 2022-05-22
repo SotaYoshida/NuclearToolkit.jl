@@ -1,0 +1,7 @@
+name = "NuclearToolkit"
+uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
+authors = ["SotaYoshida <s.yoshida@nt.phys.s.u-tokyo.ac.jp> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"

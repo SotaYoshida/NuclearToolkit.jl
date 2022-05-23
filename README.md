@@ -7,13 +7,13 @@
 <img src="https://github.com/SotaYoshida/NuclearToolkit.jl/blob/main/docs/src/assets/logo_full.png" width=60%>
 
 
-Julia Toolkit for nuclear structure calculations covering,
+Julia Toolkit for nuclear structure calculations covering:
 - generating Chiral EFT interactions
 - many-body calculations (HFMBPT, IMSRG/VS-IMSRG, valence shell-model, etc.)
 
 ## Installation
 
-Assuming that you have already installed Julia, execute below (these are identical) 
+Assuming that you have already installed Julia (v>=1.7.0), execute below (these are identical) 
 ```jldoctest
 julia>import Pkg; Pkg.add("NuclearToolkit")
 ```

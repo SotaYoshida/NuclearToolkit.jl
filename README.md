@@ -3,16 +3,13 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://SotaYoshida.github.io/NuclearToolkit.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://SotaYoshida.github.io/NuclearToolkit.jl/dev)
 [![Build Status](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/SotaYoshida/NuclearToolkit.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/SotaYoshida/NuclearToolkit.jl)
-
 
 <img src="https://github.com/SotaYoshida/NuclearToolkit.jl/blob/main/docs/src/assets/logo_full.png" width=60%>
 
 
-
-
 Julia Toolkit for nuclear structure calculations covering,
-Chirral EFT interaction, HFMBPT, IMSRG/VS-IMSRG, valence shell-model calculations.
+- generating Chiral EFT interactions
+- many-body calculations (HFMBPT, IMSRG/VS-IMSRG, valence shell-model, etc.)
 
 ## Installation
 

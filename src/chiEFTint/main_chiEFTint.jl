@@ -549,7 +549,7 @@ end
 read LECs from "src/chiEFTint/LECs.jl" (default) and 
 store them as ```LECs```(Vector{Float}), ```idxLECs```(Vector{Int}), and ```dLECs```(Dict{str,Float}).
 """
-function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")
+function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")    
     if initialize
         if !isfile(inpf);inpf="../"*inpf;end
         f=open(inpf,"r");lines=readlines(f);close(f)

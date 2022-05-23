@@ -39,20 +39,20 @@ The author thought the Julia language can be a game changer to this situation wi
 There is no more need to prepare different Makefiles for different environments or worry about library dependencies. You can work equally well on a laptop or a supercomputer.
 While NuclearToolkit covers a wide range of methods, the overall code length is still in a few tens of thousands, including "docstring" to generate the document.
 
-- [ChiEFTint](../build/ChiEFTint.html): NN interaction from Chiral EFT ~ 5,000 lines.
+- [ChiEFTint](build/ChiEFTint.html): NN interaction from Chiral EFT ~ 5,000 lines.
   - Entem & Machleidt N3L0
   - Density-Dependent NN from 3NF
   - "Valence" NO
 - [Hartreefock](../build/HartreeFock.html): Hartree-Fock (HF) and HF Many-Body Perturbation Theory (HFMBPT)  ~ 3,000 lines.
   - Energy (up to 3rd order)
   - Scaler operator (up to 2nd order)
-- [IMSRG](../build/IMSRG.html): In-medium Similarity Renormalization Group (IMSRG)  ~ 2,000 lines.
+- [IMSRG](build/IMSRG.html): In-medium Similarity Renormalization Group (IMSRG)  ~ 2,000 lines.
   - IMSRG(2) calc. for ground state energy
   - consistent IMSRG(2) flow of (scaler) operator
   - Valence-space IMSRG (VS-IMSRG)
     - derive effective interaction for shell-model calculations
     - consistent VSIMSRG flow to get effective operators 
-- [ShellModel.jl](../build/ShellModel.html) ~ 5,000 lines.
+- [ShellModel.jl](build/ShellModel.html) ~ 5,000 lines.
   This was originally developed as [an independent package] (https://github.com/SotaYoshida/ShellModel.jl).
   - shell model calculations
   - construct approximate wavefunctions with eigenvector continuation 

@@ -5,6 +5,8 @@
 /docs/build/
 *.snt
 *.snt.bin
+*.jl~
+/src/*/*.jl~
 DS_Store
 /snts
 /flowOmega

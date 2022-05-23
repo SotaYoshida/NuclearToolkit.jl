@@ -1,8 +1,4 @@
-#include("parameters_chiEFTint.jl")
-#using NuclearToolkit
-
-#include("./src/NuclearToolkit.jl")
-#using .NuclearToolkit
+using NuclearToolkit
 
 function run()
     ### generate NN potential
@@ -18,7 +14,7 @@ function run()
     vs_sntf = "vsimsrg_sd-shell_core"*core*"ref"*nuc*"_hw"*string(hw)*"e"*string(emax)*"_Delta0.0.snt"
     n_eigen=10;targetJ=[]
     main_sm(vs_sntf,"Mg24",n_eigen,targetJ)
-
+    return nothing
 end
 
 run()

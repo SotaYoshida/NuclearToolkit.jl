@@ -551,6 +551,7 @@ store them as ```LECs```(Vector{Float}), ```idxLECs```(Vector{Int}), and ```dLEC
 """
 function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")
     if initialize
+        if !isfile(inpf);inpf="../"*inpf;end
         f=open(inpf,"r");lines=readlines(f);close(f)
         hit = 0
         for line in lines

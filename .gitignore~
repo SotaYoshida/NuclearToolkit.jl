@@ -3,4 +3,6 @@
 *.jl.mem
 /Manifest.toml
 /docs/build/
-.DS_Store
+DS_Store
+/snts
+/flowOmega

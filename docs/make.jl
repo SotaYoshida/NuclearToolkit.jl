@@ -23,7 +23,7 @@ makedocs(;
     ],
 )
 
-deploydocs(;
-    repo="github.com/SotaYoshida/NuclearToolkit.jl",
-    devbranch="main",
-)
+# deploydocs(;
+#     repo="github.com/SotaYoshida/NuclearToolkit.jl",
+#     devbranch="main",
+# )

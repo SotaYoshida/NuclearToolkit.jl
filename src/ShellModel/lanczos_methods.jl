@@ -15,8 +15,7 @@ function TRL(vks,uks,Tmat,k,
     Jtol = 1.e-6
     JTF = [false];beta_J = 1.0
     if doubleLanczos
-        Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,
-                 pbits,nbits,tdims,eval_jj,
+        Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,
                  Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
         vks[1] .= Jvs[1]
         for i=1:lnJ;Jvs[i] .=0.0;end
@@ -38,8 +37,10 @@ function TRL(vks,uks,Tmat,k,
             diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)
             #print_vec("En TR(d)L $it ",en[1])
             if TF[1];elit=it;break;end
-            axpy!(-talpha,vk,vkp1)
-            svks = @views vks[1:it-1]
+            # axpy!(-talpha,vk,vkp1)
+            # svks = @views vks[1:it-1]
+
+            svks = @views vks[1:it]            
             @timeit to "ReORTH" ReORTH(it,vkp1,svks)
             tbeta = sqrt(dot(vkp1,vkp1))
             tmp = 1.0/tbeta
@@ -47,7 +48,6 @@ function TRL(vks,uks,Tmat,k,
             Tmat[it+1,it] = tbeta; Tmat[it,it+1] = tbeta
             if doubleLanczos
                 if tbeta < Jtol;TF[1]=true;elit=it;break;end
-
                 @timeit to "JJ lanczos" begin
                     for i =2:length(Jvs);Jvs[i] .=0.0;end
                     Jmat .= 0.0;JTF[1] = false

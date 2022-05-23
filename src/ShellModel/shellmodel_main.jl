@@ -65,7 +65,7 @@ Digonalize the model-space Hamiltonian
 - `is_show = true`   to show elapsed time & allocations 
 - `lm = 100`         number of Lanczos vectors to store 
 - `ls = 15`          number of vectors to be used for Thick-Restart 
-- `tol= 1.e-6`       tolerance for convergence check in the Lanczos method 
+- `tol= 1.e-8`       tolerance for convergence check in the Lanczos method 
 - `in_wf=""`      path to initial w.f. (for preprocessing) 
 - `mdimmode=false`   `true` => calculate only the M-scheme dimension
 - `calc_moment=false`  `true` => calculate mu&Q moments 
@@ -74,7 +74,7 @@ Digonalize the model-space Hamiltonian
 """
 function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
               q=1,is_block=false,is_show=false,
-              num_history=3,lm=100,ls=20,tol=1.e-6,
+              num_history=3,lm=100,ls=20,tol=1.e-8,
               in_wf="",mdimmode=false,
               calc_moment = false,
               gfactors = [1.0,0.0,5.586,-3.826],
@@ -300,22 +300,25 @@ function readsmsnt(sntf,Anum)
     lines = rm_comment(tlines)
     line = lines[1]
     lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
-    p_sps = [[0,0]];deleteat!(p_sps,1)
-    n_sps = [[0,0]];deleteat!(n_sps,1)
-    @inbounds for i = 1:lp
-        ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
-        push!(p_sps,[n,l,j,tz])
+    p_sps = [zeros(Int64,4) for i=1:lp]
+    n_sps = [zeros(Int64,4) for i=1:ln]
+    for i = 1:lp
+        ith,n,l,j,tz = map(x->parse(Int64,x),rm_nan(split(lines[1+i]," "))[1:5])
+        tp = p_sps[ith]; tp[1] = n; tp[2] = l; tp[3] = j; tp[4] = tz
     end
-    @inbounds for i = 1:ln
-        ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
-        push!(n_sps,[n,l,j,tz])
+    for i = 1:ln
+        ith,n,l,j,tz = map(x->parse(Int64,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
+        tp = n_sps[ith-lp] 
+        tp[1] = n; tp[2] = l; tp[3] = j; tp[4] = tz
     end
     nsp,zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
     SPEs = [ [0.0 for i=1:lp],[0.0 for i=1:ln]]
     @inbounds for i = 1:nsp
-        idx=0; j=i
-        if i<=lp;idx=1;else;idx=2;j-=lp;end
-        SPEs[idx][j] =parse(Float64,rm_nan(split(lines[1+ln+lp+1+i]," "))[3])
+        ttxt = rm_nan(split(lines[1+ln+lp+1+i]," "))
+        j = parse(Int64,ttxt[1])
+        idx = ifelse(j<=lp,1,2)
+        if idx ==2; j -= lp; end
+        SPEs[idx][j] =parse(Float64,ttxt[3])
     end
     p = 0.0
     tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1]," "))
@@ -894,7 +897,8 @@ end
 function ReORTH(it,vtarget,vks)
     @inbounds for l = it:-1:1
         v = vks[l]
-        axpy!(-dot(v,vtarget),v,vtarget)
+        alpha = dot(v,vtarget)
+        axpy!(-alpha,v,vtarget)
     end
     return nothing
 end
@@ -982,7 +986,7 @@ function func_j(j1::I,j2::I,m1::I,m2::I) where{I<:Int64}
     sqrt( (0.5*j1*(0.5*j1+1.0)-0.5*m1*(0.5*m1-1.0))*(0.5*j2*(0.5*j2+1.0)-0.5*m2*(0.5*m2+1.0)) )
 end
 
-function J_from_JJ1(JJ,tol=1.e-4)
+function J_from_JJ1(JJ,tol=1.e-6)
     for J = 0:100 ## ad hoc J<=50
         hJ = 0.5*J
         if abs(hJ*(hJ+1.0)-JJ) <tol

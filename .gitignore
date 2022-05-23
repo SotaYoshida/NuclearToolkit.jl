@@ -8,5 +8,6 @@
 *.jl~
 /src/*/*.jl~
 DS_Store
+my_script.jl
 /snts
 /flowOmega

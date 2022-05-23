@@ -244,16 +244,4 @@ function proposal_Vint!(nSPEs,nV1s,nV0s,SPEs,V1s,V0s,varM)
     return nothing
 end
 
-# function test()
-#     sntf = "../snts/usdb.snt"
-#     Anum = 28
-#     lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsnt(sntf,Anum)
-    
-#     label_T1,label_T0 = make_int(p_sps,n_sps)
-#     idx_s_from_i,facs = int2snt(p_sps,n_sps,label_T1,label_T0,olabels)
 
-#     intf = "../snts/random_input/ints/sdshl/tmp_1.int"
-#     SPEs,V1s,V0s = readVint(intf,label_T1,label_T0)
-#     Vsnt = evalVsnt(SPEs,V1s,V0s,idx_s_from_i,facs)
-# end
-#test()

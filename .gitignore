@@ -9,6 +9,6 @@
 /src/*/*.jl~
 *~
 DS_Store
-my_script.jl
+myscript.jl
 /snts
 /flowOmega

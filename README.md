@@ -31,4 +31,4 @@ julia -t 6 sample_script.jl
 This sample script do 
  - generate NN potential with hw=20, emax=4
  - HFMBPT(3) and IMSRG/VS-IMSRG calculation using the NN potential 
- - shell-model calculation using the effective interaction derived by V-SIMSRG
+ - shell-model calculation using the effective interaction derived by VS-IMSRG

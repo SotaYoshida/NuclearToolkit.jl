@@ -843,8 +843,7 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(chiEFTobj,to)
-    emax = chiEFTobj.emax
+function PreCalcHOB(emax,chiEFTobj,to)
     Nnmax = chiEFTobj.Nnmax
     println("Now precalculating HOB...")
     Nmax = max(2*emax,Nnmax)

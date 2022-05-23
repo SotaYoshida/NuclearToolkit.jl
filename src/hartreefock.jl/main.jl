@@ -24,7 +24,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         dict6j,d6j_nabla = PreCalc6j(emax)
         dict6j = adhoc_rewrite6jdict(emax,dict6j) # trans dict[array] -> dict[int]
     end
-    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTobj,to)
+    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     

@@ -12,7 +12,7 @@ Julia Toolkit for nuclear structure calculations covering:
 
 ## Installation
 
-Assuming that you have already installed Julia (v>=1.7.0), execute below (these are identical) 
+Assuming that you have already installed Julia (v>=1.7.0),
 ```jldoctest
 julia>import Pkg; Pkg.add("NuclearToolkit")
 ```

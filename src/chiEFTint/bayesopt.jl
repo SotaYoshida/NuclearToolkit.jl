@@ -312,13 +312,6 @@ function showBOhist_plots(itnum,BOobj,targetLECs)
     plt.close()
 end 
 
-"""
--0.5 y^T*Ktt^{-1}*y - logdet(Kw)
-"""
-function calc_GPllh(BOobj)
-
-end
-
 function plotKernel(it,Ktt)
     fig = plt.figure(figsize=(8,8))
     axs = [fig.add_subplot(111)]

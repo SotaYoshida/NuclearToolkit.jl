@@ -31,3 +31,9 @@ This sample script do
  - generate NN potential with hw=20, emax=4
  - HFMBPT(3) and IMSRG/VS-IMSRG calculation using the NN potential 
  - shell-model calculation using the effective interaction derived by VS-IMSRG
+
+## How to cite
+
+When you use `NuclearToolkit.jl`, please consider to cite:
+
+> Ref: (in prep.)

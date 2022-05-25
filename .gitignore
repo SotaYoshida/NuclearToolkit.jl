@@ -3,6 +3,8 @@
 *.jl.mem
 /Manifest.toml
 /docs/build/
+
+optional_parameters.jl
 *.snt
 *.snt.bin
 *.jl~

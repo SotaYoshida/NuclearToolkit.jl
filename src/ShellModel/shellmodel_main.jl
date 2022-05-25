@@ -262,26 +262,6 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
     return true
 end
 
-# function rm_comment(lines)
-#     nlines = []
-#     for line in lines
-#         line = strip(line)
-#         if length(line)>0 && startswith(line,"!")
-#             continue
-#         end
-#         push!(nlines,line)
-#     end
-#     return nlines
-# end
-
-# function rm_nan(array)
-#     na = []
-#     for tmp in array
-#         if tmp != "";push!(na,tmp); end
-#     end
-#     return na
-# end
-
 """
     readsmsnt(sntf,Anum)
 
@@ -290,10 +270,7 @@ To read interaction file in ".snt" format.
 - `Anum`: mass number (used for "scaling" of TBMEs)
 
 !!! note
-    The current version supports only "properly ordered" interaction file in .snt format.
-     
-    A .snt file can be ordered to be a<=b,c<=d,a<=c for V(abcd;J) by the Python script "ShellModel.jl/src/make_ordered_snt.py"(, which will be replaced by Julia implementation...).
-
+    The current version supports only "properly ordered",like ``a \\leq b,c \\leq d,a \\leq c`` for ``V(abcd;J)``, snt file.
 """
 function readsmsnt(sntf,Anum) 
     f = open(sntf,"r");tlines = readlines(f);close(f)
@@ -1086,19 +1063,6 @@ function prep_pn(lblock::Int64,tdims::IA,
     end
     return bis,bfs,p_NiNfs,n_NiNfs, hits
 end
-
-# function print_vec(s,v;ine=false)
-#     s *= " "
-#     for i = 1:length(v)
-#         if ine
-#             s *= @sprintf "%9.1e" v[i]
-#         else
-#             s *= @sprintf "%10.4f" v[i]
-#             #s *= @sprintf "%25.15f" v[i]
-#         end
-#     end
-#     println(s)
-# end
 
 function calc_1b_jumps!(bi::Int64,bf::Int64,j::Int64,
                         lblock::Int64,tdims::IA,

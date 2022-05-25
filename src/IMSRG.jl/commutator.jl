@@ -434,7 +434,6 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
     nchPandya = length(Chan2b_Pandya)    
     phkets = PandyaObj.phkets
     PhaseMats = PandyaObj.PhaseMats
-    ## Update Zbar 
     Zbars = PandyaObj.Zbars; XYbars = PandyaObj.XYbars; keys6j = PandyaObj.keys6j
     @qthreads for ich=1:nchPandya
         tmpMat = PandyaObj.tMat[threadid()]
@@ -463,10 +462,6 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
             Zleft  = @view Zbar[:,1:nKets_cc]
             Zright = @view Zbar[:,nKets_cc+1:2*nKets_cc]
             calcZbar!(Xbar_ph,Ybar_ph,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zleft,Zright,hz)
-            # if norm(Zbar,2) > 1.e-8
-            #     println("ich ",@sprintf("%3i", ich)," ch ",@sprintf("%3i",ch_cc), "  hy $hy hz $hz ",
-            #              " XYZbar_norm ",@sprintf("%12.5f",norm(Xbar_ph,2)),@sprintf("%12.5f",norm(Ybar_ph,2)),@sprintf("%12.5f",norm(Zbar,2)))
-            # end
         end
     end
     @timeit to "AddInv" AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to) 
@@ -606,14 +601,10 @@ end
 """
     calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zlefthalf,Zrighthalf,hz)
 
-    `Xbar`: (`nKets_cc`, 2*`nph_kets`)
-`Ybar`: (2*`nph_kets`,`nKets_cc`)
-`PhaseMatY`: (`nph_kets`,`nKets_cc`)
-`Zbar`: (`nKets_cc`, 2*`nKets_cc`)
-
-                    | nph_kets,nKets_cc
-(nKets_cc,nKets_cc) |------------
-                    | nph_kets,nKets_cc
+- `Xbar`: (`nKets_cc`, 2*`nph_kets`) matrix
+- `Ybar`: (2*`nph_kets`,`nKets_cc`) matrix
+- `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix
+- `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix
 """
 function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
                    Zlefthalf,Zrighthalf,hz)

@@ -35,11 +35,7 @@ function TRL(vks,uks,Tmat,k,
             talpha =  dot(vk,vkp1)
             Tmat[it,it] = talpha
             diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)
-            #print_vec("En TR(d)L $it ",en[1])
             if TF[1];elit=it;break;end
-            # axpy!(-talpha,vk,vkp1)
-            # svks = @views vks[1:it-1]
-
             svks = @views vks[1:it]            
             @timeit to "ReORTH" ReORTH(it,vkp1,svks)
             tbeta = sqrt(dot(vkp1,vkp1))

@@ -1,9 +1,9 @@
 ###--- ChiralEFT ---
 n_mesh = 50
-emax = 4
+emax = 8
 chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO
 calc_NN = true
-calc_3N = false #density-dependent 3NF
+calc_3N = true #density-dependent 3NF
 hw = 20.0
 srg_lambda = 2.0
 

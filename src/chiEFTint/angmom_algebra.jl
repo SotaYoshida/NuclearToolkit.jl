@@ -1,13 +1,3 @@
-struct abcdJV
-    a::Int64
-    b::Int64
-    c::Int64
-    d::Int64
-    totJ::Int64
-    vjj::Float64
-    vpp::Float64
-end
-
 """
     wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
 
@@ -51,7 +41,7 @@ end
 
 Function to carry out Talmi-Mochinsky transformation
 """
-function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL, nTBME,infos,izs_ab,
+function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
                  Numpn,V12ab,arr_numst,dict6j,d6j_nabla, X9,U6,to;calc_relcm=false,writesnt=true)
     emax = chiEFTobj.emax
     Nrmax = 2*emax
@@ -174,7 +164,7 @@ function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL, nTBME,infos,izs_ab,
             @inbounds for j = 1:i
                 izc,ic,izd,id= izs[j]                
                 v12 = vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                             nljsnt,V12ab,X9,U6,Nrmax,nume,numknn,Ndim,Transbk,arr_numst,t2v,t5v,to)
+                             nljsnt,V12ab,X9,U6,nume,numknn,Ndim,Transbk,arr_numst,t2v,t5v,to)
                 if chiEFTobj.v_chi_order >= 1
                     vvs = zeros(Float64,5)
                     NLOvs(chiEFTobj,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
@@ -366,9 +356,8 @@ end
 """
     HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
 
-To calc. harmonic oscillator brackets, <EL,el:Lam|e1l1,e2l2:Lam>d.
-The phase (-1)^(N+n+n1+n2) is needed to reproduce Tab.1 of [1].
-This function has large overlap to other functions (gmosh, etc.), so it will be merged in near future...
+To calc. harmonic oscillator brackets, ``<E_L,e_l:Lam|e_1l_1,e_2l_2:Lam>_d``.
+The phase ``(-1)^(N+n+n1+n2)`` is needed to reproduce Tab.1 of [1].
 
 ## Reference:
 [1] B.Buck& A.C.merchant, Nucl.Phys. A600 (1996) 387-402
@@ -410,7 +399,6 @@ function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
     return Float64(t1*sum)*phase
 end
 
-#function to calc. doublefactorial
 function mydoublefactorial(n::Integer)
     if n ==0 || n==1 || n==-1; return 1.0;end
     if n < 0
@@ -630,9 +618,7 @@ function def_fgw(;maxjj=200)
 end
 
 function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                nljsnt,V12ab,X9,U6,Nrmax,
-                nume,numknn,Ndim,Transbk,
-                arr_numst,t2v,t5v,to)
+                nljsnt,V12ab,X9,U6,nume,numknn,Ndim,Transbk,arr_numst,t2v,t5v,to)
     emax = chiEFTobj.emax
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
@@ -965,48 +951,7 @@ function PreCalcHOB(emax,chiEFTobj,to)
         e2 = 2*N+Lam+2*n+lam; l2 = e2-2*n1-2*n2-l1
         tHOB = gmosh2(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,to)
         HOBs[nkey1][nkey2] = tHOB
-    end
-    
-
-    # @timeit to "HOBcalc Old" begin
-    #     hit = 0
-    #     oHOBs = Dict{Int64, Dict{Int64,Float64}}()
-    #     for N=0:e2max
-    #         for n = 0:e2max-N
-    #             Lam_max = e2max-2*N-2*n
-    #             for Lam = 0:Lam_max
-    #                 lam_max = Lam_max-Lam
-    #                 for lam = 0:lam_max
-    #                     e2 = 2*N+Lam + 2*n+lam 
-    #                     nkey1 = get_nkey_from_key6j(N,n,Lam,lam,0)
-    #                     defined = get(oHOBs,nkey1,false)
-    #                     if defined == false
-    #                         oHOBs[nkey1] = Dict{Int64,Float64}()
-    #                     end
-    #                     tarDict = oHOBs[nkey1]                    
-    #                     for L = abs(Lam-lam):Lam+lam
-    #                         for n1=0:div(e2,2)
-    #                             for n2 = 0:div(e2,2)-n1
-    #                                 l1max = e2-2*n1-2*n2
-    #                                 for l1 = 0:l1max
-    #                                     l2 = e2-2*n1-2*n2-l1
-    #                                     e_1 = 2*n1 + l1; e_2 = 2*n2 + l2
-    #                                     if (e_1 > e_2) && (2*N+Lam > 2*n+lam); continue;end
-    #                                     if (l1+l2+lam+Lam)%2 > 0;continue;end
-    #                                     if !tri_check(l1,l2,L);continue;end
-    #                                     nkey2 = get_nkey_from_key6j(L,n1,n2,l1,0)                
-    #                                     hit +=1 
-    #                                     tHOB = gmosh2(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,to)
-    #                                     tarDict[nkey2] = tHOB
-    #                                 end
-    #                             end
-    #                         end
-    #                     end
-    #                 end
-    #             end
-    #         end
-    #     end  
-    # end  
+    end  
     println("@emax $emax 9j($num9j) =>", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
             "  HOB ($hit)=>",@sprintf("%7.2f",Base.summarysize(HOBs)/1024/1024), " MB")
     dWS = nothing; dcgm0 =nothing; dtri=nothing 

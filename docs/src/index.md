@@ -4,7 +4,7 @@ Julia Toolkit for nuclear structure calculations
 
 ## Installation and example
 
-First, prepare Julia environment v >= 1.6.  
+First, prepare Julia environment v >= 1.7.0.  
 
 Second, add the package in Pkg mode
 ```julia

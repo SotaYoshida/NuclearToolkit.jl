@@ -136,7 +136,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     E3_pp: h=>(α,α') p=>(ββ'γγ') <αα'|H|ββ'><ββ'|H|γγ'><γγ'|H|αα'> /(eα+eα'-eβ-eβ')(eα+eα'-eγ-eγ')
     E3_hh: h=>(α,α'γγ') p=>(ββ') <αα'|H|ββ'><ββ'|H|γγ'><γγ'|H|αα'> /(eα+eα'-eβ-eβ')(eγ+eγ'-eβ-eβ')
     """
-     for ch = 1:nchan
+    for ch = 1:nchan
         Gam = Gamma[ch]
         tbc = Chan2b[ch]; J=tbc.J; kets = tbc.kets
         npq = length(kets)
@@ -181,7 +181,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     keyabs = [ zeros(Int64,2) for i=1:nthre]
     Ethreads = zeros(Float64,nthre)      
     #@inbounds @qthreads for a in allps
-    for idxa = 1:length(allps)
+    @threads for idxa = 1:length(allps)
         a = allps[idxa]
         threid = threadid()
         key6j = keys6j[threid]

@@ -434,9 +434,6 @@ function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose
     return tbme
 end
 
-"""
-function to carry out Pandya transformation:
-"""
 function DoPandyaTransformation_SingleChannel(O,Obar_ph,tbc_cc,Chan2bD,HFobj,PandyaObj, 
                                               numbers_ch,dict6j,key6j,orientation="N")
     Chan2b = Chan2bD.Chan2b
@@ -520,9 +517,7 @@ function get_nkets_permutation(tbc)
 end
 
 
-function need_check(tbc_bra_cc, tbc_ket_cc, 
-                    li,ji,tzi, lj,jj,tzj,
-                    lk,jk,tzk, ll,jl,tzl)
+function need_check(tbc_bra_cc, tbc_ket_cc, li,ji,tzi, lj,jj,tzj, lk,jk,tzk, ll,jl,tzl)
     tf = false
     twoJ_bra_cc = tbc_bra_cc.J * 2
     twoJ_ket_cc = tbc_ket_cc.J * 2
@@ -880,40 +875,6 @@ function init_IMSRGobject(HFobj;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_crite
         return IMSRGobj
     end
 end
-
-### Generators for IMSRG flow
-"""
-generator_atan
-    a: particle index
-    i: hole index
-    Gam: D'NO2B
-    iket:: index for |ai> to get Gam_{aiai}=Gam[iket,iket]
-    Delta: parameter for energy shift like EKK
-"""
-function generator_atan(a,i,f,Gam,iket,Delta)
-    nume = 2 * f[a,i]
-    deno = f[a,a] - f[i,i] + Gam[iket,iket] + Delta
-    if deno == 0.0;println("encountered denominator =0 in atan");exit();end
-    return 0.5 * atan(nume/deno)
-end
-function generator_sm_atan(a,i,f,Gam,iket,Delta)
-    nume = 2 * f[a,i]
-    deno = f[a,a] - f[i,i] + Gam[iket,iket] + Delta
-    if deno == 0.0;println("encountered denominator =0 in sm_atan");exit();end
-    return 0.5 * atan(nume/deno)
-end
-
-function def_generator(gtype)
-    if gtype == "atan"
-        return generator_atan
-    elseif gtype == "shell-model-atan"
-        return generator_sm_atan
-    else
-        println("generator type: $gtype is not supported now!")        
-        println("plase implement by yourself or change generator type")
-        exit()
-    end 
-end 
 
 """
     flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,to)

@@ -10,7 +10,9 @@ optional_parameters.jl
 *.jl~
 /src/*/*.jl~
 *~
-DS_Store
+.DS_Store
+src/.DS_Store
+docs/.DS_Store
 myscript.jl
 /snts
 /flowOmega

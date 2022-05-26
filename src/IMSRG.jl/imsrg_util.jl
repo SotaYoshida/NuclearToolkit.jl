@@ -695,8 +695,8 @@ function NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
 end
 
 """
-to write binary file for Operator flow
-using split/huntergatherer method
+    write_omega_bin(binfo,n_written,Omega)
+to write binary file of Operator matrix elements, when spliting the flow
 """
 function write_omega_bin(binfo,n_written,Omega)
     if isdir("flowOmega") 
@@ -775,12 +775,6 @@ function read_omega_bin!(binfo,nw,Op,verbose=false)
         end
     end 
     close(io)
-
-    #
-    #println("read omega_p");p1b=Op.onebody[1];for i=1:dim1b; print_vec("",p1b[i,:]); end
-    #println("read omega_n");n1b=Op.onebody[2];for i=1:dim1b; print_vec("",n1b[i,:]); end
-    # 
-
     return nothing
 end
 

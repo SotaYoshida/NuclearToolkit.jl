@@ -19,13 +19,14 @@ julia src/package_install.jl
 A sample script provided to perform
 - calculating NN potential by Chiral EFT
 - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
-- shell-model calculations with the derived interaction by VS-IMSRG
+- shell-model calculations with the effective interaction derived by VS-IMSRG
 
 in sequence. One can try as follows
 ```bash
 julia -t 8 sample_script.jl
 ```
 
+If you want to specify target nuclei, modelspace, hw, etc., please edit `optional_parameters.jl`.
 
 ## Package features and building blocks
 

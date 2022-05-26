@@ -250,22 +250,6 @@ function comm121ss!(X,Y,ret,HFobj,Chan1b,Chan2b,dictMono,PandyaObj)
     return nothing
 end
 
-# function get_flip_subdict(i,j,key,targetDict)
-#     boolflip = false
-#     fac = 1.0
-#     key[1] = i; key[2] = j
-#     if i > j 
-#         key[1]=j; key[2]=i
-#         boolflip = true
-#     end
-#     if i==j; fac *= sqrt(2.0);end
-#     try 
-#         return boolflip,fac,targetDict[key].vals
-#     catch
-#         println("tkey $key ij $i $j ")
-#         exit()
-#     end
-# end
 
 """
     single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)

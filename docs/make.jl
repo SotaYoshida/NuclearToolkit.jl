@@ -3,7 +3,7 @@ using Documenter
 #include("../src/NuclearToolkit.jl")
 #push!(LOAD_PATH,"../src/")
 
-#DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
+DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
 makedocs(;
         modules=[NuclearToolkit],
         authors="SotaYoshida <syoshida@cc.utsunomiya-u.ac.jp>",

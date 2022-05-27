@@ -85,7 +85,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     @timeit to "BOobj" BOobj = prepBO(optHFMBPT,target_LECs,pdomains,to)    
     if optHFMBPT
         Random.seed!(1234)
-        #propose!(1,BOobj,params,false)
+        propose!(1,BOobj,params,false)
         BOobj.Data[1] .= params
         for (k,target) in enumerate(target_LECs)
             idx = idxLECs[target]

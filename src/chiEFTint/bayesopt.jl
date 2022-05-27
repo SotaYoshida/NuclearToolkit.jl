@@ -69,10 +69,7 @@ end
 
 function prepBO(opt,targetLECs,pdomains,to;candDim=1000)
     maxDim=candDim
-    if opt == false;
-        return nothing
-        maxDim=candDim=2
-    end
+    if opt == false;return nothing;end
     pDim = length(targetLECs)
     Data = [zeros(Float64,pDim) for i=1:maxDim] 
     gens = 200

@@ -43,7 +43,7 @@ function eval_HFMBPT(thist,params,params_ref,HFdata,varE,Lam)
     thist[3] = logpost
     println("eval: ","logprior ",@sprintf("%9.2e",logprior),
             "  logllh  ",@sprintf("%9.2e",llh),
-            "  logpost ",@sprintf("%9.2e",logpost) )
+            "  logpost ",@sprintf("%9.2e",logpost),"\n" )
     return nothing
 end
 
@@ -67,9 +67,12 @@ struct BOobject
     acquis::Vector{Float64}   
 end
 
-function prepBO(opt,targetLECs,pdomains,to;candDim=2)#candDim=1000)
+function prepBO(opt,targetLECs,pdomains,to;candDim=1000)
     maxDim=candDim
-    if opt == false;maxDim=candDim=2;end
+    if opt == false;
+        return nothing
+        maxDim=candDim=2
+    end
     pDim = length(targetLECs)
     Data = [zeros(Float64,pDim) for i=1:maxDim] 
     gens = 200
@@ -98,15 +101,13 @@ function prepBO(opt,targetLECs,pdomains,to;candDim=2)#candDim=1000)
                     history,Ktt,Ktinv,Ktp,Kpt,L,tMat,yt,yscale,acquis)
 end 
 
-#history(logprior/llh/logpost)
-function BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to;
-                   var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
+function BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to; var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
     D = length(params)    
     n_ini_BO = 2*D
     ## Update history[it]
     thist = BOobj.history[it]
     eval_HFMBPT(thist,params,params_ref,HFdata,varE,Lam)    
-    
+        
     if it==n_ini_BO
         println("obs ",BOobj.observed)
         @timeit to "Kernel" calcKernel!(it,BOobj;ini=true)        

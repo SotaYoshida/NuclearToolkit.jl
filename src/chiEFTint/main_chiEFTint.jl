@@ -12,6 +12,7 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
 function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,nucs=[],is_plot=false)
+    if nucs == []; optHFMBPT=false;end
     chiEFTobj = init_chiEFTparams()
     emax = chiEFTobj.emax
     pmax_fm = chiEFTobj.pmax_fm
@@ -19,7 +20,6 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     Pmax_fm = chiEFTobj.Pmax_fm
     hw = chiEFTobj.hw
     v_chi_order = chiEFTobj.v_chi_order
-    n_mesh_P = chiEFTobj.n_mesh_P
 
     to = TimerOutput()
     @timeit to "prep." begin
@@ -61,11 +61,14 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
             @timeit to "wsyms" wsyms = prep_wsyms()
         end
     end
+    rdict6j = nothing
+    if nucs != [] || optHFMBPT
+        rdict6j = adhoc_rewrite6jdict(emax,dict6j)
+    end
 
     ## Start BO stuff
     HFdata = prepHFdata(nucs,"",["E"],"")
     target_LECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]   
-    ### LECs 
     LECs = Float64[ ]
     idxLECs=Dict{String,Int64}()
     dLECs=Dict{String,Float64}()
@@ -78,13 +81,8 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         dLECs[target] = params[k] = tLEC 
     end
     params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
-    pdomains = [ (-1.5,-0.5), (-4.5,-2.0),
-                 (2.0,6.0),(-3.0,3.0),(-3.0,3.0) ]
+    pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0),(-3.0,3.0),(-3.0,3.0) ]
     @timeit to "BOobj" BOobj = prepBO(optHFMBPT,target_LECs,pdomains,to)    
-    rdict6j = nothing
-    if nucs != [] || optHFMBPT
-        rdict6j = adhoc_rewrite6jdict(emax,dict6j)
-    end
     if optHFMBPT
         Random.seed!(1234)
         #propose!(1,BOobj,params,false)
@@ -139,12 +137,11 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         if nucs != [ ] && writesnt == false && optHFMBPT
             print_vec("it = $it", params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,to)
-            #BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to)
+            BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to)
             for (k,target) in enumerate(target_LECs)
                 idx = idxLECs[target]
                 LECs[idx] = dLECs[target] = params[k] 
             end
-            println("\n\n")
         end
         if !optHFMBPT;break;end
     end

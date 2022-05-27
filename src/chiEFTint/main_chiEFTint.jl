@@ -549,21 +549,40 @@ store them as ```LECs```(Vector{Float}), ```idxLECs```(Vector{Int}), and ```dLEC
 function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")    
     if initialize
         if !isfile(inpf);inpf="../"*inpf;end
-        f=open(inpf,"r");lines=readlines(f);close(f)
-        hit = 0
-        for line in lines
-            tl = split(rstrip(line))
-            if length(tl) == 0;continue;end
-            if tl[1] != "const"; continue;end
-            tmp = split(rstrip(line),"const")[end]
-            tl = split(tmp,"=")
-            chan = strip(tl[1])
-            LEC = parse(Float64,strip(tl[2]))
-            hit += 1            
-            push!(LECs,LEC)
-            idxLECs[chan] = hit
-            dLECs[chan] = LEC
+        include(inpf)
+        leclist = [C0_1S0,C0_3S1,C_CSB,C_CIB,
+                   C2_3S1,C2_3P0,C2_1P1,C2_3P1,C2_1S0,C2_3SD1,C2_3P2,
+                   hD_1S0,D_1S0,D_1P1,D_3P0,D_3P1,D_3P2,hD_3S1,D_3S1,hD_3SD1,D_3SD1,D_3D1,D_1D2,D_3D2,D_3PF2,D_3D3,       
+                   c1_NNLO,c2_NNLO,c3_NNLO,c4_NNLO,ct1_NNLO,ct3_NNLO,ct4_NNLO,cD,cE,
+                   d12,d3,d5,d145,
+                   c_vs_1,c_vs_2,c_vs_3,c_vs_4,c_vs_5]
+        lecname = ["C0_1S0","C0_3S1","C_CSB","C_CIB",
+                   "C2_3S1","C2_3P0","C2_1P1","C2_3P1","C2_1S0","C2_3SD1","C2_3P2",
+                   "hD_1S0","D_1S0","D_1P1","D_3P0","D_3P1","D_3P2","hD_3S1","D_3S1","hD_3SD1","D_3SD1","D_3D1","D_1D2","D_3D2","D_3PF2","D_3D3",       
+                   "c1_NNLO","c2_NNLO","c3_NNLO","c4_NNLO","ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE",
+                   "d12","d3","d5","d145",
+                   "c_vs_1","c_vs_2","c_vs_3","c_vs_4","c_vs_5"]              
+        for (i,lec) in enumerate(leclist)
+            tkey = lecname[i]
+            dLECs[tkey] = lec
+            idxLECs[tkey] = i
+            push!(LECs,lec)
         end
+        # f=open(inpf,"r");lines=readlines(f);close(f)
+        # hit = 0
+        # for line in lines
+        #     tl = split(rstrip(line))
+        #     if length(tl) == 0;continue;end
+        #     if tl[1] != "const"; continue;end
+        #     tmp = split(rstrip(line),"const")[end]
+        #     tl = split(tmp,"=")
+        #     chan = strip(tl[1])
+        #     LEC = parse(Float64,strip(tl[2]))
+        #     hit += 1            
+        #     push!(LECs,LEC)
+        #     idxLECs[chan] = hit
+        #     dLECs[chan] = LEC
+        # end
     else
         for tkey in keys(idxLECs)
             idx = idxLECs[tkey]

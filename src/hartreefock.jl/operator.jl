@@ -652,7 +652,7 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
         ctxt = " HF+PT => " * @sprintf("%12.6f", sqrt(Rch2+Rp_MP))
     end
     println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp)),
-    " charge radius ",@sprintf("%12.6f", Rch)," ",ctxt, "\n")
+    " charge radius ",@sprintf("%12.6f", Rch)," ",ctxt)
     getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to) 
     return nothing
 end

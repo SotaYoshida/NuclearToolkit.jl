@@ -65,7 +65,7 @@ end
     hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
+function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
     emax = chiEFTobj.emax
     hw = chiEFTobj.hw
     sntf = chiEFTobj.fn_tbme
@@ -92,7 +92,11 @@ function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Opera
             dictTBMEs = dictsnt.dictTBMEs
         end      
         @timeit to "hf_iteration" begin 
-            hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose)            
+            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose)
+            if "Rp2" in Operators
+                Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
+                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,to)
+            end
         end
     end
     return true

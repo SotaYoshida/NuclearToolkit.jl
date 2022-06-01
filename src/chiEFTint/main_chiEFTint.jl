@@ -83,6 +83,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
     pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0),(-3.0,3.0),(-3.0,3.0) ]
     @timeit to "BOobj" BOobj = prepBO(optHFMBPT,target_LECs,pdomains,to)    
+    d9j = HOBs = nothing
     if optHFMBPT
         Random.seed!(1234)
         propose!(1,BOobj,params,false)
@@ -91,6 +92,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
             idx = idxLECs[target]
             LECs[idx] = dLECs[target] = params[k] 
         end      
+        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
     end
     ## END: BO stuff
 
@@ -136,7 +138,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
         if nucs != [ ] && writesnt == false && optHFMBPT
             print_vec("it = $it", params)
-            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,to)
+            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
             BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to)
             for (k,target) in enumerate(target_LECs)
                 idx = idxLECs[target]

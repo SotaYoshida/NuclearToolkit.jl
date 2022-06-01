@@ -21,7 +21,11 @@ function myCholesky!(tmpA,ln,cLL)
     nothing
 end
 
-function eval_HFMBPT(thist,params,params_ref,HFdata,varE,Lam)
+function eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
+    thist = BOobj.history[it]
+    params = BOobj.params
+    params_ref = BOobj.params_ref
+
     tvec = params-params_ref
     logprior = -0.5*Lam*dot(tvec,tvec)
     llh = 0.0
@@ -49,6 +53,9 @@ end
 
 struct BOobject
     maxDim::Int64
+    targetLECs::Vector{String}
+    params::Vector{Float64}
+    params_ref::Vector{Float64}
     pdomains::Vector{Tuple{Float64, Float64}}
     pKernel::Vector{Float64}
     Data::Vector{Vector{Float64}}
@@ -67,9 +74,27 @@ struct BOobject
     acquis::Vector{Float64}   
 end
 
-function prepBO(opt,targetLECs,pdomains,to;candDim=1000)
+function prepBO(LECs,idxLECs,dLECs,opt,to;candDim=1000)
     maxDim=candDim
     if opt == false;return nothing;end
+    targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
+    params = zeros(Float64,length(targetLECs))
+    params_ref = zeros(Float64,length(targetLECs))
+    params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
+    pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
+ 
+    targetLECs= ["ct3_NNLO","ct4_NNLO"]
+    params = zeros(Float64,length(targetLECs))
+    params_ref = zeros(Float64,length(targetLECs))
+    params_ref[1] = -3.2; params_ref[2] = 5.4    
+    pdomains = [ (-4.5,-2.0), (2.0,6.0)]
+    
+    for (k,target) in enumerate(targetLECs)
+        idx = idxLECs[target]
+        tLEC = LECs[idx]
+        dLECs[target] = params[k] = tLEC 
+    end 
+
     pDim = length(targetLECs)
     Data = [zeros(Float64,pDim) for i=1:maxDim] 
     gens = 200
@@ -88,23 +113,31 @@ function prepBO(opt,targetLECs,pdomains,to;candDim=1000)
     yt = zeros(Float64,maxDim)
     yscale = zeros(Float64,2)
     acquis = zeros(Float64,candDim)
-    ## parameter of ARD Kernel
     pKernel = ones(Float64,pDim+1) ## for adhock
     for i =1:pDim
         tmp = pdomains[i]
         pKernel[i+1] = 1.0 / ((tmp[2]-tmp[1]))
     end    
-    return BOobject(maxDim,pdomains,pKernel,Data,cand,observed,unobserved,
-                    history,Ktt,Ktinv,Ktp,Kpt,L,tMat,yt,yscale,acquis)
-end 
 
-function BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to; var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
-    D = length(params)    
+    BOobj = BOobject(maxDim,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,
+                     history,Ktt,Ktinv,Ktp,Kpt,L,tMat,yt,yscale,acquis)
+
+    Random.seed!(1234)
+    propose!(1,BOobj,false)
+    BOobj.Data[1] .= BOobj.params
+    for (k,target) in enumerate(targetLECs)
+        idx = idxLECs[target]
+        LECs[idx] = dLECs[target] = params[k]
+    end
+    return BOobj
+end
+
+function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
+    params = BOobj.params
+    D = length(params)
     n_ini_BO = 2*D
     ## Update history[it]
-    thist = BOobj.history[it]
-    eval_HFMBPT(thist,params,params_ref,HFdata,varE,Lam)    
-        
+    eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
     if it==n_ini_BO
         println("obs ",BOobj.observed)
         @timeit to "Kernel" calcKernel!(it,BOobj;ini=true)        
@@ -123,23 +156,23 @@ function BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to; var_proposal=0.2,varE=1
     end 
     ## Make proposal
     BOproposal = ifelse(it<=n_ini_BO,false,true)
-    propose!(it,BOobj,params,BOproposal)
-    BOobj.Data[it] .= params
+    propose!(it,BOobj,BOproposal)
+    BOobj.Data[it] .= BOobj.params
     return nothing
 end
-function calcKernel!(it,BOobj;ini=false) 
+function calcKernel!(it,BOobj;ini=false)
     Ktt = @view BOobj.Ktt[1:it,1:it]
     obs = BOobj.observed
     cand = BOobj.cand
     pKernel = BOobj.pKernel
     tau = pKernel[1]
     Theta = @view pKernel[2:end]
-    mTheta = @view BOobj.tMat[1:5,1:5]
-    mTheta .= 0.0;for i =1:5; mTheta[i,i] = Theta[i];end
-    tv = @view BOobj.tMat[6:10,1:1]
-    tv2 = @view BOobj.tMat[11:15,1:1]
-    rTr = @view BOobj.tMat[16:16,1:1]
-
+    pdim = length(Theta)
+    mTheta = @view BOobj.tMat[1:pdim,1:pdim]
+    mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
+    tv = @view BOobj.tMat[pdim+1:2*pdim,1:1]
+    tv2 = @view BOobj.tMat[2*pdim+1:3*pdim,1:1]
+    rTr = @view BOobj.tMat[3*pdim+1:3*pdim+1,1:1]
     if ini 
         for i = 1:it
             c_i = cand[obs[i]]
@@ -176,13 +209,14 @@ end
 function calcKpt!(it,xp,BOobj)
     tau = BOobj.pKernel[1]
     Theta = @view BOobj.pKernel[2:end]
-    mTheta = @view BOobj.tMat[1:5,1:5]
-    mTheta .= 0.0;for i =1:5; mTheta[i,i] = Theta[i];end
+    pdim = length(Theta)
+    mTheta = @view BOobj.tMat[1:pdim,1:pdim]
+    mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
     Kpt = @view BOobj.Kpt[1:1,1:it]
     Ktp = @view BOobj.Ktp[1:it,1:1]
-    tv = @view BOobj.tMat[6:10,1:1]
-    tv2 = @view BOobj.tMat[11:15,1:1]
-    rTr = @view BOobj.tMat[16:16,1:1]
+    tv = @view BOobj.tMat[pdim+1:2*pdim,1:1]
+    tv2 = @view BOobj.tMat[2*pdim+1:3*pdim,1:1]
+    rTr = @view BOobj.tMat[3*pdim+1:3*pdim+1,1:1]
     obs = BOobj.observed
     cand = BOobj.cand
     for i = 1:it
@@ -220,7 +254,8 @@ function evalcand(it,BOobj,to)
     return nothing
 end
 
-function propose!(it,BOobj,params,BOproposal)
+function propose!(it,BOobj,BOproposal)
+    params = BOobj.params
     cand = BOobj.cand
     #println("scaled_plan size ",size(scaled_plan), "\n$scaled_plan")
     obs = BOobj.observed
@@ -238,76 +273,76 @@ function propose!(it,BOobj,params,BOproposal)
     return nothing
 end 
 
-function showBOhist(itnum,BOobj,targetLECs)
-    history = @view BOobj.history[1:itnum]
-    Data = @view BOobj.Data[1:itnum]
-    logpriors = [history[i][1] for i =1:itnum]
-    logllhs = [history[i][2] for i =1:itnum]
-    logposts = [history[i][3] for i =1:itnum]
+# function showBOhist(itnum,BOobj,targetLECs)
+#     history = @view BOobj.history[1:itnum]
+#     Data = @view BOobj.Data[1:itnum]
+#     logpriors = [history[i][1] for i =1:itnum]
+#     logllhs = [history[i][2] for i =1:itnum]
+#     logposts = [history[i][3] for i =1:itnum]
 
-    Ktt = @view BOobj.Ktt[1:itnum,1:itnum]
+#     Ktt = @view BOobj.Ktt[1:itnum,1:itnum]
 
-    fig = plt.figure(figsize=(6,6))
-    axs = [fig.add_subplot(111)]
-    axs[1].imshow(Ktt)
-    plt.savefig("pic/checkBayesOpt_$itnum.pdf",pad_inches=0)
-    plt.close()
+#     fig = plt.figure(figsize=(6,6))
+#     axs = [fig.add_subplot(111)]
+#     axs[1].imshow(Ktt)
+#     plt.savefig("pic/checkBayesOpt_$itnum.pdf",pad_inches=0)
+#     plt.close()
      
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111)
-    ax.plot(logpriors,label="logprior",alpha=0.6)
-    ax.plot(logllhs,label="loglllh",alpha=0.6)
-    ax.plot(logposts,label="logprior",alpha=0.6)
-    ax.legend()
-    plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
-    plt.close()
+#     fig = plt.figure(figsize=(8,8))
+#     ax = fig.add_subplot(111)
+#     ax.plot(logpriors,label="logprior",alpha=0.6)
+#     ax.plot(logllhs,label="loglllh",alpha=0.6)
+#     ax.plot(logposts,label="logprior",alpha=0.6)
+#     ax.legend()
+#     plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
+#     plt.close()
 
-    paramdat = [zeros(Float64,itnum) for i =1:5]
-    for (i,tmp) in enumerate(Data)
-        for n =1:5
-            paramdat[n][i] = tmp[n]
-        end
-    end
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111) 
-    for (n,tlabel) in enumerate(targetLECs)
-        ax.plot(paramdat[n],label=tlabel,alpha=0.6)
-    end
-    ax.legend() 
-    plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
-    plt.close()
-end 
+#     paramdat = [zeros(Float64,itnum) for i =1:5]
+#     for (i,tmp) in enumerate(Data)
+#         for n =1:5
+#             paramdat[n][i] = tmp[n]
+#         end
+#     end
+#     fig = plt.figure(figsize=(8,8))
+#     ax = fig.add_subplot(111) 
+#     for (n,tlabel) in enumerate(targetLECs)
+#         ax.plot(paramdat[n],label=tlabel,alpha=0.6)
+#     end
+#     ax.legend() 
+#     plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
+#     plt.close()
+# end 
 
 
-function showBOhist_plots(itnum,BOobj,targetLECs)
-    history = @view BOobj.history[1:itnum]
-    Data = @view BOobj.Data[1:itnum]
-    logpriors = [history[i][1] for i =1:itnum]
-    logllhs = [history[i][2] for i =1:itnum]
-    logposts = [history[i][3] for i =1:itnum]
+# function showBOhist_plots(itnum,BOobj,targetLECs)
+#     history = @view BOobj.history[1:itnum]
+#     Data = @view BOobj.Data[1:itnum]
+#     logpriors = [history[i][1] for i =1:itnum]
+#     logllhs = [history[i][2] for i =1:itnum]
+#     logposts = [history[i][3] for i =1:itnum]
      
-    plot(logpriors,label="logprior",alpha=0.6)
-    ax.plot(logllhs,label="loglllh",alpha=0.6)
-    ax.plot(logposts,label="logprior",alpha=0.6)
-    ax.legend()
-    plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
-    plt.close()
+#     plot(logpriors,label="logprior",alpha=0.6)
+#     ax.plot(logllhs,label="loglllh",alpha=0.6)
+#     ax.plot(logposts,label="logprior",alpha=0.6)
+#     ax.legend()
+#     plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
+#     plt.close()
 
-    paramdat = [zeros(Float64,itnum) for i =1:5]
-    for (i,tmp) in enumerate(Data)
-        for n =1:5
-            paramdat[n][i] = tmp[n]
-        end
-    end
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111) 
-    for (n,tlabel) in enumerate(targetLECs)
-        ax.plot(paramdat[n],label=tlabel,alpha=0.6)
-    end
-    ax.legend() 
-    plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
-    plt.close()
-end 
+#     paramdat = [zeros(Float64,itnum) for i =1:5]
+#     for (i,tmp) in enumerate(Data)
+#         for n =1:5
+#             paramdat[n][i] = tmp[n]
+#         end
+#     end
+#     fig = plt.figure(figsize=(8,8))
+#     ax = fig.add_subplot(111) 
+#     for (n,tlabel) in enumerate(targetLECs)
+#         ax.plot(paramdat[n],label=tlabel,alpha=0.6)
+#     end
+#     ax.legend() 
+#     plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
+#     plt.close()
+# end 
 
 function plotKernel(it,Ktt)
     fig = plt.figure(figsize=(8,8))

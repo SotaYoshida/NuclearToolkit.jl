@@ -65,33 +65,17 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     if nucs != [] || optHFMBPT
         rdict6j = adhoc_rewrite6jdict(emax,dict6j)
     end
-
-    ## Start BO stuff
     HFdata = prepHFdata(nucs,"",["E"],"")
-    target_LECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]   
+    ### LECs
     LECs = Float64[ ]
     idxLECs=Dict{String,Int64}()
     dLECs=Dict{String,Float64}()
     read_LECs!(LECs,idxLECs,dLECs;initialize=true)
-    params = zeros(Float64,length(target_LECs))
-    params_ref = zeros(Float64,length(target_LECs))
-    for (k,target) in enumerate(target_LECs)
-        idx = idxLECs[target]
-        tLEC = LECs[idx]
-        dLECs[target] = params[k] = tLEC 
-    end
-    params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
-    pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0),(-3.0,3.0),(-3.0,3.0) ]
-    @timeit to "BOobj" BOobj = prepBO(optHFMBPT,target_LECs,pdomains,to)    
+    
+    ## Start BO stuff
+    @timeit to "BOobj" BOobj = prepBO(LECs,idxLECs,dLECs,optHFMBPT,to)    
     d9j = HOBs = nothing
-    if optHFMBPT
-        Random.seed!(1234)
-        propose!(1,BOobj,params,false)
-        BOobj.Data[1] .= params
-        for (k,target) in enumerate(target_LECs)
-            idx = idxLECs[target]
-            LECs[idx] = dLECs[target] = params[k] 
-        end      
+    if optHFMBPT          
         d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
     end
     ## END: BO stuff
@@ -99,7 +83,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     ### Calculation of NN potential and SRG
     X9,U6 = prepareX9U6(2*emax)
     for it = 1:itnum
-        if it > 1; for i=1:length(numst2); V12mom[i] .= 0.0;end;end
+        if it > 1; for i=1:length(numst2); V12mom[i] .= 0.0;end;end 
         if chiEFTobj.calc_NN
             # ***Leading Order (LO)***
             ### OPEP
@@ -137,13 +121,13 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         end
         ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
         if nucs != [ ] && writesnt == false && optHFMBPT
-            print_vec("it = $it", params)
+            print_vec("it = $it", BOobj.params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
-            BO_HFMBPT(it,BOobj,params,params_ref,HFdata,to)
-            for (k,target) in enumerate(target_LECs)
+            BO_HFMBPT(it,BOobj,HFdata,to)
+            for (k,target) in enumerate(BOobj.targetLECs)
                 idx = idxLECs[target]
-                LECs[idx] = dLECs[target] = params[k] 
-            end
+                LECs[idx] = dLECs[target] = BOobj.params[k] 
+            end  
         end
         if !optHFMBPT;break;end
     end

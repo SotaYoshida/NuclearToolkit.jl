@@ -145,7 +145,8 @@ function prepBO(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
     pKernel = ones(Float64,pDim+1)
     for i =1:pDim
         tmp = pdomains[i]
-        pKernel[i+1] = 1.0 / (abs(tmp[2]-tmp[1])^2)
+        #pKernel[i+1] = 1.0 / (1/ abs(tmp[2]-tmp[1])^2)
+        pKernel[i+1] = abs(tmp[2]-tmp[1])^2
     end    
     BOobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
 
@@ -172,7 +173,8 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
         BOobj.yscale[1] = ymean
         BOobj.yscale[2] = ystd
         yt = @view BOobj.yt[1:it]
-        yt .= (tmp .- ymean) ./ ystd
+        yt .= tmp
+        #yt .= (tmp .- ymean) ./ ystd ## normalize
     elseif it > n_ini_BO
         @timeit to "Kernel" calcKernel!(it,BOobj)        
         @timeit to "eval p" evalcand(it,BOobj,to)
@@ -183,7 +185,7 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
     BOobj.Data[it] .= BOobj.params
     return nothing
 end
-function calcKernel!(it,BOobj;ini=false)
+function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
     Ktt = @view BOobj.Ktt[1:it,1:it]
     obs = BOobj.observed
     cand = BOobj.cand
@@ -203,9 +205,9 @@ function calcKernel!(it,BOobj;ini=false)
                 BLAS.axpy!(-1.0,c_j,tv)
                 tv2 .= tv .* Theta
                 BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
-                #Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
                 Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
             end
+            Ktt[i,i] += eps
         end
     else
         i = it
@@ -217,8 +219,8 @@ function calcKernel!(it,BOobj;ini=false)
             tv2 .= tv .* Theta
             BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
             Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
-            #Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
         end
+        Ktt[i,i] += eps
     end
     ## Calculate Ktt^{-1} 
     Ktinv = @view BOobj.Ktinv[1:it,1:it]
@@ -241,8 +243,6 @@ function calcKtp!(it,xp,BOobj)
     tau = BOobj.pKernel[1]
     Theta = @view BOobj.pKernel[2:end]
     pdim = length(Theta)
-    #mTheta = @view BOobj.tMat[1:pdim,1:pdim]
-    #mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
     Ktp = @view BOobj.Ktp[1:it,1:1]
     tv = @view BOobj.tMat[pdim+1:2*pdim,1:1]
     tv2 = @view BOobj.tMat[2*pdim+1:3*pdim,1:1]
@@ -250,18 +250,15 @@ function calcKtp!(it,xp,BOobj)
     obs = BOobj.observed
     cand = BOobj.cand
     for i = 1:it
-        c_i = cand[obs[i]]
-        tv .= c_i 
+        tv .= cand[obs[i]]
         BLAS.axpy!(-1.0,xp,tv)
         tv2 .= tv .* Theta
-        #BLAS.gemm!('N','N',1.0,mTheta,tv,0.0,tv2)
         BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
         Ktp[i] = exp(-0.5*tau*rTr[1])
-        #Ktp[i] = exp(-0.5*tau* sqrt(rTr[1]))
     end
 end 
 
-function evalcand(it,BOobj,to;epsilon=1.e-6)
+function evalcand(it,BOobj,to;epsilon=1.e-9)
     Ktt = @view BOobj.Ktt[1:it,1:it]
     Ktp = @view BOobj.Ktp[1:it,1:1]
     Ktinv = @view BOobj.Ktinv[1:it,1:it]
@@ -287,8 +284,10 @@ function evalcand(it,BOobj,to;epsilon=1.e-6)
             Imat = Matrix{Float64}(I,it,it)
             Mat = Ktt*Ktinv
             tnorm = norm(Imat-Mat,Inf)
-            println("Theta ",BOobj.Theta)
+            Theta = @view BOobj.pKernel[2:end]
             println("tau-tM2[1] ",tau-tM2[1], "  tnorm $tnorm")
+            print_vec("xp",xp)
+            print_vec("",Ktp)
             if it < 10
                 println("Ktt ",isposdef(Ktt))
                 for i=1:size(Ktt)[1]

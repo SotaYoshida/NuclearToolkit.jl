@@ -62,12 +62,6 @@ export main_sm,samplerun_sm # from shellmodel.
 export prepEC,solveEC,solveEC_UQ # from eigenvector_continuation.jl
 export transit_main # from transit.jl
 
-### for test
-export prepHFdata
-export prepBO
-export BO_HFMBPT
-export propose!
-export showBOhist
 end
 
 

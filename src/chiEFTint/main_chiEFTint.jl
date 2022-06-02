@@ -554,21 +554,6 @@ function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs
             idxLECs[tkey] = i
             push!(LECs,lec)
         end
-        # f=open(inpf,"r");lines=readlines(f);close(f)
-        # hit = 0
-        # for line in lines
-        #     tl = split(rstrip(line))
-        #     if length(tl) == 0;continue;end
-        #     if tl[1] != "const"; continue;end
-        #     tmp = split(rstrip(line),"const")[end]
-        #     tl = split(tmp,"=")
-        #     chan = strip(tl[1])
-        #     LEC = parse(Float64,strip(tl[2]))
-        #     hit += 1            
-        #     push!(LECs,LEC)
-        #     idxLECs[chan] = hit
-        #     dLECs[chan] = LEC
-        # end
     else
         for tkey in keys(idxLECs)
             idx = idxLECs[tkey]

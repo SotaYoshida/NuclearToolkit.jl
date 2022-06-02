@@ -18,7 +18,7 @@ function myCholesky!(tmpA,ln,cLL)
         end
         cLL[i,i] = sqrt(cLL[i,i])             
     end
-    nothing
+    return nothing
 end
 
 function eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
@@ -66,7 +66,6 @@ struct BOobject
     Ktt::Matrix{Float64}
     Ktinv::Matrix{Float64}
     Ktp::Matrix{Float64}
-    Kpt::Matrix{Float64}
     L::Matrix{Float64}
     tMat::Matrix{Float64}
     yt::Vector{Float64}
@@ -74,53 +73,81 @@ struct BOobject
     acquis::Vector{Float64}   
 end
 
-function prepBO(LECs,idxLECs,dLECs,opt,to;candDim=1000)
-    maxDim=candDim
-    if opt == false;return nothing;end
-    targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
-    params = zeros(Float64,length(targetLECs))
-    params_ref = zeros(Float64,length(targetLECs))
-    params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
-    pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
- 
-    targetLECs= ["ct3_NNLO","ct4_NNLO"]
-    params = zeros(Float64,length(targetLECs))
-    params_ref = zeros(Float64,length(targetLECs))
-    params_ref[1] = -3.2; params_ref[2] = 5.4    
-    pdomains = [ (-4.5,-2.0), (2.0,6.0)]
-    
+
+function get_LECs_params(op)
+    targetLECs = String[]
+    params = Float64[]; params_ref=Float64[]; pdomains = Tuple{Float64, Float64}[]
+    if op=="2n3nall"
+        targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
+        params = zeros(Float64,length(targetLECs))
+        params_ref = zeros(Float64,length(targetLECs))
+        params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
+        pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
+    elseif op=="c34"
+        targetLECs= ["ct3_NNLO","ct4_NNLO"]
+        params = zeros(Float64,length(targetLECs))
+        params_ref = zeros(Float64,length(targetLECs))
+        params_ref[1] = -3.2; params_ref[2] = 5.4    
+        pdomains = [ (-4.5,-2.0), (2.0,6.0)]
+    elseif op == "cDE"
+        targetLECs= ["ct3_NNLO","ct4_NNLO"]
+        params = zeros(Float64,length(targetLECs))
+        params_ref = zeros(Float64,length(targetLECs))
+        params_ref[1] = -3.2; params_ref[2] = 5.4    
+        pdomains = [ (-4.5,-2.0), (2.0,6.0)]
+    else
+        println("warn: op=$op in get_LECs_paramas is not supported!")
+        exit()
+    end
+    return targetLECs, params,params_ref,pdomains
+end
+
+function prepBO(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
+                op="cDE"
+                )
+    if opt == false;return nothing;end   
+    targetLECs, params,params_ref,pdomains = get_LECs_params(op)
     for (k,target) in enumerate(targetLECs)
         idx = idxLECs[target]
-        tLEC = LECs[idx]
-        dLECs[target] = params[k] = tLEC 
+        dLECs[target]=params[k] = LECs[idx]
     end 
-
     pDim = length(targetLECs)
-    Data = [zeros(Float64,pDim) for i=1:maxDim] 
+
+    Data = [zeros(Float64,pDim) for i=1:num_cand] 
     gens = 200
-    @timeit to "LHS" plan, _ = LHCoptim(candDim,pDim,gens)
-    tmp = scaleLHC(plan,pdomains)
-    cand = [ tmp[i,:] for i =1:candDim]
+    @timeit to "LHS" plan, _ = LHCoptim(num_cand,pDim,gens)
+    tmp = scaleLHC(plan,pdomains)    
+    cand = [ tmp[i,:] for i =1:num_cand]
+
+    """
+    cand:: candidate point given by LatinHypercubeSampling
+    observed:: list of index of `cand` which has been observed
+    unobserved:: rest candidate indices
+    history:: array of [logprior,logllh,logpost] for i=1:num_cand
+    Ktt,Kttinv,Ktp,L:: matrix needed for GP calculation
+    yt:: mean value of training point, to be mean of initial random point 
+    yscale:: mean&std of yt that is used to scale/rescale data    
+    acquis:: vector of acquisition function values
+    pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
+    adhoc=> tau =1.0, l=1/domain size
+    """
     observed = Int64[ ]
-    unobserved = collect(1:candDim)
-    history = [zeros(Float64,3) for i=1:maxDim]
-    Ktt = zeros(Float64,maxDim,maxDim) 
-    Ktinv = zeros(Float64,maxDim,maxDim)
-    tMat = zeros(Float64,maxDim,maxDim) 
-    Ktp = zeros(Float64,maxDim,1)
-    Kpt = zeros(Float64,1,maxDim)    
-    L = zeros(Float64,maxDim,maxDim)
-    yt = zeros(Float64,maxDim)
-    yscale = zeros(Float64,2)
-    acquis = zeros(Float64,candDim)
-    pKernel = ones(Float64,pDim+1) ## for adhock
+    unobserved = collect(1:num_cand)
+    history = [zeros(Float64,3) for i=1:num_cand]
+    Ktt = zeros(Float64,num_cand,num_cand) 
+    Ktinv = zeros(Float64,num_cand,num_cand)
+    tMat = zeros(Float64,num_cand,num_cand)
+    Ktp = zeros(Float64,num_cand,1)
+    L = zeros(Float64,num_cand,num_cand)
+    yt = zeros(Float64,num_cand)
+    yscale = zeros(Float64,2) 
+    acquis = zeros(Float64,num_cand)
+    pKernel = ones(Float64,pDim+1)
     for i =1:pDim
         tmp = pdomains[i]
-        pKernel[i+1] = 1.0 / ((tmp[2]-tmp[1]))
+        pKernel[i+1] = 1.0 / (abs(tmp[2]-tmp[1])^2)
     end    
-
-    BOobj = BOobject(maxDim,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,
-                     history,Ktt,Ktinv,Ktp,Kpt,L,tMat,yt,yscale,acquis)
+    BOobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
 
     Random.seed!(1234)
     propose!(1,BOobj,false)
@@ -134,8 +161,7 @@ end
 
 function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
     params = BOobj.params
-    D = length(params)
-    n_ini_BO = 2*D
+    D = length(params); n_ini_BO = 2*D
     ## Update history[it]
     eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
     if it==n_ini_BO
@@ -145,11 +171,8 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
         ymean = mean(tmp); ystd = std(tmp)
         BOobj.yscale[1] = ymean
         BOobj.yscale[2] = ystd
-
         yt = @view BOobj.yt[1:it]
-        yt .= tmp .- ymean
-        yt ./ ystd
-        
+        yt .= (tmp .- ymean) ./ ystd
     elseif it > n_ini_BO
         @timeit to "Kernel" calcKernel!(it,BOobj)        
         @timeit to "eval p" evalcand(it,BOobj,to)
@@ -168,8 +191,6 @@ function calcKernel!(it,BOobj;ini=false)
     tau = pKernel[1]
     Theta = @view pKernel[2:end]
     pdim = length(Theta)
-    mTheta = @view BOobj.tMat[1:pdim,1:pdim]
-    mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
     tv = @view BOobj.tMat[pdim+1:2*pdim,1:1]
     tv2 = @view BOobj.tMat[2*pdim+1:3*pdim,1:1]
     rTr = @view BOobj.tMat[3*pdim+1:3*pdim+1,1:1]
@@ -180,39 +201,48 @@ function calcKernel!(it,BOobj;ini=false)
                 c_j = cand[obs[j]]
                 tv .= c_i
                 BLAS.axpy!(-1.0,c_j,tv)
-                BLAS.gemm!('N','N',1.0,mTheta,tv,0.0,tv2)
-                BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)         
-                Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
+                tv2 .= tv .* Theta
+                BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
+                #Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
+                Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
             end
         end
     else
         i = it
         c_i = cand[obs[i]]
-        for j=1:it
-            tv .= c_i
+        for j=1:it            
             c_j = cand[obs[j]]
+            tv .= c_i
             BLAS.axpy!(-1.0,c_j,tv)
-            BLAS.gemm!('N','N',1.0,mTheta,tv,0.0,tv2)
-            BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)         
-            Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
+            tv2 .= tv .* Theta
+            BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
+            Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
+            #Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*sqrt(rTr[1]))
         end
     end
     ## Calculate Ktt^{-1} 
     Ktinv = @view BOobj.Ktinv[1:it,1:it]
     L = @view BOobj.L[1:it,1:it]
-    myCholesky!(Ktt,it,L)
+    try
+        myCholesky!(Ktt,it,L)
+    catch
+        println("Theta $Theta")
+        for i=1:size(Ktt)[1]
+            print_vec("",@view Ktt[i,:])
+        end
+        exit()
+    end
     Linv = inv(L)
     BLAS.gemm!('T','N', 1.0,Linv,Linv,0.0,Ktinv)
     return nothing
 end
 
-function calcKpt!(it,xp,BOobj)
+function calcKtp!(it,xp,BOobj)
     tau = BOobj.pKernel[1]
     Theta = @view BOobj.pKernel[2:end]
     pdim = length(Theta)
-    mTheta = @view BOobj.tMat[1:pdim,1:pdim]
-    mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
-    Kpt = @view BOobj.Kpt[1:1,1:it]
+    #mTheta = @view BOobj.tMat[1:pdim,1:pdim]
+    #mTheta .= 0.0;for i =1:pdim; mTheta[i,i] = Theta[i];end
     Ktp = @view BOobj.Ktp[1:it,1:1]
     tv = @view BOobj.tMat[pdim+1:2*pdim,1:1]
     tv2 = @view BOobj.tMat[2*pdim+1:3*pdim,1:1]
@@ -223,14 +253,16 @@ function calcKpt!(it,xp,BOobj)
         c_i = cand[obs[i]]
         tv .= c_i 
         BLAS.axpy!(-1.0,xp,tv)
-        BLAS.gemm!('N','N',1.0,mTheta,tv,0.0,tv2)
+        tv2 .= tv .* Theta
+        #BLAS.gemm!('N','N',1.0,mTheta,tv,0.0,tv2)
         BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
-        Kpt[i] = Ktp[i] = exp(-0.5*tau* sqrt(rTr[1]))
+        Ktp[i] = exp(-0.5*tau*rTr[1])
+        #Ktp[i] = exp(-0.5*tau* sqrt(rTr[1]))
     end
 end 
 
-function evalcand(it,BOobj,to)
-    Kpt = @view BOobj.Kpt[1:1,1:it]
+function evalcand(it,BOobj,to;epsilon=1.e-6)
+    Ktt = @view BOobj.Ktt[1:it,1:it]
     Ktp = @view BOobj.Ktp[1:it,1:1]
     Ktinv = @view BOobj.Ktinv[1:it,1:it]
     tM1 = @view BOobj.tMat[1:1,1:it]
@@ -239,15 +271,41 @@ function evalcand(it,BOobj,to)
     unobs = BOobj.unobserved
     cand = BOobj.cand
     fplus = BOobj.acquis[1]
+    tau = BOobj.pKernel[1]
     fAs = @view BOobj.acquis[2:1+length(unobs)]
     fAs .= 0.0
     for (n,idx) in enumerate(unobs)
         xp = cand[idx]
-        calcKpt!(it,xp,BOobj)
-        BLAS.gemm!('N','N',1.0,Kpt,Ktinv,0.0,tM1)
+        calcKtp!(it,xp,BOobj)
+        BLAS.gemm!('T','N',1.0,Ktp,Ktinv,0.0,tM1)       
         BLAS.gemm!('N','N',1.0,tM1,Ktp,0.0,tM2)
         mup = dot(tM1,yt)
-        sigma = sqrt(1.0 - tM2[1])
+        sigma = tau
+        try
+            sigma = sqrt(tau + epsilon - tM2[1])
+        catch   
+            Imat = Matrix{Float64}(I,it,it)
+            Mat = Ktt*Ktinv
+            tnorm = norm(Imat-Mat,Inf)
+            println("Theta ",BOobj.Theta)
+            println("tau-tM2[1] ",tau-tM2[1], "  tnorm $tnorm")
+            if it < 10
+                println("Ktt ",isposdef(Ktt))
+                for i=1:size(Ktt)[1]
+                    print_vec("",@view Ktt[i,:])
+                end
+                println("Ktinv")
+                for i=1:size(Ktinv)[1]
+                    print_vec("",@view Ktinv[i,:])
+                end
+                println("Mat")
+                for i=1:size(Mat)[1]
+                    print_vec("",@view Mat[i,:])
+                end
+                println("Ktp \n$Ktp")
+            end
+            exit()
+        end
         Z = (mup-fplus) / sigma
         fAs[n] = Z*sigma * fPhi(Z) + exp(-0.5*Z^2)/sqrt(2.0*pi)
     end 
@@ -379,12 +437,12 @@ function AcquisitionFunc(mup,Sp,fplus,fAs)
     return nothing
 end
 
-function kRBF(xi,xj,params)
-    tau = params[0]; sigma = params[1]
-    return -0.5*tau * ((xi-xj)/sigma)^2
-end 
+# function kRBF(xi,xj,params)
+#     tau = params[0]; sigma = params[1]
+#     return -0.5*tau * ((xi-xj)/sigma)^2
+# end 
 
-function kARD(vi,vj,params)
-    tau = params[0]; sigma = params[1]
-    return -0.5*tau * ((xi-xj)/sigma)^2
-end 
+# function kARD(vi,vj,params)
+#     tau = params[0]; sigma = params[1]
+#     return -0.5*tau * ((xi-xj)/sigma)^2
+# end 

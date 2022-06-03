@@ -90,11 +90,10 @@ function get_LECs_params(op)
         params_ref[1] = -3.2; params_ref[2] = 5.4    
         pdomains = [ (-4.5,-2.0), (2.0,6.0)]
     elseif op == "cDE"
-        targetLECs= ["ct3_NNLO","ct4_NNLO"]
+        targetLECs= ["cD","cE"]
         params = zeros(Float64,length(targetLECs))
         params_ref = zeros(Float64,length(targetLECs))
-        params_ref[1] = -3.2; params_ref[2] = 5.4    
-        pdomains = [ (-4.5,-2.0), (2.0,6.0)]
+        pdomains = [ (-3.0,3.0), (-1.0,1.0)]
     else
         println("warn: op=$op in get_LECs_paramas is not supported!")
         exit()

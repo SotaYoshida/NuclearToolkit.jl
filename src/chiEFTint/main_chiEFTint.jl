@@ -74,7 +74,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     
     ## Start Opt stuff
     #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
-    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to) 
+    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum) 
     d9j = HOBs = nothing
     if optHFMBPT          
         d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
@@ -121,8 +121,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
                                  Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)
         end
         ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
-        if nucs != [ ] && writesnt == false && optHFMBPT
-            
+        if nucs != [ ] && writesnt == false && optHFMBPT           
             print_vec("it = $it", OPTobj.params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
             #BO_HFMBPT(it,OPTobj,HFdata,to)

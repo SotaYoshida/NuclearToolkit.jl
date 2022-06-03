@@ -127,11 +127,11 @@ acquis:: vector of acquisition function values
 pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
 adhoc=> tau =1.0, l=1/domain size
 """
-function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
+function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
                 op="cDE",
                 optimizer="LHS"
                 )
-    if opt == false;return nothing;end   
+    if opt == false;return nothing;end
     targetLECs, params,params_ref,pdomains = get_LECs_params(op)
     for (k,target) in enumerate(targetLECs)
         idx = idxLECs[target]

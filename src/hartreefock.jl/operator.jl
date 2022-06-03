@@ -646,13 +646,23 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
     Rn2 = -0.1149
     Rpp,Rp_MP = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,to)
     Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
-    Rch = sqrt(Rch2)
+    Rch = NaN 
+    try 
+        Rch = @sprintf("%12.6f", sqrt(Rch2))
+    catch
+        Rch = "NaN"
+    end 
     ctxt = ""
     if Rp_MP !=0.0        
-        ctxt = " HF+PT => " * @sprintf("%12.6f", sqrt(Rch2+Rp_MP))
+        RPT = NaN
+        try 
+            RPT = @sprintf("%12.6f", sqrt(Rch2+Rp_MP))
+        catch 
+            RPT = "NaN"
+        end
+        ctxt = " HF+PT => " * RPT
     end
-    println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp)),
-    " charge radius ",@sprintf("%12.6f", Rch)," ",ctxt)
+    println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
     getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to) 
     return nothing
 end

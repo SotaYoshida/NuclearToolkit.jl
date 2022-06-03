@@ -72,8 +72,9 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     dLECs=Dict{String,Float64}()
     read_LECs!(LECs,idxLECs,dLECs;initialize=true)
     
-    ## Start BO stuff
-    @timeit to "BOobj" BOobj = prepBO(LECs,idxLECs,dLECs,optHFMBPT,to)    
+    ## Start Opt stuff
+    #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
+    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to) 
     d9j = HOBs = nothing
     if optHFMBPT          
         d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
@@ -121,13 +122,16 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         end
         ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
         if nucs != [ ] && writesnt == false && optHFMBPT
-            print_vec("it = $it", BOobj.params)
+            
+            print_vec("it = $it", OPTobj.params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
-            BO_HFMBPT(it,BOobj,HFdata,to)
-            for (k,target) in enumerate(BOobj.targetLECs)
+            #BO_HFMBPT(it,OPTobj,HFdata,to)
+            LHS_HFMBPT(it,OPTobj,HFdata,to)            
+            for (k,target) in enumerate(OPTobj.targetLECs)
                 idx = idxLECs[target]
-                LECs[idx] = dLECs[target] = BOobj.params[k] 
-            end  
+                LECs[idx] = dLECs[target] = OPTobj.params[k] 
+            end
+
         end
         if !optHFMBPT;break;end
     end

@@ -21,10 +21,10 @@ function myCholesky!(tmpA,ln,cLL)
     return nothing
 end
 
-function eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
-    thist = BOobj.history[it]
-    params = BOobj.params
-    params_ref = BOobj.params_ref
+function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam)
+    thist = OPTobj.history[it]
+    params = OPTobj.params
+    params_ref = OPTobj.params_ref
 
     tvec = params-params_ref
     logprior = -0.5*Lam*dot(tvec,tvec)
@@ -49,6 +49,18 @@ function eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
             "  logllh  ",@sprintf("%9.2e",llh),
             "  logpost ",@sprintf("%9.2e",logpost),"\n" )
     return nothing
+end
+
+struct LHSobject
+    maxDim::Int64
+    targetLECs::Vector{String}
+    params::Vector{Float64}
+    params_ref::Vector{Float64}
+    pdomains::Vector{Tuple{Float64, Float64}}
+    cand::Vector{Vector{Float64}}
+    observed::Vector{Int64}
+    unobserved::Vector{Int64}
+    history::Vector{Vector{Float64}}
 end
 
 struct BOobject
@@ -101,8 +113,23 @@ function get_LECs_params(op)
     return targetLECs, params,params_ref,pdomains
 end
 
-function prepBO(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
-                op="cDE"
+"""
+cand:: candidate point given by LatinHypercubeSampling
+observed:: list of index of `cand` which has been observed
+unobserved:: rest candidate indices
+history:: array of [logprior,logllh,logpost] for i=1:num_cand
+
+# for GP
+Ktt,Kttinv,Ktp,L:: matrix needed for GP calculation
+yt:: mean value of training point, to be mean of initial random point 
+yscale:: mean&std of yt that is used to scale/rescale data    
+acquis:: vector of acquisition function values
+pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
+adhoc=> tau =1.0, l=1/domain size
+"""
+function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
+                op="cDE",
+                optimizer="LHS"
                 )
     if opt == false;return nothing;end   
     targetLECs, params,params_ref,pdomains = get_LECs_params(op)
@@ -117,22 +144,21 @@ function prepBO(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
     @timeit to "LHS" plan, _ = LHCoptim(num_cand,pDim,gens)
     tmp = scaleLHC(plan,pdomains)    
     cand = [ tmp[i,:] for i =1:num_cand]
-
-    """
-    cand:: candidate point given by LatinHypercubeSampling
-    observed:: list of index of `cand` which has been observed
-    unobserved:: rest candidate indices
-    history:: array of [logprior,logllh,logpost] for i=1:num_cand
-    Ktt,Kttinv,Ktp,L:: matrix needed for GP calculation
-    yt:: mean value of training point, to be mean of initial random point 
-    yscale:: mean&std of yt that is used to scale/rescale data    
-    acquis:: vector of acquisition function values
-    pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
-    adhoc=> tau =1.0, l=1/domain size
-    """
+    history = [zeros(Float64,3) for i=1:num_cand]
     observed = Int64[ ]
     unobserved = collect(1:num_cand)
-    history = [zeros(Float64,3) for i=1:num_cand]
+
+    if optimizer =="LHS"
+        OPTobj = LHSobject(num_cand,targetLECs,params,params_ref,pdomains,cand,observed,unobserved,history)
+        Random.seed!(1234)
+        propose!(1,OPTobj,false)
+        for (k,target) in enumerate(targetLECs)
+            idx = idxLECs[target]
+            LECs[idx] = dLECs[target] = params[k]
+        end
+        return OPTobj
+    end
+
     Ktt = zeros(Float64,num_cand,num_cand) 
     Ktinv = zeros(Float64,num_cand,num_cand)
     tMat = zeros(Float64,num_cand,num_cand)
@@ -140,23 +166,50 @@ function prepBO(LECs,idxLECs,dLECs,opt,to;num_cand=1000,
     L = zeros(Float64,num_cand,num_cand)
     yt = zeros(Float64,num_cand)
     yscale = zeros(Float64,2) 
-    acquis = zeros(Float64,num_cand)
+    acquis = zeros(Float64,num_cand); acquis[1] = -1.e+10
     pKernel = ones(Float64,pDim+1)
     for i =1:pDim
         tmp = pdomains[i]
         #pKernel[i+1] = 1.0 / (1/ abs(tmp[2]-tmp[1])^2)
         pKernel[i+1] = abs(tmp[2]-tmp[1])^2
     end    
-    BOobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
+    
+    OPTobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
 
     Random.seed!(1234)
-    propose!(1,BOobj,false)
-    BOobj.Data[1] .= BOobj.params
+    propose!(1,OPTobj,false)
+    OPTobj.Data[1] .= OPTobj.params
     for (k,target) in enumerate(targetLECs)
         idx = idxLECs[target]
         LECs[idx] = dLECs[target] = params[k]
     end
-    return BOobj
+    return OPTobj
+end
+
+function propose!(it,BOobj,BOproposal)
+    params = BOobj.params
+    cand = BOobj.cand
+    #println("scaled_plan size ",size(scaled_plan), "\n$scaled_plan")
+    obs = BOobj.observed
+    unobs = BOobj.unobserved
+    idx = 0
+    if BOproposal == false
+        tidx = sample(1:length(unobs))
+    else
+        tidx = find_max_acquisition(it,BOobj)
+    end 
+    idx = unobs[tidx]
+    deleteat!(unobs,tidx)    
+    push!(obs,idx)
+    params .= cand[idx]
+    return nothing
+end 
+
+function LHS_HFMBPT(it,LHSobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
+    eval_HFMBPT(it,LHSobj,HFdata,varE,Lam)
+    propose!(it,LHSobj,false)
+    LHSobj.params .= LHSobj.cand[it]
+    return nothing
 end
 
 function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
@@ -165,7 +218,6 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
     ## Update history[it]
     eval_HFMBPT(it,BOobj,HFdata,varE,Lam)
     if it==n_ini_BO
-        println("obs ",BOobj.observed)
         @timeit to "Kernel" calcKernel!(it,BOobj;ini=true)        
         tmp = [ BOobj.history[i][3] for i=1:it ]
         ymean = mean(tmp); ystd = std(tmp)
@@ -310,137 +362,13 @@ function evalcand(it,BOobj,to;epsilon=1.e-9)
     return nothing
 end
 
-function propose!(it,BOobj,BOproposal)
-    params = BOobj.params
-    cand = BOobj.cand
-    #println("scaled_plan size ",size(scaled_plan), "\n$scaled_plan")
-    obs = BOobj.observed
-    unobs = BOobj.unobserved
-    idx = 0
-    if BOproposal == false
-        tidx = sample(1:length(unobs))
-    else
-        tidx = find_max_acquisition(it,BOobj)
-    end 
-    idx = unobs[tidx]
-    deleteat!(unobs,tidx)    
-    push!(obs,idx)
-    params .= cand[idx]
-    return nothing
-end 
-
-# function showBOhist(itnum,BOobj,targetLECs)
-#     history = @view BOobj.history[1:itnum]
-#     Data = @view BOobj.Data[1:itnum]
-#     logpriors = [history[i][1] for i =1:itnum]
-#     logllhs = [history[i][2] for i =1:itnum]
-#     logposts = [history[i][3] for i =1:itnum]
-
-#     Ktt = @view BOobj.Ktt[1:itnum,1:itnum]
-
-#     fig = plt.figure(figsize=(6,6))
-#     axs = [fig.add_subplot(111)]
-#     axs[1].imshow(Ktt)
-#     plt.savefig("pic/checkBayesOpt_$itnum.pdf",pad_inches=0)
-#     plt.close()
-     
-#     fig = plt.figure(figsize=(8,8))
-#     ax = fig.add_subplot(111)
-#     ax.plot(logpriors,label="logprior",alpha=0.6)
-#     ax.plot(logllhs,label="loglllh",alpha=0.6)
-#     ax.plot(logposts,label="logprior",alpha=0.6)
-#     ax.legend()
-#     plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
-#     plt.close()
-
-#     paramdat = [zeros(Float64,itnum) for i =1:5]
-#     for (i,tmp) in enumerate(Data)
-#         for n =1:5
-#             paramdat[n][i] = tmp[n]
-#         end
-#     end
-#     fig = plt.figure(figsize=(8,8))
-#     ax = fig.add_subplot(111) 
-#     for (n,tlabel) in enumerate(targetLECs)
-#         ax.plot(paramdat[n],label=tlabel,alpha=0.6)
-#     end
-#     ax.legend() 
-#     plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
-#     plt.close()
-# end 
-
-
-# function showBOhist_plots(itnum,BOobj,targetLECs)
-#     history = @view BOobj.history[1:itnum]
-#     Data = @view BOobj.Data[1:itnum]
-#     logpriors = [history[i][1] for i =1:itnum]
-#     logllhs = [history[i][2] for i =1:itnum]
-#     logposts = [history[i][3] for i =1:itnum]
-     
-#     plot(logpriors,label="logprior",alpha=0.6)
-#     ax.plot(logllhs,label="loglllh",alpha=0.6)
-#     ax.plot(logposts,label="logprior",alpha=0.6)
-#     ax.legend()
-#     plt.savefig("pic/history_BayesOpt _$itnum.pdf",pad_inches=0)
-#     plt.close()
-
-#     paramdat = [zeros(Float64,itnum) for i =1:5]
-#     for (i,tmp) in enumerate(Data)
-#         for n =1:5
-#             paramdat[n][i] = tmp[n]
-#         end
-#     end
-#     fig = plt.figure(figsize=(8,8))
-#     ax = fig.add_subplot(111) 
-#     for (n,tlabel) in enumerate(targetLECs)
-#         ax.plot(paramdat[n],label=tlabel,alpha=0.6)
-#     end
-#     ax.legend() 
-#     plt.savefig("pic/params_BayesOpt _$itnum.pdf",pad_inches=0)
-#     plt.close()
-# end 
-
-function plotKernel(it,Ktt)
-    fig = plt.figure(figsize=(8,8))
-    axs = [fig.add_subplot(111)]
-    axs[1].imshow(@view Ktt[1:it,1:it])
-    plt.savefig("pic/checkBayesOpt_$it.pdf",pad_inches=0)
-    plt.close()
-end
-
 function find_max_acquisition(it,BOobj)
     unobs = BOobj.unobserved
     fAs = @view BOobj.acquis[2:1+length(unobs)]
     idx = argmax(fAs)
-    BOobj.acquis[1] = fAs[idx] #overwrite fplus
     return idx
 end 
-
-function printBOhist(BOobj,it)
-    hist = BOobj.history
-    print_vec("it = $it prior/lh/post ", hist[it])
-    return nothing
-end
 
 function fPhi(Z)
     return  0.5 * erfc(-(Z/sqrt(2.0)))
 end
-
-function AcquisitionFunc(mup,Sp,fplus,fAs)
-    for i = 1:length(mup)
-        sigma = sqrt(Sp[i,i])
-        Z = (mup[i]-fplus) / sigma
-        fAs[i] = Z*sigma * fPhi(Z) + exp(-0.5*Z^2)/sqrt(2.0*pi)
-    end
-    return nothing
-end
-
-# function kRBF(xi,xj,params)
-#     tau = params[0]; sigma = params[1]
-#     return -0.5*tau * ((xi-xj)/sigma)^2
-# end 
-
-# function kARD(vi,vj,params)
-#     tau = params[0]; sigma = params[1]
-#     return -0.5*tau * ((xi-xj)/sigma)^2
-# end 

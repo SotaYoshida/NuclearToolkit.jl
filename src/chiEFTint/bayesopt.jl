@@ -128,7 +128,7 @@ pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correl
 adhoc=> tau =1.0, l=1/domain size
 """
 function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
-                op="cDE",
+                op="c34",
                 optimizer="LHS"
                 )
     if opt == false;return nothing;end

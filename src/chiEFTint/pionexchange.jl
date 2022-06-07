@@ -263,8 +263,7 @@ function tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opf
                     single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,Fpi6,
                               c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,
                               J,pnrank,ts,ws,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
-                              gis,opfs,fc,f_idx,tVs,lsj,tllsj,
-                              tdict,V12mom,i,j,to)
+                              gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,i,j,to)
                 end
             end
         end
@@ -327,7 +326,12 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
                     J,pnrank,ts,ws,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
                     gis,opfs,fc,f_idx,tVs,lsj,tllsj,
                     tdict,V12mom,V_i,V_j,to)
+    
     chi_order = chiEFTobj.chi_order
+
+    #### local chi_order is set NLO for EMN500 implementation
+    chi_order = 1
+
     f_T,f_SS,f_C,f_LS,f_SL = opfs
     f_sq!(f_T,xdwn,ydwn);f_ls!(f_LS,xdwn,ydwn);f_sl!(f_SL,xdwn,ydwn)
     for i=1:length(gis); gis[i] .= 0.0; end
@@ -350,6 +354,9 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         f_N3LO_2l_Vt = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)
         # NLO
         tmp_s = Lq * f_NLO_Vt
+
+        tmp_s = 0.0 # for debug
+
         # NNLO
         if chi_order >= 2
             it_pi = (nd_mpi + w^2 * Aq) / 3.0
@@ -391,6 +398,9 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         f_N3LO_Vs = gA4 / (32.0 * pi^2 * Fpi4)
         f_N3LO_2l_Vs = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)
         tmp_s = Lq * f_NLO_Vs
+
+        tmp_s = 0.0 # for debug
+
         if chi_order >= 2 # NNLO
             it_pi =  (nd_mpi + w2Aq)/3.0
             tmp_s += (tw2Aq+it_pi) * f_NNLO_Vs
@@ -464,7 +474,10 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         f_N3LO_2l_Wc= 1.0/(18432.0 * pi^4 * Fpi6)
         brak = 4.0*nd_mpi2*(5.0 * gA4 - 4.0 * gA2 -1.0)
         brak +=  q2 * (23.0*gA4 -10.0*gA2 -1.0) +48.0* gA4 *nd_mpi4 / w2
-        tmp_s = Lq * brak * f_NLO_Wc         
+        tmp_s = Lq * brak * f_NLO_Wc   
+        
+        #println("c5 $f_NLO_Wc brak $brak Lq $Lq")
+      
         if chi_order >= 2 
             term1 = 3.0* gA2 * nd_mpi^5 / w^2
             term2 = - (4.0*nd_mpi^2 + 2.0*q2 -gA2*(4.0*nd_mpi2 +3.0*q2)) * tw2Aq
@@ -499,7 +512,7 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
             f_NNLO_Vls = 3.0 * gA4 / (32.0 * pi * Fpi4)
             f_N3LO_a_Vls = c2 *gA2 /(8.0* pi^2 * Fpi4)
             f_N3LO_b_Vls = gA4 /(4.0* pi^2 * Fpi4)
-            tmp_s =  tw2Aq * f_NNLO_Vls
+            tmp_s = tw2Aq * f_NNLO_Vls
             if chi_order >= 3
                tmp_s += f_N3LO_a_Vls * w2 * Lq
                tmp_s += f_N3LO_b_Vls * Lq * (11.0/32.0 * q2 + nd_mpi4 / w2)

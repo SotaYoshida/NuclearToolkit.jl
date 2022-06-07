@@ -11,7 +11,8 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `is_plot::Bool`, to visualize optimization process of LECs
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,nucs=[],is_plot=false)
+function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,nucs=[],
+                        is_plot=false)
     if nucs == []; optHFMBPT=false;end
     chiEFTobj = init_chiEFTparams()
     emax = chiEFTobj.emax
@@ -70,8 +71,12 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     LECs = Float64[ ]
     idxLECs=Dict{String,Int64}()
     dLECs=Dict{String,Float64}()
-    read_LECs!(LECs,idxLECs,dLECs;initialize=true)
+    fn_LECs = get_fn_LECs(chiEFTobj.pottype)
+    read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
     
+    println("chiEFTobj ",chiEFTobj)
+
+
     ## Start Opt stuff
     #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
     OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum) 
@@ -140,6 +145,18 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     return true
 end
 
+function get_fn_LECs(pottype)
+    fn = ""
+    if pottype =="em500n3lo"
+        fn = "src/chiEFTint/LECs.jl"
+    elseif pottype == "emn500n3lo"
+        fn = "src/chiEFTint/LECs_EMN500N3LO.jl"
+    else
+        println("warn!! potype=$pottype is not supported now!")
+        exit()
+    end
+    return fn
+end
 # function odeJIT(to)
 #     tspan = (0.0,1.0)
 #     H = [0.0 0.0; 0.0 0.0]

@@ -42,6 +42,7 @@ mutable struct chiEFTparams
     srg_lambda::Float64
     tbme_fmt::String
     fn_tbme::String
+    pottype::String
     calc_monopole::Bool
     calc_std::Bool 
     coulomb::Bool
@@ -78,6 +79,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     calc_monopole = false
     calc_std = false    
     coulomb = true
+    pottype = "em500n3lo"
     target_nlj=Vector{Int64}[]
     ##for valence space operators
     v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
@@ -88,7 +90,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     #const kF = 0.3 * XF(Anum)
 
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,
-                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,calc_monopole,calc_std,coulomb,
+                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,calc_monopole,calc_std,coulomb,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF)
 
     if !isfile(fn_params)
@@ -97,8 +99,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     else
         read_chiEFT_parameter!(fn_params,params)
         tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
-        params.tbme_fmt = "snt.bin"
-        params.fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
+        params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
         return params
     end
 end
@@ -121,6 +122,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams)
     if @isdefined(srg_lambda); params.srg_lambda = srg_lambda; end
     if @isdefined(tbme_fmt); params.tbme_fmt = tbme_fmt; end
     if @isdefined(fn_tbme); params.fn_tbme = fn_tbme; end
+    if @isdefined(pottype); params.pottype = pottype; end
     if @isdefined(calc_monopole); params.calc_monopole = calc_monopole; end
     if @isdefined(calc_std); params.calc_std = calc_std; end
     if @isdefined(coulomb); params.coulomb = coulomb; end

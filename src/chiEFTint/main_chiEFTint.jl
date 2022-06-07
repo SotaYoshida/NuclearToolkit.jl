@@ -47,6 +47,8 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         f_ss!(opfs[2]);f_c!(opfs[3])
         ## prep. Gauss point for integrals
         ts, ws = Gauss_Legendre(-1,1,25)
+        ts, ws = Gauss_Legendre(-1,1,96)
+
         ## prep. for TBMEs
         jab_max = 4*emax + 2
         Numpn= Dict( [0,0,0,0] => 0 ) ;delete!(Numpn,[0,0,0,0])   

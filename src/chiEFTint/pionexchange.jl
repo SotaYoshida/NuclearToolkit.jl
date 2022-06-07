@@ -324,8 +324,7 @@ TPE contribution in a given momentum mesh point
 function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,Fpi6,
                     c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,
                     J,pnrank,ts,ws,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
-                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,
-                    tdict,V12mom,V_i,V_j,to)
+                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
     
     chi_order = chiEFTobj.chi_order
 
@@ -355,7 +354,7 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         # NLO
         tmp_s = Lq * f_NLO_Vt
 
-        tmp_s = 0.0 # for debug
+        #tmp_s = 0.0 # for debug
 
         # NNLO
         if chi_order >= 2
@@ -397,10 +396,7 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         f_NNLO_Vs = 9.0 * gA4 / (512.0 * pi * Fpi4)
         f_N3LO_Vs = gA4 / (32.0 * pi^2 * Fpi4)
         f_N3LO_2l_Vs = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)
-        tmp_s = Lq * f_NLO_Vs
-
-        tmp_s = 0.0 # for debug
-
+        tmp_s = Lq * f_NLO_Vs        
         if chi_order >= 2 # NNLO
             it_pi =  (nd_mpi + w2Aq)/3.0
             tmp_s += (tw2Aq+it_pi) * f_NNLO_Vs
@@ -410,6 +406,13 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
            tmp_s +=  w2 * Lq * f_N3LO_2l_Vs
         end
         tmp_s *= -q2
+
+
+
+        tmp_s = 0.0 # for debug
+
+
+
         for nth=1:7; gi[nth] += pjs[nth][n] * tmp_s * ws[n];end
 
         # sigma-sigma term: Ws
@@ -475,7 +478,8 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
         brak = 4.0*nd_mpi2*(5.0 * gA4 - 4.0 * gA2 -1.0)
         brak +=  q2 * (23.0*gA4 -10.0*gA2 -1.0) +48.0* gA4 *nd_mpi4 / w2
         tmp_s = Lq * brak * f_NLO_Wc   
-        
+    
+        tmp_s = 0.0
         #println("c5 $f_NLO_Wc brak $brak Lq $Lq")
       
         if chi_order >= 2 
@@ -534,7 +538,7 @@ function single_tpe(chiEFTobj,nd_mpi,nd_mpi2,nd_mpi4,nd_mpi6,nd_mpi8,Fpi2,Fpi4,F
                                                           -9.0*nd_mpi2)
                                         -w2)
             end
-           for nth=1:7; gi[nth] += pjs[nth][n] * ws[n] * tmp_s;end
+            for nth=1:7; gi[nth] += pjs[nth][n] * ws[n] * tmp_s;end
         end
         # sigma-L term: Vsl        
         if chi_order >=3

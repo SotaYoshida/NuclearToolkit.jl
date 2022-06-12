@@ -1155,6 +1155,7 @@ function n3lo_ImWsWt!(Wt,mpi,Fpi2,mudomain,ts,ws)
 end
 
 function Integral_ImV(mudomain,q2,obj,ImV;verbose=false)    
+    if length(ImV)==0;return 0.0;end
     fac1 = (mudomain[2]-mudomain[1])/2; fac2 = (mudomain[1]+mudomain[2])/2
     ts = obj.ts; ws = obj.ws
     valV = 0.0
@@ -1167,6 +1168,7 @@ function Integral_ImV(mudomain,q2,obj,ImV;verbose=false)
     return fac1 * valV * fac
 end
 function Integral_ImV_T(mudomain,q2,obj,ImV;verbose=false)
+    if length(ImV)==0;return 0.0;end
     fac1 = (mudomain[2]-mudomain[1])/2; fac2 = (mudomain[1]+mudomain[2])/2
     ts = obj.ts; ws = obj.ws
     valV = 0.0

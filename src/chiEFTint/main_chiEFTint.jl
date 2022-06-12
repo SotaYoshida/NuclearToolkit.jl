@@ -561,6 +561,7 @@ function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs
     if initialize
         if !isfile(inpf);inpf="../"*inpf;end
         include(inpf)
+        E_3F2 = E_1F3 = E_3F4 = E_1F3 = e14 = e17 = 0.0
         leclist = [C0_1S0,C0_3S1,C_CSB,C_CIB,
                    C2_3S1,C2_3P0,C2_1P1,C2_3P1,C2_1S0,C2_3SD1,C2_3P2,
                    hD_1S0,D_1S0,D_1P1,D_3P0,D_3P1,D_3P2,hD_3S1,D_3S1,hD_3SD1,D_3SD1,D_3D1,D_1D2,D_3D2,D_3PF2,D_3D3,       

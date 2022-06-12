@@ -56,7 +56,11 @@ While NuclearToolkit covers a wide range of methods, the overall code length is 
   This was originally developed as [an independent package] (https://github.com/SotaYoshida/ShellModel.jl).
   - shell model calculations
   - construct approximate wavefunctions with eigenvector continuation 
-    
+
+## Optional parameters
+For some parameters, the default values are used unless the user specifies some options in the file `optional_parameters.jl`.
+See the [Optional parameters](build/parameters.html) page for more details.
+
 ## Issues/Pull requests
 
 NuclearToolkit.jl is designed to be an open-source software

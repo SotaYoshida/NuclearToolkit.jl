@@ -16,6 +16,7 @@ makedocs(;
         ),
     pages=[
         "Home" => "index.md",
+        "Optional parameters" => "parameters.md",
         "ChiEFTint" => "ChiEFTint.md",
         "HartreeFock" => "HartreeFock.md",
         "IMSRG" => "IMSRG.md",

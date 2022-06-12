@@ -14,6 +14,6 @@ Pages = ["ShellModel/shellmodel_main.jl",
          "ShellModel/lanczos_methods.jl",
          "ShellModel/transit.jl",
          "ShellModel/input_int_snt.jl",
-         "eigenvector_continuation.jl"]
+         "ShellModel/eigenvector_continuation.jl"]
 
 ``` 

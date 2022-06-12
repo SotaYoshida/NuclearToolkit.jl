@@ -112,3 +112,19 @@ function N3LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to)
     return nothing
 end
 
+function N4LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to;n_reg=2)
+    fac = hc^3  *  1.e-14  / (2*pi)^3
+    LECs_N4LO = [LECs["E_3F2"],LECs["E_1F3"],LECs["E_3F4"]]
+    llpSJ_s = [[3,3,1,2],[3,3,0,3],[3,3,1,4]]
+    pfunc = f_x3y3
+    for pnrank = 1:3
+        for (n,LEC) in enumerate(LECs_N4LO)
+            l,lp,S,J = llpSJ_s[n]            
+            if pnrank%2 == 1 && (l+S+1) % 2 != 1;continue;end
+            LEC *= fac; LEC2 = LEC
+            calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_numst[pnrank],xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to)
+        end
+    end
+    return nothing
+end
+

@@ -43,6 +43,7 @@ mutable struct chiEFTparams
     tbme_fmt::String
     fn_tbme::String
     pottype::String
+    LambdaSFR::Float64
     calc_monopole::Bool
     calc_std::Bool 
     coulomb::Bool
@@ -88,9 +89,10 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     ### Fermi momentum for 2n3n
     kF = 1.35
     #const kF = 0.3 * XF(Anum)
-
+    LambdaSFR = 0.0
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,
-                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,calc_monopole,calc_std,coulomb,
+                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
+                          calc_monopole,calc_std,coulomb,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF)
 
     if !isfile(fn_params)
@@ -131,6 +133,9 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams)
     if @isdefined(n_mesh_P); params.n_mesh_P = n_mesh_P; end
     if @isdefined(Pmax_fm); params.Pmax_fm = Pmax_fm; end
     if @isdefined(kF); params.kF = kF; end
+    if occursin("emn",params.pottype)
+       params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
+    end
     println("parameters in $fn will be used.")
     return nothing
 end

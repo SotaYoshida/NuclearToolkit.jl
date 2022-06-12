@@ -36,8 +36,7 @@ One of the main motivations for the author to develop NuclearToolkit.jl is, of c
 A single nuclear structure calculation code often contains tens of thousands to nearly 100,000 lines.
 In the author's personal opinion, it would be too difficult, students (especially in undergraduate or two-year master course), to understand the technical details of the latest nuclear many-body methods while reading the enormous length of existing codes in the community.
 
-The author thought the Julia language can be a game changer to this situation with its high readbility, portabillity, and performance.
-There is no more need to prepare different Makefiles for different environments or worry about library dependencies. You can work equally well on a laptop or a supercomputer.
+The author thought the Julia language can be a game changer to this situation with its high readbility, portabillity, and performance. Since all the source code in NuclearToolkit.jl is a pure Julia implementation, there is no more need to prepare different Makefiles for different environments or worry about library dependencies. One can work equally well on a laptop or a supercomputer.
 While NuclearToolkit covers a wide range of methods, the overall code length is still in a few tens of thousands, including "docstring" to generate the document.
 
 - [ChiEFTint](build/ChiEFTint.html): NN interaction from Chiral EFT ~ 5,000 lines.

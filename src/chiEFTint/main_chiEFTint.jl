@@ -11,8 +11,7 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `is_plot::Bool`, to visualize optimization process of LECs
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,nucs=[],
-                        is_plot=false)
+function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false)
     if nucs == []; optHFMBPT=false;end
     chiEFTobj = init_chiEFTparams()
     emax = chiEFTobj.emax
@@ -46,7 +45,6 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
         opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL
         f_ss!(opfs[2]);f_c!(opfs[3])
         ## prep. Gauss point for integrals
-        ts, ws = Gauss_Legendre(-1,1,25)
         ts, ws = Gauss_Legendre(-1,1,96)
 
         ## prep. for TBMEs
@@ -75,10 +73,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     dLECs=Dict{String,Float64}()
     fn_LECs = get_fn_LECs(chiEFTobj.pottype)
     read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
-    
-    println("chiEFTobj ",chiEFTobj)
-
-
+    println("chiEFTobj $chiEFTobj")
     ## Start Opt stuff
     #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
     OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum) 
@@ -92,22 +87,28 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false, writesnt=true,n
     X9,U6 = prepareX9U6(2*emax)
     for it = 1:itnum
         if it > 1; for i=1:length(numst2); V12mom[i] .= 0.0;end;end 
-        if chiEFTobj.calc_NN
-            # ***Leading Order (LO)***
-            ### OPEP
-            OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs)
-            # LO contact term
-            LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
-            ## ***Next-to-Leading Order(NLO)***
-            if chiEFTobj.chi_order >= 1
-                ### contact term Q^2
-                NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                ### TPE terms (NLO,NNLO,N3LO)
-                tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
-            end                
-            # *** N3LO (contact Q^4)
-            if chiEFTobj.chi_order >= 3
-                N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+        @timeit to "NNcalc" begin 
+            if chiEFTobj.calc_NN
+                # ***Leading Order (LO)***
+                ### OPEP
+                OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs)
+                # LO contact term
+                LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
+                ## ***Next-to-Leading Order(NLO)***
+                if chiEFTobj.chi_order >= 1
+                    ### contact term Q^2
+                    NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+                    ### TPE terms (NLO,NNLO,N3LO)
+                    @timeit to "tpe" tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
+                end                
+                # *** N3LO (contact Q^4)
+                if chiEFTobj.chi_order >= 3
+                    N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+                end
+                # *** N4LO 
+                if chiEFTobj.chi_order >= 4
+                    N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+                end
             end
         end
         if chiEFTobj.srg
@@ -153,6 +154,8 @@ function get_fn_LECs(pottype)
         fn = "src/chiEFTint/LECs.jl"
     elseif pottype == "emn500n3lo"
         fn = "src/chiEFTint/LECs_EMN500N3LO.jl"
+    elseif pottype == "emn500n4lo"
+        fn = "src/chiEFTint/LECs_EMN500N4LO.jl"
     else
         println("warn!! potype=$pottype is not supported now!")
         exit()
@@ -388,7 +391,7 @@ function Gauss_Legendre(xmin,xmax,n;eps=3.e-16)
     m = div(n+1,2)
     x = zeros(Float64,n); w = zeros(Float64,n)
     xm = 0.5 * (xmin+xmax); xl = 0.5 * (xmax-xmin)
-    p1 = 0.0;p2=0.0;p3 =0.0; pp = 0.0; z = 0.0; z1=0.0
+    p1 = p2 = p3 = pp = z = z1 = 0.0
     for i =1:m
         z1 = 0.0
         z = cos((pi*(i-0.25))/(n+0.5))
@@ -438,7 +441,6 @@ function QL(z,J::Int64,ts,ws)
     end
     return s
 end
-
 
 function make_sp_state(chiEFTobj,jab_max,Numpn)
     emax = chiEFTobj.emax
@@ -542,7 +544,7 @@ end
 
 function freg(p,pp,n)
     if n==0;return 1.0;end
-    if n==-1 # for 3D3 pw
+    if n==-1 # for 3D3 pw in older EM interaction
         return 0.5 *( exp( - (p/Lambchi)^4 - (pp/Lambchi)^4 )
                       + exp( - (p/Lambchi)^6 - (pp/Lambchi)^6 ))
     end
@@ -562,14 +564,16 @@ function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs
         leclist = [C0_1S0,C0_3S1,C_CSB,C_CIB,
                    C2_3S1,C2_3P0,C2_1P1,C2_3P1,C2_1S0,C2_3SD1,C2_3P2,
                    hD_1S0,D_1S0,D_1P1,D_3P0,D_3P1,D_3P2,hD_3S1,D_3S1,hD_3SD1,D_3SD1,D_3D1,D_1D2,D_3D2,D_3PF2,D_3D3,       
+                   E_3F2,E_1F3,E_3F4,
                    c1_NNLO,c2_NNLO,c3_NNLO,c4_NNLO,ct1_NNLO,ct3_NNLO,ct4_NNLO,cD,cE,
-                   d12,d3,d5,d145,
+                   d12,d3,d5,d145,e14,e17,
                    c_vs_1,c_vs_2,c_vs_3,c_vs_4,c_vs_5]
         lecname = ["C0_1S0","C0_3S1","C_CSB","C_CIB",
                    "C2_3S1","C2_3P0","C2_1P1","C2_3P1","C2_1S0","C2_3SD1","C2_3P2",
                    "hD_1S0","D_1S0","D_1P1","D_3P0","D_3P1","D_3P2","hD_3S1","D_3S1","hD_3SD1","D_3SD1","D_3D1","D_1D2","D_3D2","D_3PF2","D_3D3",       
+                   "E_3F2","E_1F3","E_3F4",
                    "c1_NNLO","c2_NNLO","c3_NNLO","c4_NNLO","ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE",
-                   "d12","d3","d5","d145",
+                   "d12","d3","d5","d145","e14","e17",
                    "c_vs_1","c_vs_2","c_vs_3","c_vs_4","c_vs_5"]              
         for (i,lec) in enumerate(leclist)
             tkey = lecname[i]

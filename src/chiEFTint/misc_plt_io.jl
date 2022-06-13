@@ -87,14 +87,12 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     n_mesh_P = 10
     Pmax_fm = 3.0
     ### Fermi momentum for 2n3n
-    kF = 1.35
-    #const kF = 0.3 * XF(Anum)
+    kF = 1.35   #kF = 0.3 * XF(Anum)
     LambdaSFR = 0.0
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           calc_monopole,calc_std,coulomb,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF)
-
     if !isfile(fn_params)
         println("Since $fn_params is not found, the default parameters will be used.")
         return params

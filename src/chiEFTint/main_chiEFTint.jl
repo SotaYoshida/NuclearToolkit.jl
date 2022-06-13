@@ -73,6 +73,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     dLECs=Dict{String,Float64}()
     fn_LECs = get_fn_LECs(chiEFTobj.pottype)
     read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
+    #println("chiEFTobj $chiEFTobj")
     ## Start Opt stuff
     #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
     OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum) 
@@ -132,11 +133,13 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
             print("it = $it", OPTobj.targetLECs)
             print_vec("",OPTobj.params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
+            #BO_HFMBPT(it,OPTobj,HFdata,to)
             LHS_HFMBPT(it,OPTobj,HFdata,to)            
             for (k,target) in enumerate(OPTobj.targetLECs)
                 idx = idxLECs[target]
-                LECs[idx] = dLECs[target] = OPTobj.params[k]
+                LECs[idx] = dLECs[target] = OPTobj.params[k] 
             end
+
         end
         if !optHFMBPT;break;end
     end

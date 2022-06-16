@@ -224,6 +224,7 @@ function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
         eta2b = Eta2b[ch]; eta2b .*= 0.0
         pnrank = div(Tz,2) + 2
         idxs_cc = cc[ch]
+        #println("ch $ch nket ",length(kets))
         for ik in idxs_cc
             i,j = kets[ik]
             ni = sps[i].occ; nj = sps[j].occ
@@ -232,12 +233,17 @@ function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
                 na = sps[a].occ; nb = sps[b].occ
                 if sps[a].c || sps[b].c ; continue;end                
                 nume = 2 * Gam[ib,ik]
-                deno = Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key)
+                deno = Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key)                             
                 tmp = 0.5 * atan(nume / deno)                
                 eta2b[ib,ik] = tmp
                 if ib != ik; eta2b[ik,ib] = -tmp;end
             end
         end 
+        # tnorm = norm(eta2b,2)
+        # if tnorm > 1.e-6
+        #     println("ch ",@sprintf("%3i",ch), "  tnorm ",  @sprintf("%12.4e",tnorm))
+        # end
+
     end 
     p_sps = HFobj.modelspace.p_sps
     n_sps = HFobj.modelspace.n_sps
@@ -322,16 +328,18 @@ function make_PandyaKets(emax,HFobj)
                 kets = Vector{Int64}[ ]
                 nhh = nph = 0
                 for a = 1:2*dim1b
-                    oa = sps[a]; la = oa.l; ja = oa.j; tza = oa.tz
+                    oa = sps[a]; la = oa.l; ja = oa.j; tza = oa.tz; na = oa.occ
                     for b=a:2*dim1b
-                        ob = sps[b]; lb = ob.l; jb = ob.j; tzb = ob.tz
+                        ob = sps[b]; lb = ob.l; jb = ob.j; tzb = ob.tz; nb = ob.occ
                         aTz = abs(tza+tzb)
                         if aTz != abs(Tz); continue;end
                         if tri_check(ja//2,jb//2,J)==false;continue;end
                         tprty = (-1)^(la+lb)
                         if prty != tprty; continue;end
-                        if oa.occ + ob.occ == 2; nhh +=1;end
-                        if oa.occ + ob.occ == 1; nph +=1;end
+                        #if oa.occ + ob.occ == 2; nhh +=1;end                                             
+                        #if oa.occ + ob.occ == 1; nph +=1;end
+                        if (na != 0.0) && (nb !=0.0); nhh +=1;end 
+                        if (na*nb ==0.0) && (na+nb!=0.0);nph +=1;end
                         push!(kets,[a,b])
                     end
                 end
@@ -367,6 +375,7 @@ function make_PandyaKets(emax,HFobj)
 end 
 
 """
+constructor of utils for Pandya transformation and others
 numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya) 
 """
 function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
@@ -374,6 +383,35 @@ function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0
     Jmax = binfo.emax * 2 + 1
     numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj)
     MS = HFobj.modelspace; sps = MS.sps
+
+    ##prep occupation matrix for na*nb and nabar*nbbar
+    sps = HFobj.modelspace.sps
+    Mats_hh = Matrix{Float64}[ ]
+    Mats_pp = Matrix{Float64}[ ]
+    Mats_ph = Matrix{Float64}[ ]
+    for ch = 1:length(Chan2b)
+        tbc = Chan2b[ch];kets = tbc.kets
+        ppidx = get(HFobj.modelspace.spaces.pp,ch,Int64[]); nhh = length(ppidx) 
+        hhidx = get(HFobj.modelspace.spaces.hh,ch,Int64[]); nhh = length(hhidx) 
+        phidx = get(HFobj.modelspace.spaces.ph,ch,Int64[]); nph = length(phidx) 
+        Mat_pp = zeros(Float64,nhh,nhh);Mat_hh = zeros(Float64,nhh,nhh)
+        Mat_ph =  zeros(Float64,nph,nph)
+        for (i,idx) in enumerate(hhidx) #this is right! pp from hh!
+            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            Mat_pp[i,i] = (1-na)*(1-nb)
+        end
+        for (i,idx) in enumerate(hhidx)
+            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            Mat_hh[i,i] = na*nb
+        end
+        for (i,idx) in enumerate(phidx)
+            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            Mat_ph[i,i] = (1-na)*(1-nb) #+ na *nb
+        end
+        push!(Mats_hh,Mat_hh)
+        push!(Mats_pp,Mat_pp)
+        push!(Mats_ph,Mat_ph)
+    end
 
     ## prep. XYbars for workers
     nchPandya = length(Chan2b_Pandya)
@@ -405,7 +443,7 @@ function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0
     ### to prep. 122 util such as intermediate matrix
     util122 = prep122(HFobj,Chan1b,Chan2bD)
     return PandyaObject(numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,phkets,                
-                        dict_ich_idx_from_ketcc,XYbars,Zbars,PhaseMats,tMat,dict_ch2ich,keys6j,util122)
+                        dict_ich_idx_from_ketcc,XYbars,Zbars,PhaseMats,tMat,dict_ch2ich,keys6j,util122,Mats_hh,Mats_pp,Mats_ph)
 end
 
 function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose=false)
@@ -434,8 +472,7 @@ function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose
     return tbme
 end
 
-function DoPandyaTransformation_SingleChannel(O,Obar_ph,tbc_cc,Chan2bD,HFobj,PandyaObj, 
-                                              numbers_ch,dict6j,key6j,orientation="N")
+function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,PandyaObj,numbers_ch,dict6j,key6j,orientation="N")
     Chan2b = Chan2bD.Chan2b
     MS = HFobj.modelspace; sps = MS.sps
     J_cc = tbc_cc.J
@@ -449,27 +486,26 @@ function DoPandyaTransformation_SingleChannel(O,Obar_ph,tbc_cc,Chan2bD,HFobj,Pan
     for ibra = 1:nKets_cc #ph_kets
         bra_cc = tbc_cc.kets[ibra]
         a,b = bra_cc
-        if (sps[a].occ +sps[b].occ ==0);continue;end
+        if (sps[a].occ +sps[b].occ == 0.0);continue;end
         hit_ph += 1
         # to consider a > b case 
         for ab_case = 0:1 # 0-> |a,b> 1->|b,a>
             a = bra_cc[1 + ab_case]
             b = bra_cc[2 - ab_case]
             na = sps[a].occ; nb = sps[b].occ
+            ja = sps[a].j; jb = sps[b].j
+            na_nb_factor = na-nb
             bra_shift = 0
             if a == b && ab_case==1
                 bra_shift=nph_kets
             end
-            if na == 1 && nb ==0
+            if (na != 0.0 && nb == 0.0)
                 bra_shift = 0
-            elseif na ==0 && nb == 1
+            elseif (na ==0.0 && nb != 0.0)
                 bra_shift = nph_kets
+            else
+                bra_shift = ifelse(ab_case==0,0,nph_kets)
             end
-            ja = sps[a].j; jb = sps[b].j
-            na_nb_factor = sps[a].occ - sps[b].occ
-            if ab_case == 1
-                ja = sps[a].j; jb = sps[b].j
-            end                      
             for iket_cc = 1:nKets_cc
                 ket_cc = tbc_cc.kets[iket_cc]
                 c,d = ket_cc
@@ -495,7 +531,7 @@ function DoPandyaTransformation_SingleChannel(O,Obar_ph,tbc_cc,Chan2bD,HFobj,Pan
                 elseif orientation =="T" # for X                    
                     Obar_ph[iket_cc,hit_ph+bra_shift] = herm * Obar * na_nb_factor
                 else
-                    println("err");exit()
+                    println("err orientation=$orientation is not defined");exit()
                 end
             end
         end
@@ -637,7 +673,7 @@ function IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j
     nOmega = deepcopy(IMSRGobj.Omega)
     Nested = deepcopy(IMSRGobj.Omega)
     istep = 0; print_flowstatus(istep,s,ncomm,norms,IMSRGobj) 
-    @timeit to "IMSRG flow" for istep = 1:maxstep     	
+    @timeit to "IMSRG flow" for istep = 1:maxstep
         if sqrt(norms[3]^2+norms[4]^2) < eta_criterion;break;end
     	ds = min(ds,smax-s) #最後を考慮
     	s += ds
@@ -823,7 +859,8 @@ function Gethhph(kets,sps)
     for (idx,ket) in enumerate(kets)
         p,q = ket 
         occs = sps[p].occ + sps[q].occ 
-        if occs == 2 || occs == 1; push!(idx_hhph,idx);end
+        #if occs == 2 || occs == 1; push!(idx_hhph,idx);end
+        if occs != 0.0; push!(idx_hhph,idx);end # for fractional
     end
     return idx_hhph
 end
@@ -908,12 +945,11 @@ function update_core_in_sps!(binfo,HFobj)
     pconfs_core = naive_filling(p_sps,cZ,binfo.emax)
     nconfs_core = naive_filling(n_sps,cN,binfo.emax)    
     ini_occ!(pconfs_core,occ_p,nconfs_core,occ_n)
-
     for i = 1:dim1b
-        pTF = ( p_sps[i].occ==1 && occ_p[i,i] == 1.0) 
-        nTF = ( n_sps[i].occ==1 && occ_n[i,i] == 1.0)
+        pTF = p_sps[i].occ==1.0 
+        nTF = n_sps[i].occ==1.0
         p_sps[i].c = sps[2*(i-1)+1].c = ifelse(pTF,true,false)
-        n_sps[i].c = sps[2*i].c = cn  = ifelse(nTF,true,false)
+        n_sps[i].c = sps[2*i].c = ifelse(nTF,true,false)
     end
     return nothing
 end

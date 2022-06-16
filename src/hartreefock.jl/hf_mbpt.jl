@@ -50,7 +50,8 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma)
         for ib = 1:npq
             α, α_ = kets[ib]
             oα = sps[α]; oα_= sps[α_]
-            if oα.occ * oα_.occ == 0; continue;end
+            nafac = oα.occ * oα_.occ
+            if nafac == 0.0; continue;end
             if (oα.tz + oα_.tz != Tz);continue;end
             iα = div(α,2) + α%2 
             iα_= div(α_,2) + α_%2 
@@ -58,7 +59,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma)
             e1b_α_ = ifelse(α_%2==1,e1b_p,e1b_n)
             for ik = 1:npq
                 β, β_ = kets[ik]
-                if sps[β].occ + sps[β_].occ !=0;continue;end 
+                if sps[β].occ + sps[β_].occ !=0.0;continue;end 
                 if (sps[β].tz + sps[β_].tz != Tz);continue;end
                 iβ = div(β,2) + β%2 
                 iβ_= div(β_,2) + β_%2 
@@ -66,15 +67,15 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma)
                 e1b_β_ = ifelse(β_%2==1,e1b_p,e1b_n)
                 nume = Gam[ib,ik]^2
                 deno = e1b_α[iα] + e1b_α_[iα_] - e1b_β[iβ] - e1b_β_[iβ_]
-                EMP2 += (2*J+1) * nume/deno
+                EMP2 += (2*J+1) * nume/deno * nafac
                 if Tz == -2; EMP2_pp +=  (2*J+1) * nume/deno;end
                 if Tz ==  0; EMP2_pn +=  (2*J+1) * nume/deno;end
                 if Tz ==  2; EMP2_nn +=  (2*J+1) * nume/deno;end
             end
         end
     end
-    #println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
-    #        " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
+    println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
+            " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
     return EMP2
 end
 
@@ -142,22 +143,24 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
         npq = length(kets)
         for i = 1:npq
             α, α_ = kets[i]
-            if sps[α].occ * sps[α_].occ == 0; continue;end
+            nafac = sps[α].occ * sps[α_].occ
+            if nafac == 0; continue;end
             for j = 1:npq                       
-                β, β_ = kets[j]
+                β, β_ = kets[j]                
                 if sps[β].occ + sps[β_].occ == 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
-                        if sps[γ].occ + sps[γ_].occ != 0; continue;end
+                        if sps[γ].occ + sps[γ_].occ != 0.0; continue;end
                         v2 = Gam[j,k]
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
                         deno = (e1b[α] + e1b[α_] - e1b[β] - e1b[β_]) * (e1b[α] + e1b[α_] - e1b[γ] - e1b[γ_])
-                        EMP3_pp += (2*J+1) * nume/deno 
+                        EMP3_pp += (2*J+1) * nume/deno # * nafac
                     end
                 end
-                if sps[β].occ * sps[β_].occ == 1
+                nbfac = sps[β].occ * sps[β_].occ
+                if nbfac != 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
@@ -166,13 +169,12 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
                         deno = (e1b[α] + e1b[α_] - e1b[γ] - e1b[γ_]) * (e1b[β] + e1b[β_] - e1b[γ] - e1b[γ_])
-                        EMP3_hh += (2*J+1) * nume/deno 
+                        EMP3_hh += (2*J+1) * nume/deno  #* nbfac
                     end 
                 end                    
             end
         end
-    end
-    lp = length(p_sps); ln = length(n_sps)
+    end   
     allhs = vcat(holes[1],holes[2])
     allps = vcat(particles[1],particles[2])
     nthre = nthreads()
@@ -180,7 +182,6 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     keychs = [ zeros(Int64,3) for i=1:nthre]
     keyabs = [ zeros(Int64,2) for i=1:nthre]
     Ethreads = zeros(Float64,nthre)      
-    #@inbounds @qthreads for a in allps
     @threads for idxa = 1:length(allps)
         a = allps[idxa]
         threid = threadid()
@@ -245,8 +246,8 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     end
     EMP3_ph = sum(Ethreads)
     EMP3 = EMP3_pp + EMP3_hh + EMP3_ph 
-    #println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
-    #        " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))   
+    println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
+            " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))   
     return EMP3
 end
 

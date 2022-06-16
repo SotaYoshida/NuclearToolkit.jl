@@ -23,6 +23,7 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj,Chan1b,Chan2bD,dictMono,dict6j,
     @timeit to "comm122" comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
     @timeit to "comm222pphh" comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
     @timeit to "comm222ph" comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
+
     return nothing
 end
 
@@ -162,12 +163,12 @@ function comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float6
         for ib = 1:length(kets)
             a,b = kets[ib]
             na = sps[a].occ; nb = sps[b].occ
-            if na + nb != 2; continue;end    
+            if na * nb == 0.0; continue;end
             for ik = 1:length(kets)
                 c,d = kets[ik]
                 nc = sps[c].occ; nd = sps[d].occ
-                if nc + nd != 0;continue;end
-                zsum += x2b[ib,ik]*y2b[ik,ib]
+                zsum += x2b[ib,ik]*y2b[ik,ib] *na*nb *(1-nc)*(1-nd)
+                tmp = x2b[ib,ik]*y2b[ik,ib] *na*nb *(1-nc)*(1-nd)
             end 
         end
         Z[1] += 2.0 * NJ * zsum
@@ -232,12 +233,14 @@ function comm121ss!(X,Y,ret,HFobj,Chan1b,Chan2b,dictMono,PandyaObj)
                         nonzero_bs = chan1bs_ab[a]
                         for b in nonzero_bs
                             ob = sps[b]; nb = ob.occ; idx_b = div(b,2)+b%2
-                            if na + nb != 1; continue;end
+                            #if na + nb != 1; continue;end
+                            if (na * nb != 0.0 || na + nb == 0.0); continue;end # for fractional
+                            nab = na * (1-nb)
                             if !(x1b[idx_a,idx_b] ==0.0 && x1b[idx_b,idx_a] ==0.0)
-                                x1y2 += jdeno * single_121(a,b,i,j,x1b,y2bs,sps,tkey,targetDict)
+                                x1y2 += jdeno * nab* single_121(a,b,i,j,x1b,y2bs,sps,tkey,targetDict)
                             end
                             if !(y1b[idx_a,idx_b] ==0.0 && y1b[idx_b,idx_a] ==0.0)
-                                y1x2 += jdeno * single_121(a,b,i,j,y1b,x2bs,sps,tkey,targetDict)
+                                y1x2 += jdeno * nab* single_121(a,b,i,j,y1b,x2bs,sps,tkey,targetDict)
                             end
                         end
                     end
@@ -336,13 +339,13 @@ function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
         chan1b = Chan1b.chs1b[pn_ij]
         @qthreads for idx_i = 1:dim1b
             i = 2*(idx_i-1) + pn_ij
-            oi = sps[i]; ji = oi.j
-            jdeno = 1.0/(2.0*(ji+1))
+            oi = sps[i]; ji = oi.j; ni = oi.occ
+            jdeno = 1.0/(ji+1)
             tkey = key6js[threadid()]
             tkey = @view tkey[1:2]
             for j in chan1b[i]
                 idx_j = div(j,2) + j%2
-                jj = sps[j].j
+                jj = sps[j].j; nj = sps[j].occ  
                 for ch = 1:nchan
                     tbc = Chan2b[ch]; x2 = x2bs[ch]; y2 = y2bs[ch]
                     J = tbc.J; Tz = tbc.Tz; tkets = tbc.kets;nkets=length(tkets)
@@ -350,56 +353,58 @@ function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
                     tdict = Dict_chidx_from_ketJ[2+div(Tz,2)][J+1]
                     for i_ab =1:nkets
                         a,b = tkets[i_ab]
-                        na = sps[a].occ; nb = sps[b].occ
-                        if na+nb != 0 && na+nb != 2; continue;end
+                        na = sps[a].occ
+                        nb = sps[b].occ
+                        n_ab = na * nb 
+                        nbar_ab = (1-na)*(1-nb)
                         sqfac_ab = ifelse(a==b,sqrt(2.0),1.0)
-                        c_spaces = ifelse(na+nb==0,holes,particles)
-                        for pn_c = 1:2
-                            c_space = c_spaces[pn_c]
-                            for c in c_space
-                                jc = sps[c].j
-                                if Tz != sps[i].tz + sps[c].tz; continue;end
-                                if Tz != sps[j].tz + sps[c].tz; continue;end
-                                if !tri_check(jc,ji,2*J);continue;end
-                                if !tri_check(jc,jj,2*J);continue;end
-                                if abs(Tz) ==2 && J%2 == 1 && (c == i || c==j);continue;end
-                                fflip_ci = (-1)^(div(ji+jc,2)+J+1)
-                                fflip_cj = (-1)^(div(jj+jc,2)+J+1)
-                                phase_ci = ifelse(c>i,fflip_ci,1.0)
-                                phase_cj = ifelse(c>j,fflip_cj,1.0)
-                                i_ci = i_cj = 0
-                                if c<=i
-                                    tkey[1] = c; tkey[2] = i
-                                else    
-                                    tkey[1] = i; tkey[2] = c
-                                end
-                                for tmp in tdict[tkey]
-                                    if tmp[1] == ch
-                                        i_ci =  tmp[2]
-                                        break
+                        for c_space in [holes,particles]
+                            for pn_c = 1:2
+                                for c in c_space[pn_c]
+                                    jc = sps[c].j; nc = sps[c].occ; nbar_c = 1-nc
+                                    if Tz != sps[j].tz + sps[c].tz; continue;end
+                                    if Tz != sps[i].tz + sps[c].tz; continue;end
+                                    if !tri_check(jc,ji,2*J);continue;end
+                                    if !tri_check(jc,jj,2*J);continue;end
+                                    if abs(Tz) ==2 && J%2 == 1 && (c == i || c==j);continue;end
+                                    fflip_ci = (-1)^(div(ji+jc,2)+J+1)
+                                    fflip_cj = (-1)^(div(jj+jc,2)+J+1)
+                                    phase_ci = ifelse(c>i,fflip_ci,1.0)
+                                    phase_cj = ifelse(c>j,fflip_cj,1.0)
+                                    i_ci = i_cj = 0
+                                    if c<=i
+                                        tkey[1] = c; tkey[2] = i
+                                    else    
+                                        tkey[1] = i; tkey[2] = c
                                     end
-                                end
-                                if i_ci == 0; continue; end
-                                if c<=j
-                                    tkey[1] = c; tkey[2] = j
-                                else
-                                    tkey[1] = j; tkey[2] = c
-                                end
-                                for tmp in tdict[tkey]
-                                    if tmp[1] == ch
-                                        i_cj =  tmp[2]
-                                        break
+                                    for tmp in tdict[tkey]
+                                        if tmp[1] == ch
+                                            i_ci =  tmp[2]
+                                            break
+                                        end
                                     end
+                                    if i_ci == 0; continue; end
+                                    if c<=j
+                                        tkey[1] = c; tkey[2] = j
+                                    else
+                                        tkey[1] = j; tkey[2] = c
+                                    end
+                                    for tmp in tdict[tkey]
+                                        if tmp[1] == ch
+                                            i_cj =  tmp[2]
+                                            break
+                                        end
+                                    end
+                                    if i_cj == 0; continue; end   
+                                    sqfac_ci = ifelse(c==i,sqrt(2.0),1.0)
+                                    sqfac_cj = ifelse(c==j,sqrt(2.0),1.0)
+                                    sqfac = sqfac_ci*sqfac_cj #* sqfac_ab^2 
+                                    x2y2 = (x2[i_ci,i_ab] * y2[i_ab,i_cj] - y2[i_ci,i_ab] * x2[i_ab,i_cj]) * sqfac * (nbar_ab*nc + n_ab*nbar_c)
+                                    t1b[idx_i,idx_j] += phase_ci * phase_cj * jdeno * x2y2  * NJ
                                 end
-                                if i_cj == 0; continue; end    
-                                sqfac_ci = ifelse(c==i,sqrt(2.0),1.0)
-                                sqfac_cj = ifelse(c==j,sqrt(2.0),1.0)
-                                sqfac = sqfac_ci*sqfac_cj * 2.0 #sqfac_ab^2 
-                                x2y2 = (x2[i_ci,i_ab] * y2[i_ab,i_cj] - y2[i_ci,i_ab] * x2[i_ab,i_cj]) * sqfac
-                                t1b[idx_i,idx_j] += phase_ci * phase_cj * jdeno * x2y2  * NJ
                             end
                         end
-                    end
+                    end                
                 end
                 if idx_i != idx_j; t1b[idx_j,idx_i] = hZ * t1b[idx_i,idx_j];end
             end
@@ -431,14 +436,14 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
         Ybar_ph = @view XYbars[threadid()][2][1:2*nph_kets,1:nKets_cc]        
         if nKets_cc * nph_kets !=0
             Xbar_ph .= 0.0; Ybar_ph .= 0.0
-            DoPandyaTransformation_SingleChannel(X, Xbar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"T") 
-            DoPandyaTransformation_SingleChannel(Y, Ybar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"N") 
+            DoPandyaTransformation(X, Xbar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"T") 
+            DoPandyaTransformation(Y, Ybar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"N") 
             PhaseMat = PhaseMats[ich]; PhaseMat .= 1.0
             tkets = tbc_cc.kets
             for iket = 1:nKets_cc
                 p,q = tkets[iket]
                 jp = sps[p].j; jq = sps[q].j
-                if div(jp+jq,2) % 2 != 0;continue;end 
+                if div(jp+jq,2) % 2 != 0;continue;end
                 tv = @view PhaseMat[iket,:]; tv .*= -1.0
                 tv = @view PhaseMat[:,iket]; tv .*= -1.0
             end
@@ -449,6 +454,31 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
         end
     end
     @timeit to "AddInv" AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to) 
+    return nothing
+end 
+
+"""
+    calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zlefthalf,Zrighthalf,hz)
+
+- `Xbar`: (`nKets_cc`, 2*`nph_kets`) matrix
+- `Ybar`: (2*`nph_kets`,`nKets_cc`) matrix
+- `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix
+- `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix
+"""
+function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
+                   Zlefthalf,Zrighthalf,hz)
+    BLAS.gemm!('N','N',1.0,Xbar,Ybar,0.0,Zlefthalf)
+    ru = @view Ybar[nph_kets+1:2*nph_kets,:] 
+    rl = @view Ybar[1:nph_kets,:]
+    upper = @view tmpMat[1:nph_kets,1:nKets_cc]; upper .= (ru .* PhaseMatY)
+    lower = @view tmpMat[nph_kets+1:2*nph_kets,1:nKets_cc]; lower .= (rl .* PhaseMatY)
+    tmpMatr = @view tmpMat[1:2*nph_kets,1:nKets_cc]
+    BLAS.gemm!('N','N',hy,Xbar,tmpMatr,0.0,Zrighthalf)
+
+    tM = @view tmpMat[1:nKets_cc,1:nKets_cc];
+    tM .= Zrighthalf' .* PhaseMat; Zrighthalf .+= tM
+
+    tM .= 0.0; axpy!(hz,Zlefthalf',tM); Zlefthalf .+= tM
     return nothing
 end 
 
@@ -502,7 +532,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
                         phaseil = (-1)^( div(ji+jl,2)+Jpr+1 )
                         phase = ifelse(flipil,phaseil,1.0)
                         me1 = Zbars[ich_cc][idx_il,idx_kj] 
-                        commij -= (2*Jpr+1) * sixj * me1 *phase
+                        commij -= (2*Jpr+1) * sixj * me1 *phase                       
                     end
                     if k==l
                         commji = commij
@@ -545,7 +575,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
                         Z2b[iket,ibra] = Z2b[ibra,iket]
                     elseif iket != ibra 
                         Z2b[iket,ibra] = -Z2b[ibra,iket]
-                    end                    
+                    end
                 end 
             end
         end
@@ -581,31 +611,6 @@ function getlocalidx(i,j,tkets_cc;ofst=true)
         return tidx,flip
     end
 end
-
-"""
-    calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zlefthalf,Zrighthalf,hz)
-
-- `Xbar`: (`nKets_cc`, 2*`nph_kets`) matrix
-- `Ybar`: (2*`nph_kets`,`nKets_cc`) matrix
-- `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix
-- `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix
-"""
-function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
-                   Zlefthalf,Zrighthalf,hz)
-    BLAS.gemm!('N','N',1.0,Xbar,Ybar,0.0,Zlefthalf)
-    ru = @view Ybar[nph_kets+1:2*nph_kets,:] 
-    rl = @view Ybar[1:nph_kets,:]
-    upper = @view tmpMat[1:nph_kets,1:nKets_cc];    upper .= (ru .* PhaseMatY)
-    lower = @view tmpMat[nph_kets+1:2*nph_kets,1:nKets_cc]; lower .= (rl .* PhaseMatY)
-    tmpMatr = @view tmpMat[1:2*nph_kets,1:nKets_cc]
-    BLAS.gemm!('N','N',hy,Xbar,tmpMatr,0.0,Zrighthalf)
-
-    tM = @view tmpMat[1:nKets_cc,1:nKets_cc];
-    tM .= Zrighthalf' .* PhaseMat; Zrighthalf .+= tM
-
-    tM .= 0.0; axpy!(hz,Zlefthalf',tM); Zlefthalf .+= tM
-    return nothing
-end 
 
 function prep122(HFobj,Chan1b,Chan2bD)
     Chan2b = Chan2bD.Chan2b
@@ -677,7 +682,6 @@ function comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
     hZ = ifelse(ret.hermite,1.0,-1.0)
     x1 = X.onebody; x2bs = X.twobody
     y1 = Y.onebody; y2bs = Y.twobody; m2bs = ret.twobody
-    MS = HFobj.modelspace; sps = MS.sps
     nch = length(Chan2b)
     util122 = PandyaObj.util122
     tMats = PandyaObj.tMat    
@@ -743,31 +747,43 @@ function comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
     Chan2b = Chan2bD.Chan2b
     m2bs = ret.twobody; x2bs = X.twobody; y2bs = Y.twobody
     nch = length(Chan2b)
+    Mats_hh = PandyaObj.Mats_hh; Mats_pp = PandyaObj.Mats_pp; Mats_ph = PandyaObj.Mats_ph
     @qthreads for ch = 1:nch
         tmpMat = PandyaObj.tMat[threadid()]
         x2 = x2bs[ch]; y2 = y2bs[ch]; z2 = m2bs[ch]
         tbc = Chan2b[ch]; kets = tbc.kets; nkets = length(kets)
         ppidx = get(HFobj.modelspace.spaces.pp,ch,Int64[]); npp = length(ppidx) 
         hhidx = get(HFobj.modelspace.spaces.hh,ch,Int64[]); nhh = length(hhidx) 
-
-        # pp term, a&b are particle            
+        phidx = get(HFobj.modelspace.spaces.ph,ch,Int64[]); nph = length(phidx)
+        Matpp = Mats_pp[ch]; Mathh = Mats_hh[ch]; Matph = Mats_ph[ch]
+        # pp term, a&b are particle
         if npp != 0
             XppL = @view x2[:,ppidx]; XppR = @view x2[ppidx,:]    
             YppL = @view y2[:,ppidx]; YppR = @view y2[ppidx,:]
-            Mpp_1 = @view tmpMat[1:nkets,1:npp]       
-            Mpp_2 = @view tmpMat[1:nkets,npp+1:2*npp]          
-            Mpp_1 .= XppL; Mpp_2 .= YppR' ; BLAS.gemm!('N','T', 1.0,Mpp_1,Mpp_2,1.0,z2)
-            Mpp_1 .= YppL; Mpp_2 .= XppR' ; BLAS.gemm!('N','T',-1.0,Mpp_1,Mpp_2,1.0,z2)
+            Mpp_1 = @view tmpMat[1:nkets,1:npp]
+            Mpp_2 = @view tmpMat[1:nkets,npp+1:2*npp]
+            tM1 = @view tmpMat[nkets+1:2*nkets,1:nhh]
+            Mpp_1 .= XppL; Mpp_2 .= YppR'; BLAS.gemm!('N','T', 1.0,Mpp_1,Mpp_2,1.0,z2)
+            Mpp_1 .= YppL; Mpp_2 .= XppR'; BLAS.gemm!('N','T',-1.0,Mpp_1,Mpp_2,1.0,z2) 
+        end        
+        if nph != 0
+            XphL = @view x2[:,phidx]; XphR = @view x2[phidx,:]    
+            YphL = @view y2[:,phidx]; YphR = @view y2[phidx,:]
+            Mph_1 = @view tmpMat[1:nkets,1:nph]
+            Mph_2 = @view tmpMat[1:nkets,nph+1:2*nph]
+            tM1 = @view tmpMat[nkets+1:2*nkets,1:nph]
+            Mph_1 .= XphL; Mph_2 .= YphR' ; BLAS.gemm!('N','N',1.0,Mph_1,Matph,0.0,tM1); BLAS.gemm!('N','T', 1.0,tM1,Mph_2,1.0,z2)
+            Mph_1 .= YphL; Mph_2 .= XphR' ; BLAS.gemm!('N','N',-1.0,Mph_1,Matph,0.0,tM1); BLAS.gemm!('N','T',1.0,tM1,Mph_2,1.0,z2)
         end        
         ##hh term, a&b are hole
         if nhh != 0 
             XhhL = @view x2[:,hhidx]; XhhR = @view x2[hhidx,:]
             YhhL = @view y2[:,hhidx]; YhhR = @view y2[hhidx,:]
-
             Mhh_1 = @view tmpMat[1:nkets,1:nhh]       
             Mhh_2 = @view tmpMat[1:nkets,nhh+1:2*nhh] 
-            Mhh_1 .= XhhL; Mhh_2 .= YhhR' ; BLAS.gemm!('N','T',-1.0,Mhh_1,Mhh_2,1.0,z2)
-            Mhh_1 .= YhhL; Mhh_2 .= XhhR' ; BLAS.gemm!('N','T', 1.0,Mhh_1,Mhh_2,1.0,z2)
+            tM = @view tmpMat[nkets+1:2*nkets,1:nhh]
+            Mhh_1 .= XhhL; Mhh_2 .= YhhR' ; BLAS.gemm!('N','N',-1.0,Mhh_1,Mathh-Matpp,0.0,tM); BLAS.gemm!('N','T',1.0,tM,Mhh_2,1.0,z2)
+            Mhh_1 .= YhhL; Mhh_2 .= XhhR' ; BLAS.gemm!('N','N', 1.0,Mhh_1,Mathh-Matpp,0.0,tM); BLAS.gemm!('N','T',1.0,tM,Mhh_2,1.0,z2)       
         end
     end
     return nothing

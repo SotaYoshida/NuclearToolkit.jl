@@ -117,6 +117,9 @@ struct PandyaObject
     dict_ch2ich::Dict{Int64,Int64}
     keys6j::Vector{Vector{Int64}}
     util122::Vector{Vector{single_util122}}
+    Mats_hh::Vector{Matrix{Float64}}
+    Mats_pp::Vector{Matrix{Float64}}
+    Mats_ph::Vector{Matrix{Float64}}
 end
 
 
@@ -197,7 +200,7 @@ mutable struct `SingleParticleState`
 - `l::Int64` azimuthal quantum number of the sps
 - `j::Int64` angular momentum
 - `tz::Int64` z-component of isospin (doubled) tz=-1 => proton & tz=1 => neutron
-- `occ::Int64` occupation number (0 or 1 for now, fractional occupation has not yet implemented) of the sps
+- `occ::Float64` occupation number (can be fractional) of the sps
 - `c::Bool` indicating whether the single-particle state belongs to "core" or not 
 - `v::Bool` whether belongs to "valence" or not 
 - `q::Bool` whether belongs to "q-space" or not 
@@ -207,7 +210,7 @@ mutable struct SingleParticleState
     l::Int64
     j::Int64
     tz::Int64
-    occ::Int64
+    occ::Float64
     c::Bool
     v::Bool
     q::Bool

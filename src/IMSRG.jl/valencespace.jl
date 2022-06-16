@@ -52,7 +52,7 @@ function check_major_valencespace(str::String,HFobj,v)
             o.v = tsps.v = true
             o.c = tsps.c = false
         else
-            if o.occ == 0
+            if o.occ == 0.0
                 o.q = tsps.q = true
             end
         end
@@ -175,7 +175,8 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
             oi =sps[i]; oj = sps[j]      
             if !oi.c && !oj.c;continue;end
             ni = oi.occ; nj = oj.occ
-            if ni + nj == 1 && (oi.q || oj.q); continue;end
+            #if ni + nj == 1 && (oi.q || oj.q); continue;end
+            if (ni*nj==0.0 && ni+nj!=0.0) && (oi.q || oj.q); continue;end
             tz_ij = oi.tz + oj.tz
             if tz_ij != Tz;continue;end
             for ib =1:length(kets) # to be vv/qv/qq

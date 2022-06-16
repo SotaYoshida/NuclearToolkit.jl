@@ -295,8 +295,10 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
         S1b = ifelse(Tz<=0,Op_Rp2.onebody[1],Op_Rp2.onebody[2])
         for ib = 1:nkets
             α, α_ = kets[ib]
-            if sps[α].occ + sps[α_].occ != 2;continue;end
-            tobe = Op2b[ib,ib] * Nocc
+            na = sps[α].occ; naa = sps[α_].occ 
+            #if sps[α].occ + sps[α_].occ != 2;continue;end
+            if (na ==0.0) || (naa == 0.0);continue;end
+            tobe = Op2b[ib,ib] * Nocc * na * naa # needed?
             R2p_2b += tobe
         end  
         if !hfmbptlevel;continue;end
@@ -306,11 +308,13 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
             a, b = kets[ib]
             idx_a = div(a,2)+ a%2
             idx_b = div(b,2)+ b%2
-            if (sps[a].occ ==1 || sps[b].occ ==1); continue; end            
+            #if (sps[a].occ ==1 || sps[b].occ ==1); continue; end            
+            if (sps[a].occ !=0.0 || sps[b].occ !=0.0); continue; end            
             sqab = ifelse(a==b,sqrt(2.0),1.0)
             for ik = 1:nkets
                 i,j = kets[ik]
-                if sps[i].occ == 0 || sps[j].occ ==0; continue; end
+                #if sps[i].occ == 0 || sps[j].occ ==0; continue; end
+                if sps[i].occ == 0.0 || sps[j].occ ==0.0; continue; end                
                 sqij = ifelse(i==j,sqrt(2.0),1.0)
                 sqfac = sqab * sqij
                 idx_i = div(i,2)+ i%2
@@ -323,7 +327,8 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S1 = S5 term, q must be b
                 for ii = 1:nkets 
                     k,q= kets[ii] 
-                    if sps[k].occ + sps[q].occ != 1;continue;end
+                    #if sps[k].occ + sps[q].occ != 1;continue;end
+                    if (sps[k].occ ==0.0 && sps[q].occ ==0.0) || (sps[k].occ !=0.0 && sps[q].occ !=0.0);continue;end
                     if !( q==b || k==b);continue;end
                     phase = 1.0
                     if k==b 
@@ -338,10 +343,11 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S2 = S6 term G_abij G_abcj Sci 
                 for ii = 1:nkets
                     c,q = kets[ii] 
-                    if sps[c].occ + sps[q].occ != 1; continue;end
+                    #if sps[c].occ + sps[q].occ != 1; continue;end
+                    if (sps[c].occ ==0.0 && sps[q].occ == 0.0) || (sps[c].occ !=0.0 && sps[q].occ !=0.0) ; continue;end
                     if !( c==j || q==j);continue;end
                     phase = 1.0
-                    if sps[c].occ == 1
+                    if sps[c].occ !=0.0 
                         if c != j;println("errS2");exit();end                        
                         phase *= (-1)^(div(sps[c].j+sps[q].j,2)+J+1) 
                         c = q; q = kets[ii][1]
@@ -354,7 +360,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S3 term
                 for ii = 1:nkets
                     q,c = kets[ii]
-                    if sps[q].occ + sps[c].occ != 0; continue;end
+                    if sps[q].occ + sps[c].occ != 0.0; continue;end
                     if !( c==a || q==a);continue;end
                     phase = 1.0
                     if q != a && c ==a
@@ -369,7 +375,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S4 term 
                 for ii = 1:nkets
                     q,k = kets[ii]
-                    if sps[q].occ + sps[k].occ != 2; continue;end
+                    if sps[q].occ * sps[k].occ ==0.0; continue;end
                     if !( q==i || k==i);continue;end
                     phase = 1.0
                     if q != i && k ==a
@@ -384,7 +390,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S7 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ + sps[d].occ != 0;continue;end
+                    if sps[c].occ + sps[d].occ != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Gam[ib,ii] * Op2b[ii,ik]
                     deno =  (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S7 += nume *sqfac/deno
@@ -392,7 +398,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S8 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ + sps[l].occ !=2;continue;end
+                    if sps[k].occ * sps[l].occ ==0.0;continue;end
                     nume = 0.125* Nocc * tGam * Gam[ik,ii] * Op2b[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S8 += nume *sqfac/deno
@@ -400,7 +406,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S10 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ +sps[d].occ != 0;continue;end
+                    if sps[c].occ +sps[d].occ != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ib,ik] * Gam[ii,ik]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S10 += nume/deno
@@ -408,7 +414,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                 # S11 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ + sps[l].occ != 2;continue;end
+                    if sps[k].occ * sps[l].occ ==0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ik,ii] * Gam[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S11 += nume *sqfac/deno
@@ -723,7 +729,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
     Cp = HFobj.Cp; Cn = HFobj.Cn
     holes = Int64[ ]
     for (ith,o) in enumerate(HFobj.modelspace.sps)
-        if o.occ==1
+        if o.occ != 0.0
             push!(holes,ith)
         end
     end 
@@ -736,7 +742,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
     ## 0-body from One-body 
     for (i,oi) in enumerate(sps)
         ni = oi.occ
-        if ni == 1
+        if ni != 0.0
             pn = 1 + div(1+oi.tz,2)
             idx_i = div(i,2) + i%2            
             targetOp.zerobody[1] += (oi.j+1) * ifelse(undo,-1.0,1.0) * ni * targetOp.onebody[pn][idx_i,idx_i]
@@ -756,7 +762,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
         tsum = 0.0        
         for ib = 1:nket
             p,q = tkets[ib]
-            if sps[p].occ + sps[q].occ != 2;continue;end
+            if sps[p].occ * sps[q].occ ==0.0;continue;end
             tsum += O2b[ib,ib]
         end
         targetOp.zerobody[1] += tsum * hatfactor

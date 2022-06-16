@@ -214,90 +214,98 @@ end
     naive_filling(sps,n_target,emax,for_ref=false)
 calculate naive filling configurations by given sps and proton/neutron number (`n_target`)
 
-For some nuclei, carrying out naive filling is ambiguous
+For some nuclei, especially for heavier ones, carrying out naive filling is ambiguous
 (e.g., neutron occupation of 22O can be both 0s1(2),0p1(2),0p3(4),0d5(6) and  0s1(2),0p1(2),0p3(4),1s1(2), 0d3(4)).
 In this function, "naive filling" means to try fill orbits with lower ``2n+l`` and then "lower" ``j``.
-The occupations will be updated when solving HF.
+The occupations will be updated when appropriate during HF iterations.
 """
 function naive_filling(sps,n_target,emax,for_ref=false)
     ln = length(sps)
-    occ = [ false for i =1:ln]
+    occ = [ 0.0 for i =1:ln]
     imin = imax = 1
     Nocc = 0
     GreenLight = false
-    ofst = 0
-    occs = Vector{Bool}[ ]
+    ofst = 0    
     for e = 0:emax
         j2min = 1
         j2max = 2*e +1
-        ncand = sum( [ j2+1 for j2=j2min:2:j2max ])        
+        ncand = sum( [ j2+1 for j2=j2min:2:j2max ])
         cand = Int64[ ]
+        # GreenLight: whether to fill orbits in a major shell
         if ncand + Nocc <= n_target;GreenLight=true;else;GreenLight=false;end
-        for n = 1:ln
+        for n = ln:-1:1
             if e != 2 * sps[n].n +  sps[n].l;continue;end
             N = sps[n].j +1 
             if GreenLight
-                occ[n]=true; Nocc += N 
+                occ[n]=1.0; Nocc += N 
             else
                 push!(cand,n)
             end
         end
         if !GreenLight
-            lcand = length(cand)
-            totnum = 2^lcand
-            TF = false
-            for i=0:totnum-1
-                bit = digits(i, base=2, pad=lcand)
-                tocc = 0
-                bitarr = [ false for m=1:lcand]
-                for (j,tf) in enumerate(bit)
-                    if tf == 1
-                        bitarr[j] = true
-                        tocc += sps[j+ofst].j + 1
-                    end
+            fractional = false
+            for n in cand
+                tnocc = sps[n].j + 1
+                if tnocc + Nocc <= n_target
+                    occ[n] = 1; Nocc += tnocc
+                    if Nocc == n_target; break;end
                 end
-                if tocc + Nocc == n_target
-                    TF = true
-                    Nocc_tmp = Nocc 
-                    occ_cp = copy(occ)
-                    for (j,tbit) in enumerate(bit)
-                        if tbit ==1
-                            occ_cp[j+ofst] = true
-                            Nocc_tmp += sps[j+ofst].j + 1
-                        end 
-                    end 
-                    push!(occs,occ_cp)
-                end
+                if tnocc + Nocc > n_target
+                    fractional = true
+                    occ[n] = (n_target-Nocc)/tnocc
+                    Nocc = n_target
+                    break
+                end                
             end
-            if TF; Nocc = n_target;end
-            break
         end 
+        # if !GreenLight
+        #     lcand = length(cand)
+        #     totnum = 2^lcand
+        #     TF = false
+        #     for i=0:totnum-1
+        #         bit = digits(i, base=2, pad=lcand)
+        #         tocc = 0
+        #         for (j,tf) in enumerate(bit)
+        #             if tf == 1
+        #                 tocc += sps[j+ofst].j + 1
+        #             end
+        #         end
+        #         if tocc + Nocc == n_target
+        #             TF = true
+        #             Nocc_tmp = Nocc 
+        #             occ_cp = copy(occ)
+        #             for (j,tbit) in enumerate(bit)
+        #                 if tbit ==1
+        #                     occ_cp[j+ofst] = true
+        #                     Nocc_tmp += sps[j+ofst].j + 1
+        #                 end 
+        #             end 
+        #             push!(occs,occ_cp)
+        #         end
+        #     end
+        #     if TF; Nocc = n_target;end
+        #     break
+        # end 
         if Nocc == n_target && GreenLight 
-            push!(occs,occ)
-            break
+           break
         end
         ofst += e + 1 
     end
     if Nocc != n_target; println("warn! Nocc");exit();end
-    return occs
+    return occ
 end
 
 """
-    ini_occ!(pconfs,occ_p,nconfs,occ_n)
+    ini_occ!(pconf,occ_p,nconf,occ_n)
 
-initialize occupation number matrices (```occ_p```&```occ_n```) by naive filling configurations ```pconfs```&```nconfs```
+initialize occupation number matrices (```occ_p```&```occ_n```) by naive filling configurations ```pconf```&```nconf```
 """
-function ini_occ!(pconfs,occ_p,nconfs,occ_n)
-    pconf = pconfs[1]; nconf = nconfs[1]
+function ini_occ!(pconf,occ_p,nconf,occ_n)
     for i=1:length(pconf)
-        if pconf[i] == 1
-            occ_p[i,i] = 1.0 
-        end
+        occ_p[i,i] = pconf[i]
     end
     for i=1:length(nconf)
-        if nconf[i] == 1
-            occ_n[i,i] = 1.0 
-        end
+        occ_n[i,i] = nconf[i] 
     end    
     return nothing
 end
@@ -377,27 +385,28 @@ end
     update_occ!(pconfs,nconfs,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
 
 update occupation matrices by HF SPEs
+may be no need (2022/06/14~)
 """
-function update_occ!(pconfs,nconfs,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
-    lp = length(p_sps); ln = length(n_sps)
-    epmax = enmax = 1.e+10
-    optidxs = [1,1]
-    for (i,pconf) in enumerate(pconfs)
-        tmp = [ pconf[j] * (p_sps[j].j+1) for j = 1:lp ]
-        ep = dot(tmp,e1b_p)
-        if ep <= epmax;optidxs[1] = i;epmax = ep;end
-    end
-    for (i,nconf) in enumerate(nconfs)
-        tmp = [ nconf[j] * (n_sps[j].j+1) for j = 1:ln]
-        en = dot(tmp,e1b_n)
-        if en <= enmax;optidxs[2] = i;enmax=en;end
-    end
-    occ_p .= 0.0; occ_n .= 0.0
-    pconf = pconfs[optidxs[1]]; nconf = nconfs[optidxs[2]]
-    for i = 1:lp; occ_p[i,i] = ifelse(pconf[i],1.0,0.0); occ = occ_p[i,i]; p_sps[i].occ = ifelse(occ==1.0,1,0);end
-    for i = 1:ln; occ_n[i,i] = ifelse(nconf[i],1.0,0.0); occ = occ_n[i,i]; n_sps[i].occ = ifelse(occ==1.0,1,0);end
-    return nothing
-end
+# function update_occ!(pconfs,nconfs,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
+#     lp = length(p_sps); ln = length(n_sps)
+#     epmax = enmax = 1.e+10
+#     optidxs = [1,1]
+#     for (i,pconf) in enumerate(pconfs)
+#         tmp = [ pconf[j] * (p_sps[j].j+1) for j = 1:lp ]
+#         ep = dot(tmp,e1b_p)
+#         if ep <= epmax;optidxs[1] = i;epmax = ep;end
+#     end
+#     for (i,nconf) in enumerate(nconfs)
+#         tmp = [ nconf[j] * (n_sps[j].j+1) for j = 1:ln]
+#         en = dot(tmp,e1b_n)
+#         if en <= enmax;optidxs[2] = i;enmax=en;end
+#     end
+#     occ_p .= 0.0; occ_n .= 0.0
+#     pconf = pconfs[optidxs[1]]; nconf = nconfs[optidxs[2]]
+#     for i = 1:lp; occ_p[i,i] = ifelse(pconf[i],1.0,0.0); occ = occ_p[i,i]; p_sps[i].occ = ifelse(occ==1.0,1,0);end
+#     for i = 1:ln; occ_n[i,i] = ifelse(nconf[i],1.0,0.0); occ = occ_n[i,i]; n_sps[i].occ = ifelse(occ==1.0,1,0);end
+#     return nothing
+# end
 
 function calc_rho!(rho,U,occ,M)
     BLAS.gemm!('N','T',1.0,occ,U,0.0,M)
@@ -421,12 +430,11 @@ function def_holeparticle(Chan1b,occ_p,occ_n,p_sps,n_sps)
         for i = 1:ifelse(pn==1,lp,ln)
             idx_snt = i + lp*(pn-1)
             msidx = snt2ms[idx_snt]
-            if occs[i,i] == 1.0
-                push!(holes[pn],msidx)
-                t_sps[i].occ = 1
+            t_sps[i].occ = occs[i,i]
+            if occs[i,i] == 0.0
+                push!(particles[pn],msidx)            
             else
-                push!(particles[pn],msidx)
-                t_sps[i].occ = 0
+                push!(holes[pn],msidx)
             end
         end
     end
@@ -536,11 +544,17 @@ function get_space_chs(sps,Chan2b)
         for (ik,ket) in enumerate(kets)
             i,j = ket
             ni = sps[i].occ; nj = sps[j].occ
-            if ni + nj == 2; add_ch_ket!(ch,ik,hh) ;end
-            if ni + nj == 0; add_ch_ket!(ch,ik,pp) ;end
-            if ni + nj == 1; add_ch_ket!(ch,ik,ph) ;end
+            if ni + nj == 0.0; 
+                add_ch_ket!(ch,ik,pp)
+            else
+                if ni!=0.0 && nj != 0.0
+                    add_ch_ket!(ch,ik,hh)
+                else 
+                    add_ch_ket!(ch,ik,ph) 
+                end
+            end
         end       
-    end
+    end   
     return space_channel(pp,ph,hh,cc,vc,qc,vv,qv,qq)   
 end
 
@@ -566,7 +580,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to)
     exists = get(amedata,binfo.nuc.cnuc,false)   
     Eexp = 0.0
-    if exists==false        
+    if exists==false
         println("E_HF ", @sprintf("%12.4f",E0), 
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: Not Available")
     else
@@ -608,8 +622,8 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,
     p_sps,n_sps = get_pn_sps(sps)
     occ_p = zeros(Float64,dim1b,dim1b); occ_n = zeros(Float64,dim1b,dim1b)
     EHFs = [ zeros(Float64,5) for i=1:2]
-    pconfs = naive_filling(p_sps,Z,emax);nconfs = naive_filling(n_sps,N,emax)    
-    ini_occ!(pconfs,occ_p,nconfs,occ_n)
+    pconf = naive_filling(p_sps,Z,emax);nconf = naive_filling(n_sps,N,emax)
+    ini_occ!(pconf,occ_p,nconf,occ_n)
     ## initial block unitary matrix 
     rho_p = copy(mat1b); Cp = copy(mat1b); Up = copy(mat1b);for i=1:dim1b;Up[i,i]=occ_p[i,i];end
     rho_n = copy(mat1b); Cn = copy(mat1b); Un = copy(mat1b);for i=1:dim1b;Un[i,i]=occ_n[i,i];end
@@ -630,7 +644,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,
         ## Update 1b density matrix
         Up .= vecsp; Un .= vecsn
         ReorderHFSPS!(h_p,h_n,Up,Un,valsp,valsn,Chan1b)
-        update_occ!(pconfs,nconfs,p_sps,n_sps,occ_p,occ_n,valsp,valsn)
+        #update_occ!(pconf,nconf,p_sps,n_sps,occ_p,occ_n,valsp,valsn)
         calc_rho!(rho_p,Up,occ_p,Cp);calc_rho!(rho_n,Un,occ_n,Cn)     
         ## Re-evaluate tilde(V) and Fock matrix
         calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,abcd,Chan1b)
@@ -647,12 +661,10 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,
         tnorm = norm(Up'*Up-Matrix{Float64}(I, dim1b,dim1b),Inf)
         if tnorm > 1.e-10;println("Unitarity check: res. norm(p) $tnorm");end
     end
-
     ## HNO: get normal-ordered Hamiltonian 
-    update_occ!(pconfs,nconfs,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
+    #update_occ!(pconf,nconf,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
     E0 = EHFs[1][1]
-    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
-                   e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to)
+    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to)
     return HFobj
 end
 

@@ -1,0 +1,54 @@
+#EMN500 N3LO
+## LO con  10^4 GeV^-2
+C0_1S0  = -0.13956293
+C0_3S1  = -0.159635365
+C_CSB = 0.00052685
+C_CIB = 0.00075054
+## NLO con 10^4 GeV^-4
+C2_3S1  = 0.823265695
+C2_3P0  = 1.184990880
+C2_1P1  = 0.187002997
+C2_3P1  = -0.819122188
+C2_1S0  = 2.417201616
+C2_3SD1 = 0.502604767
+C2_3P2  = -0.757935632
+## N3LO con 10^4 GeV^-6
+hD_1S0 = -2.332142565
+D_1S0 = -16.737482775
+D_1P1 = 9.976039933
+D_3P0 = 4.989911864
+D_3P1 = 4.812595281
+D_3P2 = 6.023854940
+hD_3S1 = -4.319199809
+D_3S1 = -19.171052868
+hD_3SD1 = 1.162495137
+D_3SD1 = 1.759338786
+D_3D1 = -5.59034819
+D_1D2 = -1.946384037
+D_3D2 = -3.200942439
+D_3PF2 = 0.010519022
+D_3D3 = -1.3336602
+
+## For pion exchange contribution
+## NNLO GeV^-1
+c1_NNLO = -1.07
+c2_NNLO =  3.2
+c3_NNLO = -5.32
+c4_NNLO =  3.56
+## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
+ct1_NNLO = c1_NNLO
+ct3_NNLO = c3_NNLO  
+ct4_NNLO = c4_NNLO  
+cD =  0.0
+cE =  0.0
+## N3LO GeV^-2
+d12 = 1.04
+d3 = -0.48
+d5 = 0.14
+d145 = -1.90
+### NLOvs  (usually not used)
+c_vs_1 = 0.0
+c_vs_2 = 0.0
+c_vs_3 = 0.0
+c_vs_4 = 0.0
+c_vs_5 = 0.0

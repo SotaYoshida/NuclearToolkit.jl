@@ -745,7 +745,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
         if ni != 0.0
             pn = 1 + div(1+oi.tz,2)
             idx_i = div(i,2) + i%2            
-            targetOp.zerobody[1] += (oi.j+1) * ifelse(undo,-1.0,1.0) * ni * targetOp.onebody[pn][idx_i,idx_i]
+            targetOp.zerobody[1] += ni*(oi.j+1) * ifelse(undo,-1.0,1.0)  * targetOp.onebody[pn][idx_i,idx_i]
         end
     end
    
@@ -763,14 +763,14 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
         for ib = 1:nket
             p,q = tkets[ib]
             if sps[p].occ * sps[q].occ ==0.0;continue;end
-            tsum += O2b[ib,ib]
+            tsum += sps[p].occ * sps[q].occ * O2b[ib,ib]
         end
         targetOp.zerobody[1] += tsum * hatfactor
 
         # => NO1B        
         tdict = dict_idx_from_chket[ch]
         for h in holes
-            jh = sps[h].j
+            jh = sps[h].j; nh = sps[h].occ
             for (a,oa) in enumerate(sps)
                 ja = oa.j
                 if !tri_check(jh,ja,2*J);continue;end
@@ -803,7 +803,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
                     if idx_bh ==0; continue;end
                     sqfac_bh = ifelse(b==h,sqrt(2.0),1.0)
                     sqfac = sqfac_ah*sqfac_bh
-                    O1b[idx_a,idx_b] += hatfactor * ifelse(undo,-1.0,1.0) /(ja+1.0) * O2b[idx_ah,idx_bh] *  phase_ah * phase_bh * sqfac                    
+                    O1b[idx_a,idx_b] += nh * hatfactor * ifelse(undo,-1.0,1.0) /(ja+1.0) * O2b[idx_ah,idx_bh] *  phase_ah * phase_bh * sqfac                    
                     if idx_a != idx_b 
                         O1b[idx_b,idx_a] = O1b[idx_a,idx_b]
                     end

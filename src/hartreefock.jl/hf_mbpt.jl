@@ -74,8 +74,8 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma)
             end
         end
     end
-    println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
-            " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
+    #println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
+    #        " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
     return EMP2
 end
 
@@ -246,8 +246,8 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     end
     EMP3_ph = sum(Ethreads)
     EMP3 = EMP3_pp + EMP3_hh + EMP3_ph 
-    println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
-            " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))   
+    #println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
+    #        " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))   
     return EMP3
 end
 

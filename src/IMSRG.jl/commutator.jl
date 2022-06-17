@@ -141,7 +141,7 @@ function comm110ss!(X,Y,Z0::zerobody,HFobj) where {zerobody<:Vector{Float64}}
         for hole in holes[pn]
             ja = sps[hole].j
             hidx = div(hole,2) + hole%2
-            Z0[1] += (ja+1) * xyyx[hidx,hidx]
+            Z0[1] += (ja+1) * sps[hole].occ * xyyx[hidx,hidx]
         end
     end
     return nothing
@@ -167,12 +167,11 @@ function comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float6
             for ik = 1:length(kets)
                 c,d = kets[ik]
                 nc = sps[c].occ; nd = sps[d].occ
-                zsum += x2b[ib,ik]*y2b[ik,ib] *na*nb *(1-nc)*(1-nd)
-                tmp = x2b[ib,ik]*y2b[ik,ib] *na*nb *(1-nc)*(1-nd)
+                zsum += (x2b[ib,ik]*y2b[ik,ib]-y2b[ib,ik]*x2b[ik,ib])*na*nb *(1-nc)*(1-nd)
             end 
         end
-        Z[1] += 2.0 * NJ * zsum
-    end                                             
+        Z[1] += NJ * zsum
+    end                                     
     return nothing
 end
 

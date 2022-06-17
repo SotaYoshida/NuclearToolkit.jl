@@ -38,9 +38,12 @@ function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencesp
         IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;valenceflow=true)
         effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,to)
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
+            println("1 Zerobody ",IMSRGobj.H.zerobody)
             getNormalOrderedO(binfo,HFobj,IMSRGobj.H,Chan1b,Chan2bD,dict6j,to;undo=true,OpeqH=true)
+            println("2 undo =>  ",IMSRGobj.H.zerobody)
             set_sps_to_core!(binfo,HFobj)
             getNormalOrderedO(binfo,HFobj,IMSRGobj.H,Chan1b,Chan2bD,dict6j,to;OpeqH=true)            
+            println("3 ms =>  ",IMSRGobj.H.zerobody)
             for Op in effOps
                 set_sps_to_modelspace!(binfo,HFobj)
                 getNormalOrderedO(binfo,HFobj,Op,Chan1b,Chan2bD,dict6j,to;undo=true,OpeqH=false)
@@ -239,11 +242,6 @@ function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
                 if ib != ik; eta2b[ik,ib] = -tmp;end
             end
         end 
-        # tnorm = norm(eta2b,2)
-        # if tnorm > 1.e-6
-        #     println("ch ",@sprintf("%3i",ch), "  tnorm ",  @sprintf("%12.4e",tnorm))
-        # end
-
     end 
     p_sps = HFobj.modelspace.p_sps
     n_sps = HFobj.modelspace.n_sps

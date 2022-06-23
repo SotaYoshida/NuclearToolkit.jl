@@ -132,7 +132,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams)
     if @isdefined(Pmax_fm); params.Pmax_fm = Pmax_fm; end
     if @isdefined(kF); params.kF = kF; end
     if occursin("emn",params.pottype)
-       params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
+       params.LambdaSFR = ifelse(params.pottype=="emn500n4lo",700.0,650.0)
     end
     println("parameters in $fn will be used.")
     return nothing

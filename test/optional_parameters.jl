@@ -1,12 +1,13 @@
 ###--- ChiralEFT ---
-n_mesh = 30
+n_mesh = 10
 emax = 2
-chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO
+chi_order = 4 
 calc_NN = true
-calc_3N = false #density-dependent 3NF
+calc_3N = false 
 hw = 20.0
 srg = false
 tbme_fmt = "snt.bin"
+pottype="emn500n4lo"
 ### --- IMSRG ---
 smax = 500.0
 dsmax = 0.5

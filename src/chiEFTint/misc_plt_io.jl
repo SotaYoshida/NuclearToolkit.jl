@@ -80,7 +80,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     calc_monopole = false
     calc_std = false    
     coulomb = true
-    pottype = "em500n3lo"
+    pottype = "emn500n4lo"
     target_nlj=Vector{Int64}[]
     ##for valence space operators
     v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)

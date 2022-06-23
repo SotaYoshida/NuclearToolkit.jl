@@ -251,7 +251,11 @@ function naive_filling(sps,n_target,emax,for_ref=false)
             fractional = false
             for gt in [true,false]
                 cand = ifelse(gt,cand_j_gt_l,cand_j_lt_l)
-                for n in cand
+                imin = ifelse(gt,1,length(cand))
+                imax = ifelse(gt,length(cand),1)
+                step = ifelse(gt,1,-1)
+                for ith = imin:step:imax
+                    n = cand[ith]
                     tnocc = sps[n].j + 1
                     if tnocc + Nocc <= n_target
                         occ[n] = 1; Nocc += tnocc

@@ -93,10 +93,14 @@ function get_LECs_params(op)
         targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
         params = zeros(Float64,length(targetLECs))
         params_ref = zeros(Float64,length(targetLECs))
-        #params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
-        #pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
         params_ref[1] = -0.73; params_ref[2] = -2.38; params_ref[3] = 4.69
-        pdomains = [ (-1.2,-0.5), (-5.0,-2.0), (2.0,6.0), (-2.0,2.0), (-1.5,1.5) ]
+        pdomains = [ (-1.0,-0.7), (-5.0,-2.0), (2.0,6.0), (-2.0,2.0), (-1.5,1.5) ]
+    elseif op=="c34DE"
+            targetLECs= ["ct3_NNLO","ct4_NNLO","cD","cE"]
+            params = zeros(Float64,length(targetLECs))
+            params_ref = zeros(Float64,length(targetLECs))
+            params_ref[1] = -5.54; params_ref[2] = 4.17; params_ref[3] = params_ref[4] = 0.0
+            pdomains = [(-5.0,-2.0), (2.0,5.0), (-3.0,3.0), (-1.0,1.0) ]    
     elseif op=="c34"
         targetLECs= ["ct3_NNLO","ct4_NNLO"]
         params = zeros(Float64,length(targetLECs))
@@ -130,7 +134,7 @@ pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correl
 adhoc=> tau =1.0, l=1/domain size
 """
 function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
-                op="cDE",
+                op="c34DE",
                 optimizer="LHS"
                 )
     if opt == false;return nothing;end

@@ -230,7 +230,8 @@ function naive_filling(sps,n_target,emax,for_ref=false)
         j2min = 1
         j2max = 2*e +1
         ncand = sum( [ j2+1 for j2=j2min:2:j2max ])
-        cand = Int64[ ]
+        cand_j_gt_l = Int64[ ]
+        cand_j_lt_l = Int64[ ]
         # GreenLight: whether to fill orbits in a major shell
         if ncand + Nocc <= n_target;GreenLight=true;else;GreenLight=false;end
         for n = ln:-1:1
@@ -239,53 +240,31 @@ function naive_filling(sps,n_target,emax,for_ref=false)
             if GreenLight
                 occ[n]=1.0; Nocc += N 
             else
-                push!(cand,n)
+                if sps[n].j == 2*sps[n].l + 1
+                    push!(cand_j_gt_l,n)
+                else
+                    push!(cand_j_lt_l,n)
+                end
             end
         end
         if !GreenLight
             fractional = false
-            for n in cand
-                tnocc = sps[n].j + 1
-                if tnocc + Nocc <= n_target
-                    occ[n] = 1; Nocc += tnocc
-                    if Nocc == n_target; break;end
+            for gt in [true,false]
+                cand = ifelse(gt,cand_j_gt_l,cand_j_lt_l)
+                for n in cand
+                    tnocc = sps[n].j + 1
+                    if tnocc + Nocc <= n_target
+                        occ[n] = 1; Nocc += tnocc
+                        if Nocc == n_target; break;end
+                    else
+                        fractional = true
+                        occ[n] = (n_target-Nocc)/tnocc
+                        Nocc = n_target
+                        break
+                    end                
                 end
-                if tnocc + Nocc > n_target
-                    fractional = true
-                    occ[n] = (n_target-Nocc)/tnocc
-                    Nocc = n_target
-                    break
-                end                
             end
         end 
-        # if !GreenLight
-        #     lcand = length(cand)
-        #     totnum = 2^lcand
-        #     TF = false
-        #     for i=0:totnum-1
-        #         bit = digits(i, base=2, pad=lcand)
-        #         tocc = 0
-        #         for (j,tf) in enumerate(bit)
-        #             if tf == 1
-        #                 tocc += sps[j+ofst].j + 1
-        #             end
-        #         end
-        #         if tocc + Nocc == n_target
-        #             TF = true
-        #             Nocc_tmp = Nocc 
-        #             occ_cp = copy(occ)
-        #             for (j,tbit) in enumerate(bit)
-        #                 if tbit ==1
-        #                     occ_cp[j+ofst] = true
-        #                     Nocc_tmp += sps[j+ofst].j + 1
-        #                 end 
-        #             end 
-        #             push!(occs,occ_cp)
-        #         end
-        #     end
-        #     if TF; Nocc = n_target;end
-        #     break
-        # end 
         if Nocc == n_target && GreenLight 
            break
         end

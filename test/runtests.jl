@@ -9,7 +9,7 @@ using Test
     ### HFMBPT & VS-IMSRG calculation 
     hw = 20; emax=2
     nuc = "He4"; core = "He4"; vspace="p-shell"
-    sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
+    sntf = "tbme_emn500n4lo_barehw20emax2.snt.bin"
     @test hf_main([nuc],sntf,hw,emax;verbose=false,doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace)
 
     ## shell model calculation

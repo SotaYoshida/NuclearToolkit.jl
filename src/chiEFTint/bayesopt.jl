@@ -21,13 +21,20 @@ function myCholesky!(tmpA,ln,cLL)
     return nothing
 end
 
-function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam)
+function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true)
     thist = OPTobj.history[it]
     params = OPTobj.params
     params_ref = OPTobj.params_ref
-
     tvec = params-params_ref
     logprior = -0.5*Lam*dot(tvec,tvec)
+    if mcmc
+        Lamt = params-params_ref
+        part_c134 = @view tvec[1:3]
+        part_cDE = @view tvec[4:5]
+        part_c134 .*= 10.0
+        part_cDE .*= 0.5
+        logprior = -0.5*dot(Lamt,tvec)
+    end    
     llh = 0.0
     for (n,tmp) in enumerate(HFdata)
         nuc = tmp.nuc
@@ -45,10 +52,32 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam)
     thist[1] = logprior
     thist[2] = llh    
     thist[3] = logpost
-    println("eval: ","logprior ",@sprintf("%9.2e",logprior),
-            "  logllh  ",@sprintf("%9.2e",llh),
-            "  logpost ",@sprintf("%9.2e",logpost),"\n" )
+    if !mcmc
+        println("eval: ","logprior ",@sprintf("%9.2e",logprior),
+                "  logllh  ",@sprintf("%9.2e",llh),
+                "  logpost ",@sprintf("%9.2e",logpost),"\n" )
+    else
+        println("eval: ","logprior ",@sprintf("%9.2e",logprior),
+                "  logllh  ",@sprintf("%9.2e",llh),
+                "  logpost ",@sprintf("%9.2e",logpost),
+                " Acc.Rate ",@sprintf("%6.2f",100*OPTobj.acchit/it), "\n" )
+    end
     return nothing
+end
+
+mutable struct MCMCobject
+    dim::Int64    
+    nstep::Int64
+    burnin::Int64
+    thining::Int64
+    acchit::Int64
+    targetLECs::Vector{String}
+    params::Vector{Float64}
+    params_ref::Vector{Float64}
+    sigmas::Vector{Float64}
+    cand::Vector{Float64}
+    chain::Matrix{Float64}
+    history::Vector{Vector{Float64}}
 end
 
 struct LHSobject
@@ -93,14 +122,10 @@ function get_LECs_params(op)
         targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
         params = zeros(Float64,length(targetLECs))
         params_ref = zeros(Float64,length(targetLECs))
+        #params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
+        #pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
         params_ref[1] = -0.73; params_ref[2] = -2.38; params_ref[3] = 4.69
-        pdomains = [ (-1.0,-0.7), (-5.0,-2.0), (2.0,6.0), (-2.0,2.0), (-1.5,1.5) ]
-    elseif op=="c34DE"
-            targetLECs= ["ct3_NNLO","ct4_NNLO","cD","cE"]
-            params = zeros(Float64,length(targetLECs))
-            params_ref = zeros(Float64,length(targetLECs))
-            params_ref[1] = -5.54; params_ref[2] = 4.17; params_ref[3] = params_ref[4] = 0.0
-            pdomains = [(-5.0,-2.0), (2.0,5.0), (-3.0,3.0), (-1.0,1.0) ]    
+        pdomains = [ (-1.2,-0.5), (-5.0,-2.0), (2.0,6.0), (-2.0,2.0), (-1.5,1.5) ]
     elseif op=="c34"
         targetLECs= ["ct3_NNLO","ct4_NNLO"]
         params = zeros(Float64,length(targetLECs))
@@ -134,8 +159,8 @@ pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correl
 adhoc=> tau =1.0, l=1/domain size
 """
 function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
-                op="c34DE",
-                optimizer="LHS"
+                op="2n3nall",
+                optimizer="MCMC"
                 )
     if opt == false;return nothing;end
     targetLECs, params,params_ref,pdomains = get_LECs_params(op)
@@ -145,59 +170,69 @@ function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
     end 
     pDim = length(targetLECs)
 
-    Data = [zeros(Float64,pDim) for i=1:num_cand] 
-    gens = 200
-    @timeit to "LHS" plan, _ = LHCoptim(num_cand,pDim,gens)
-    tmp = scaleLHC(plan,pdomains)    
-    cand = [ tmp[i,:] for i =1:num_cand]
-    history = [zeros(Float64,3) for i=1:num_cand]
-    observed = Int64[ ]
-    unobserved = collect(1:num_cand)
-
-    if optimizer =="LHS"
-        OPTobj = LHSobject(num_cand,targetLECs,params,params_ref,pdomains,cand,observed,unobserved,history)
-        Random.seed!(1234)
-        propose!(1,OPTobj,false)
-        for (k,target) in enumerate(targetLECs)
-            idx = idxLECs[target]
-            LECs[idx] = dLECs[target] = params[k]
+    if optimizer =="LHS" || optimizer=="BayesOpt"
+        Data = [zeros(Float64,pDim) for i=1:num_cand] 
+        gens = 200
+        @timeit to "LHS" plan, _ = LHCoptim(num_cand,pDim,gens)
+        tmp = scaleLHC(plan,pdomains)    
+        cand = [ tmp[i,:] for i =1:num_cand]
+        history = [zeros(Float64,3) for i=1:num_cand]
+        observed = Int64[ ]
+        unobserved = collect(1:num_cand)
+        if optimizer=="LHS"
+            OPTobj = LHSobject(num_cand,targetLECs,params,params_ref,pdomains,cand,observed,unobserved,history)
+            Random.seed!(1234)
+            propose_LHS!(1,OPTobj,false)
+            for (k,target) in enumerate(targetLECs)
+                idx = idxLECs[target]
+                LECs[idx] = dLECs[target] = params[k]
+            end
+            return OPTobj
+        else
+            Ktt = zeros(Float64,num_cand,num_cand) 
+            Ktinv = zeros(Float64,num_cand,num_cand)
+            tMat = zeros(Float64,num_cand,num_cand)
+            Ktp = zeros(Float64,num_cand,1)
+            L = zeros(Float64,num_cand,num_cand)
+            yt = zeros(Float64,num_cand)
+            yscale = zeros(Float64,2) 
+            acquis = zeros(Float64,num_cand); acquis[1] = -1.e+10
+            pKernel = ones(Float64,pDim+1)
+            for i =1:pDim
+                tmp = pdomains[i]
+                pKernel[i+1] = abs(tmp[2]-tmp[1])^2
+            end            
+            OPTobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
+            Random.seed!(1234)
+            propose_LHS!(1,OPTobj,false)
+            OPTobj.Data[1] .= OPTobj.params
+            for (k,target) in enumerate(targetLECs)
+                param = params[k]
+                idx = idxLECs[target]        
+                LECs[idx] = param
+                dLECs[target] = param        
+            end
+            return OPTobj
         end
-        return OPTobj
     end
-
-    Ktt = zeros(Float64,num_cand,num_cand) 
-    Ktinv = zeros(Float64,num_cand,num_cand)
-    tMat = zeros(Float64,num_cand,num_cand)
-    Ktp = zeros(Float64,num_cand,1)
-    L = zeros(Float64,num_cand,num_cand)
-    yt = zeros(Float64,num_cand)
-    yscale = zeros(Float64,2) 
-    acquis = zeros(Float64,num_cand); acquis[1] = -1.e+10
-    pKernel = ones(Float64,pDim+1)
-    for i =1:pDim
-        tmp = pdomains[i]
-        #pKernel[i+1] = 1.0 / (1/ abs(tmp[2]-tmp[1])^2)
-        pKernel[i+1] = abs(tmp[2]-tmp[1])^2
-    end    
-    
-    OPTobj = BOobject(num_cand,targetLECs,params,params_ref,pdomains,pKernel,Data,cand,observed,unobserved,history,Ktt,Ktinv,Ktp,L,tMat,yt,yscale,acquis)
-
-    Random.seed!(1234)
-    propose!(1,OPTobj,false)
-    OPTobj.Data[1] .= OPTobj.params
-    for (k,target) in enumerate(targetLECs)
-        param = params[k]
-        idx = idxLECs[target]        
-        LECs[idx] = param
-        dLECs[target] = param        
+    if optimizer=="MCMC"
+        dim = length(params)
+        nstep = num_cand
+        thining = 1
+        acchit = 0
+        burnin = div(nstep,10)
+        cand = zeros(Float64,dim)
+        chain = zeros(Float64,dim,nstep+1)
+        chain[:,1] .= params
+        history = [zeros(Float64,3) for i=1:nstep]
+        sigmas = [0.1,0.2,0.2,0.3,0.3]
+        OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)   
     end
-    return OPTobj
 end
 
-function propose!(it,BOobj,BOproposal)
+function propose_LHS!(it,BOobj,BOproposal)
     params = BOobj.params
     cand = BOobj.cand
-    #println("scaled_plan size ",size(scaled_plan), "\n$scaled_plan")
     obs = BOobj.observed
     unobs = BOobj.unobserved
     idx = 0
@@ -213,12 +248,36 @@ function propose!(it,BOobj,BOproposal)
     return nothing
 end 
 
-function LHS_HFMBPT(it,LHSobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.1)
-    eval_HFMBPT(it,LHSobj,HFdata,varE,Lam)
-    propose!(it,LHSobj,false)
-    LHSobj.params .= LHSobj.cand[it]
+function propose_MH!(it,OPTobj)
+    params = OPTobj.params
+    ollh = OPTobj.history[it-1][3]
+    nllh = OPTobj.history[it][3]
+    lograte = nllh - ollh
+    logr = log(rand())
+    if logr <= lograte
+        OPTobj.chain[:,it] .= params
+        OPTobj.acchit += 1
+    else
+        params .= OPTobj.chain[:,it-1]
+        OPTobj.chain[:,it] .= OPTobj.chain[:,it-1]
+        OPTobj.history[it] .= OPTobj.history[it-1]
+    end
+    for n = 1:length(params)
+        params[n] += OPTobj.sigmas[n] * randn()
+    end
+    return nothing
+end 
+function MCMC_HFMBPT(it,OPTobj,HFdata,to;varE=1.0,Lam=0.1)
+    eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true)
+    if it >1; propose_MH!(it,OPTobj);end
+    return nothing
+end
 
-    
+
+function LHS_HFMBPT(it,LHSobj,HFdata,to;varE=1.0,varR=0.25,Lam=0.1)
+    eval_HFMBPT(it,LHSobj,HFdata,varE,Lam)
+    propose_LHS!(it,LHSobj,false)
+    LHSobj.params .= LHSobj.cand[it]  
     return nothing
 end
 
@@ -242,7 +301,7 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
     end 
     ## Make proposal
     BOproposal = ifelse(it<=n_ini_BO,false,true)
-    propose!(it,BOobj,BOproposal)
+    propose_LHS!(it,BOobj,BOproposal)
     BOobj.Data[it] .= BOobj.params
     return nothing
 end
@@ -381,4 +440,70 @@ end
 
 function fPhi(Z)
     return  0.5 * erfc(-(Z/sqrt(2.0)))
+end
+
+
+"""
+
+Reference:
+Goodman & Weare, "Ensemble samplers with affine invariance", Communications in Applied Mathematics and Computational Science, DOI: 10.2140/camcos.2010.5.65, 2010.
+"""
+function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64}, 
+                              nstep::Integer, thinning::Integer,a::Float64=2.)
+	@assert length(size(x0)) == 2
+	ndim = size(x0)[1]
+    chain = zeros(Float64,ndim,numwalkers,nstep)    
+    llhs = zeros(Float64,1,numwalkers,nstep)
+    for n =1:ndim
+        tX = @view chain[n,:,1]
+        tX .= x0[n,:]
+    end
+    for walker = 1:numwalkers
+        Xi = @view chain[:,walker,1]
+        llhs[1,walker,1] = myllh(Xi)
+    end    
+    idx_S0 = collect(1:div(numwalkers,2))
+    idx_S1 = collect(div(numwalkers,2)+1:numwalkers)
+    batch = [(idx_S0,idx_S1),(idx_S1,idx_S0)]
+    acchit = 0
+    for t = 2:nstep
+        for nbatch = 1:2
+            idxs_target,idxs_complement = batch[nbatch]
+            for walker in idxs_target                
+                Xi = @view chain[:,walker,t-1]
+                nX = @view chain[:,walker,t]
+                llh = llhs[1,walker,t-1]
+                walker2 = sample(idxs_complement)
+                Xj = @view chain[:,walker2,t-ifelse(nbatch==1,1,0)]
+                z = (((a-1)*rand() + 1)^2) / a
+                nX .= Xj + z .* (Xi -Xj)
+                nllh = myllh(nX)
+                logratio = (ndim-1)*log(z) + nllh - llh
+                if log(rand(rng)) < logratio
+                    llhs[1,walker,t] = nllh
+                    acchit += 1
+                else
+                    llhs[1,walker,t] = llh
+                    nX .= Xi    
+                end
+            end
+        end
+    end
+    println("Acc. rate: ",@sprintf("%6.2f",100*acchit/((nstep-1)*numwalkers)))
+    chain,llhs = flatten_mcmcarray(chain,llhs)
+    return chain, llhs
+end
+function flatten_mcmcarray(chain::Array, llhoodvals::Array,order=true)
+	numdims, numwalkers, numsteps = size(chain)
+	newchain = Array{Float64}(undef, numdims, numwalkers * numsteps)
+    for j = 1:numsteps
+        for i = 1:numwalkers
+            if order
+                newchain[:, i + (j - 1) * numwalkers] .= chain[:, i, j]
+            else
+                newchain[:, i + (j - 1) * numwalkers] .= chain[j,:,i]
+            end
+        end
+    end              
+	return newchain, llhoodvals[1:end]
 end

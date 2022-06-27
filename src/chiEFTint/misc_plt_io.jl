@@ -80,7 +80,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     calc_monopole = false
     calc_std = false    
     coulomb = true
-    pottype = "emn500n4lo"
+    pottype = "em500n3lo"
     target_nlj=Vector{Int64}[]
     ##for valence space operators
     v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
@@ -132,7 +132,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams)
     if @isdefined(Pmax_fm); params.Pmax_fm = Pmax_fm; end
     if @isdefined(kF); params.kF = kF; end
     if occursin("emn",params.pottype)
-       params.LambdaSFR = ifelse(params.pottype=="emn500n4lo",700.0,650.0)
+       params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
     println("parameters in $fn will be used.")
     return nothing
@@ -408,7 +408,7 @@ function print_vec(s,v;ine=false)
         if ine
             s *= @sprintf "%9.1e" v[i]
         else
-            s *= @sprintf "%8.4f" v[i]
+            s *= @sprintf "%10.4f" v[i]
             #s *= @sprintf "%25.15f" v[i] 
     	end
     end

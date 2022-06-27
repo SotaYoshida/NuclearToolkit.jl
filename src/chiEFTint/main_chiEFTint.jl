@@ -11,7 +11,8 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `is_plot::Bool`, to visualize optimization process of LECs
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false)
+function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="LHS")
+    if optimizer!="";optHFMBPT=true;end
     if nucs == []; optHFMBPT=false;end
     chiEFTobj = init_chiEFTparams()
     emax = chiEFTobj.emax
@@ -75,8 +76,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
     #println("chiEFTobj $chiEFTobj")
     ## Start Opt stuff
-    #@timeit to "BOobj" BOobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,optimizer="BO")    
-    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum) 
+    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum,optimizer=optimizer) 
     d9j = HOBs = nothing
     if optHFMBPT          
         d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
@@ -133,13 +133,17 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
             print("it = $it", OPTobj.targetLECs)
             print_vec("",OPTobj.params)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
-            #BO_HFMBPT(it,OPTobj,HFdata,to)
-            LHS_HFMBPT(it,OPTobj,HFdata,to)            
+            if optimizer=="BayesOpt"
+                BO_HFMBPT(it,OPTobj,HFdata,to)
+            elseif optimizer=="LHS"
+                LHS_HFMBPT(it,OPTobj,HFdata,to)
+            elseif optimizer=="MCMC"
+                MCMC_HFMBPT(it,OPTobj,HFdata,to)
+            end
             for (k,target) in enumerate(OPTobj.targetLECs)
                 idx = idxLECs[target]
                 LECs[idx] = dLECs[target] = OPTobj.params[k] 
             end
-
         end
         if !optHFMBPT;break;end
     end

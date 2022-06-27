@@ -1,10 +1,5 @@
-"""
-Refs.:
-
-"""
 function XF(Anum)
     return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
-
 end
 function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
     kF = chiEFTobj.kF
@@ -113,40 +108,41 @@ function S12(ell,ellp,J)
     return r
 end
 
-function prep_QWs(chiEFTobj,xr,ts,ws)
+function prep_QWs(chiEFTobj,xr,ts,ws,to)
     n_mesh = chiEFTobj.n_mesh
     kF = chiEFTobj.kF
     dim = lmax + 2
     mpi = sum(mpis)/3.0 / hc; mpi2 = mpi^2
-    QL0s = [ zeros(Float64,n_mesh,n_mesh) for ell =0:dim]
+    QL0s  = [ zeros(Float64,n_mesh,n_mesh) for ell =0:dim]
     QWL2s = [ zeros(Float64,n_mesh,n_mesh) for ell =0:dim]
     QWL1s = [ zeros(Float64,n_mesh,n_mesh) for ell =0:dim]
     QWL0s = [ zeros(Float64,n_mesh,n_mesh) for ell =0:dim]
-    QWlss= [ zeros(Float64,n_mesh,n_mesh) for ell = 0:dim]
+    QWlss = [ zeros(Float64,n_mesh,n_mesh) for ell = 0:dim]
     ndQW1s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
     ndQW2s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
-    @threads for i = 1:n_mesh #for (i,x) in enumerate(xr)
+    QLdict = [ Dict{Float64,Float64}() for ell=0:dim+1]
+    for i = 1:n_mesh #for (i,x) in enumerate(xr)
         x = xr[i]
         x_fm = x/hc
         for (j,y) in enumerate(xr)
             y_fm = y/hc
             z = (x^2 + y^2 + mpi2*hc^2) / (2.0 * x*y)
             for ell = 0:lmax+1
-                QL0s[ell+1][i,j] = QL(z,ell,ts,ws)
-                QWL0s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,0,ts,ws,mpi2)   
+                QL0s[ell+1][i,j] = QL(z,ell,ts,ws,QLdict)
+                QWL0s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,0,ts,ws,mpi2,QLdict)   
             end
             for ell=0:dim
-                QWL2s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,2,ts,ws,mpi2)
-                QWL1s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,1,ts,ws,mpi2)
-                QWlss[ell+1][i,j] = QWls(kF,x_fm,y_fm,ell,ell,0,ts,ws,mpi2)
+                QWL2s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,2,ts,ws,mpi2,QLdict)
+                QWL1s[ell+1][i,j] = QWL(kF,x_fm,y_fm,ell,ell,1,ts,ws,mpi2,QLdict)
+                QWlss[ell+1][i,j] = QWls(kF,x_fm,y_fm,ell,ell,0,ts,ws,mpi2,QLdict)
                 for ellp = 0:dim
-                    ndQW1s[ell+1][ellp+1][i,j] = QWL(kF,x_fm,y_fm,ell,ellp,1,ts,ws,mpi2;is_xmul=false)
-                    ndQW2s[ell+1][ellp+1][i,j] = QWL(kF,x_fm,y_fm,ell,ellp,2,ts,ws,mpi2;is_xmul=false)
+                    ndQW1s[ell+1][ellp+1][i,j] = QWL(kF,x_fm,y_fm,ell,ellp,1,ts,ws,mpi2,QLdict;is_xmul=false)
+                    ndQW2s[ell+1][ellp+1][i,j] = QWL(kF,x_fm,y_fm,ell,ellp,2,ts,ws,mpi2,QLdict;is_xmul=false)
                 end 
             end
         end
     end
-    return QL0s,QWL2s,QWL1s,QWL0s,QWlss,ndQW1s,ndQW2s
+    return QL0s,QWL2s,QWL1s,QWL0s,QWlss,ndQW1s,ndQW2s,QLdict
 end
 
 function single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,
@@ -883,7 +879,7 @@ function Vt_cD_d(ell,x_fm2,y_fm2,XYT,rho,ttit,ttis,tS12,
     return (QDTA + QDTB*rho) * tS12 * ttit
 end
     
-function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2;is_xmul=true)
+function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2,QLdict;is_xmul=true)
     dtdk3 = 0.5 *kF
     s = 0.0
     if ell < 0 || ellp < 0;return s;end
@@ -904,7 +900,7 @@ function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2;is_xmul=true)
         k3 = 0.5 * (t+1.0)*kF 
         x = (k^2 + k3^2 + mpi2)/(2.0*k*k3)
         xp = (kp^2 + k3^2 + mpi2)/(2.0*kp*k3)
-        tmp = dtdk3 * w * QL(x,ell,ts,ws) * QL(xp,ellp,ts,ws) 
+        tmp = dtdk3 * w * QL(x,ell,ts,ws,QLdict) * QL(xp,ellp,ts,ws,QLdict) 
         if p%2 == 0
             tmp *= k3^p
         elseif p==1
@@ -916,7 +912,7 @@ function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2;is_xmul=true)
     return s /deno
 end 
 
-function QWls(kF,k,kp,ell,ellp,p,ts,ws,mpi2)
+function QWls(kF,k,kp,ell,ellp,p,ts,ws,mpi2,QLdict)
     dtdk3 = 0.5 *kF
     s = 0.0
     deno = 2.0 * (2*pi)^2
@@ -931,8 +927,8 @@ function QWls(kF,k,kp,ell,ellp,p,ts,ws,mpi2)
         k3 = 0.5 * (t+1.0)*kF 
         x = (k^2 + k3^2 + mpi2)/(2.0*k*k3)
         xp = (kp^2 + k3^2 + mpi2)/(2.0*kp*k3)
-        s += dtdk3 * k3 * w * (k * QL(x,ell,ts,ws) * (QL(x,ell-1,ts,ws)-QL(x,ell+1,ts,ws))
-                               + kp* QL(xp,ell,ts,ws) * (QL(xp,ell-1,ts,ws)-QL(xp,ell+1,ts,ws)))
+        s += dtdk3 * k3 * w * (k * QL(x,ell,ts,ws,QLdict) * (QL(x,ell-1,ts,ws,QLdict)-QL(x,ell+1,ts,ws,QLdict))
+                               + kp* QL(xp,ell,ts,ws,QLdict) * (QL(xp,ell-1,ts,ws,QLdict)-QL(xp,ell+1,ts,ws,QLdict)))
     end 
     return s/deno
 end 

@@ -11,7 +11,7 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `is_plot::Bool`, to visualize optimization process of LECs
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="LHS")
+function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="")
     if optimizer!="";optHFMBPT=true;end
     if nucs == []; optHFMBPT=false;end
     chiEFTobj = init_chiEFTparams()
@@ -24,7 +24,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
 
     to = TimerOutput()
     @timeit to "prep." begin
-        dict6j,d6j_nabla = PreCalc6j(emax)
+        @timeit to "PreCalc6j" dict6j,d6j_nabla = PreCalc6j(emax)
         # prep. momentum mesh
         xr_fm,wr = Gauss_Legendre(0.0,pmax_fm,n_mesh)
         xr = xr_fm * hc
@@ -47,11 +47,10 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         f_ss!(opfs[2]);f_c!(opfs[3])
         ## prep. Gauss point for integrals
         ts, ws = Gauss_Legendre(-1,1,96)
-
         ## prep. for TBMEs
         jab_max = 4*emax + 2
         Numpn= Dict( [0,0,0,0] => 0 ) ;delete!(Numpn,[0,0,0,0])   
-        infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn)
+        @timeit to "make sps" infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn)
         println("# of channels 2bstate ",length(infos)," #TBME = $nTBME")
         ## prep. integrals for eff3nf
         F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh)
@@ -59,12 +58,12 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         QWs = [ ];wsyms=[]
         if calc_3N
             prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
-            QWs = prep_QWs(chiEFTobj,xr,ts,ws)
-            @timeit to "wsyms" wsyms = prep_wsyms()
+            QWs = prep_QWs(chiEFTobj,xr,ts,ws,to)
+            wsyms = prep_wsyms()
         end
     end
     rdict6j = nothing
-    if nucs != [] || optHFMBPT
+    if optHFMBPT
         rdict6j = adhoc_rewrite6jdict(emax,dict6j)
     end
     HFdata = prepHFdata(nucs,"",["E"],"")
@@ -91,7 +90,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
             if chiEFTobj.calc_NN
                 # ***Leading Order (LO)***
                 ### OPEP
-                OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs)
+                OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
                 # LO contact term
                 LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
                 ## ***Next-to-Leading Order(NLO)***
@@ -427,7 +426,7 @@ end
 
 To calculate Legendre functions of second kind by Gauss-Legendre quadrature
 """
-function QL(z,J::Int64,ts,ws)
+function QL(z,J::Int64,ts,ws,QLdict)
     s = 0.0
     if J==0
         s = 0.5 * log( abs((1.0+z)/(1.0-z)) )
@@ -438,10 +437,18 @@ function QL(z,J::Int64,ts,ws)
     elseif J==3
         s = 0.25 * (5.0*z^3 -3.0*z) * log( abs((1.0+z)/(1.0-z)) ) - 2.5*z^2 + 2.0/3.0
     else
-        @inbounds for (i,t) in enumerate(ts)
-            s += ws[i] * (1.0-t*t)^J / (z-t)^(J+1) 
+        if J >= 0
+            t = get(QLdict[J+1],z,0.0) 
+            if t == 0.0
+                @inbounds for (i,t) in enumerate(ts)
+                    s += ws[i] * (1.0-t*t)^J / (z-t)^(J+1) 
+                end 
+                s *= 1.0 / 2.0^(J+1)
+                QLdict[J+1][z] = s
+            else
+                return t
+            end
         end
-        s *= 1.0 / 2.0^(J+1)
     end
     return s
 end

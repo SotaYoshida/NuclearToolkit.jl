@@ -3,7 +3,7 @@
 
 calc. One-pion exchange potential
 """
-function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs;pigamma=true)
+function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QLdict;pigamma=true)
     n_mesh = chiEFTobj.n_mesh
     hc3 = hc^3
     tVs = zeros(Float64,6)
@@ -32,10 +32,10 @@ function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs;pi
                     ree = 1.0/sqrt(ex*ey) * freg(x,y,4)
                     f_sq!(opfs,xdwn,ydwn)
                     if pnrank != 2 ## pp/nn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs)
+                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs,QLdict)
                     else ## pn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs)
-                        cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs;additive=true)
+                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs,QLdict)
+                        cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs,QLdict;additive=true)
                         #if pigamma
                         #    cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs,pigamma;additive=true)
                         #end
@@ -62,7 +62,7 @@ function fac_pig(beta,c5=0.0)
     return - (1.0-beta)^2 / (2*beta^2) * log(1+beta) +(1.0+beta)/(2*beta) -2.0*c5
 end
 
-function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,pigamma=false;additive=false)
+function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamma=false;additive=false)
     x2 = x^2; y2 = y^2
     z = (mpi2+x2+y2) / (2.0*x*y)
     QJ   = 0.0
@@ -77,12 +77,12 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,pigamma=false
             beta = q2/mpi2
             q2s[i] = fac_pig(beta) * t
         end
-        QJ = QL(z,J,q2s,ws) 
-        if J>0;QJm1=QL(z,J-1,q2s,ws);end
+        QJ = QL(z,J,q2s,ws,QLdict) 
+        if J>0;QJm1=QL(z,J-1,q2s,ws,QLdict);end
         #println("correction QJ $QJ QJm1 $QJm1")
     else
-        QJ = QL(z,J,ts,ws)
-        if J>0;QJm1=QL(z,J-1,ts,ws);end
+        QJ = QL(z,J,ts,ws,QLdict)
+        if J>0;QJm1=QL(z,J-1,ts,ws,QLdict);end
         #println("normal QJ $QJ QJm1 $QJm1")
     end
     IJ0 = nfac * QJ

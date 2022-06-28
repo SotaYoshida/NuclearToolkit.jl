@@ -56,10 +56,10 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         ## prep. integrals for eff3nf
         F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh)
         F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
-        QWs = [ ];wsyms=[]
+        wsyms=[]
+        QWs = prep_QWs(chiEFTobj,xr,ts,ws,to)
         if calc_3N
             prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
-            QWs = prep_QWs(chiEFTobj,xr,ts,ws,to)
             wsyms = prep_wsyms()
         end
     end

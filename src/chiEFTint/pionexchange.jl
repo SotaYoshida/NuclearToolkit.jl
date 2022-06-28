@@ -200,6 +200,21 @@ function set_pjs!(J,pjs,ts)
 end
 
 """
+
+{9}x{nthreads} matrix to store sum of each tpe channal, C/T/S/LS/SigmaL
+"""
+mutable struct tpe_ch
+    Vc::Vector{Float64}
+    Wc::Vector{Float64}
+    Vt::Vector{Float64}
+    Wt::Vector{Float64}
+    Vs::Vector{Float64}
+    Ws::Vector{Float64}
+    Vls::Vector{Float64}
+    Wls::Vector{Float64}
+    Vsl::Vector{Float64}
+end
+"""
     tpe(LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
 
 calc. two-pion exchange terms up to N3LO(EM) or N4LO(EMN)
@@ -337,7 +352,7 @@ end
 - NNLO: EM Eq.(4.15) & Eq.(4.22) => `it_pi` term
 - N3LO: EM Eq.(D.11) (`1/M^2_N`` term), Eq.(D.23) (2-loop term)
 """
-function Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=false)
+function Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=false,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; w2 = w^2; tw2Aq = tw2 * Aq
     tmp_s = 0.0
     # NLO
@@ -370,17 +385,14 @@ function Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
             obj = LoopObjects.n3lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImVt)
         end
     end
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImVt)  # (2.15) VtB
-        #3loop
-        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImVt3) #  Vt12(2.27)&Vt13(2.32) 
+        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImVt3) #  3loop Vt12(2.27)&Vt13(2.32) 
     end
     return tmp_s
 end
-"""
 
-"""
-function Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false)
+function Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; Fpi6 = Fpi2^3; w2 = w^2; w2Aq = w2 * Aq
     nd_mpi2 = nd_mpi^2; nd_mpi4 = nd_mpi2^2
     tmp_s = 0.0
@@ -417,14 +429,14 @@ function Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false)
             tmp_s += f_N3LO_2l_Wt * w2Aq *( w2Aq + 2.0*nd_mpi * (1.0+2.0*gA2))
         end
     end
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImWt)
-        ## 3loop
-        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImWt3)# Wt13 EKMN (2.29) Wt13 EKMN (2.34)
+        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImWt3)# 3loop Wt13 EKMN (2.29) Wt13 EKMN (2.34)
     end
     return tmp_s
 end
-function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=false)
+
+function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=false,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; nd_mpi4 = nd_mpi^4; w2 = w^2; tw2Aq = tw2 * Aq 
     tmp_s = 0.0
     ## NLO
@@ -457,7 +469,7 @@ function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
         end
     end
     ## N4LO
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImVt)  # VsB(2.15) 
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImVs3)# Vs12(2.26) Vt13(2.31) Vt14(2.35)
     end
@@ -471,7 +483,7 @@ end
 - NNLO: EM Eq.(4.16) & Eq.(4.24) => `it_pi` term
 - N3LO: EM Eq.(D.2) (``c^2_i`` term), Eq.(D.6) (`c_i/M_N`` term), Eq.(D.12) (`1/M^2_N`` term), Eq.(D.27) (2-loop term)
 """
-function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMachleidt=true)
+function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMachleidt=true,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; Fpi6 = Fpi2^3; w2 = w^2; w2Aq = w2 * Aq
     nd_mpi2 = nd_mpi^2; nd_mpi4 = nd_mpi^4
     tmp_s = 0.0
@@ -511,10 +523,9 @@ function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMa
             tmp_s += f_N3LO_2l_Ws * w2Aq *( w2Aq + 2.0*nd_mpi * (1.0+2.0*gA2))
         end
     end
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImWt) # EKMN(2.16)&(2.17)
-        #3loop
-        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImWs3) # EKMN(2.28) & EKMN(2.33)
+        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImWs3) # 3loop EKMN(2.28) & EKMN(2.33)
     end 
     tmp_s *= -q2        
     return tmp_s
@@ -532,7 +543,7 @@ end
     Since the LECs in EKMN paper are determined through the Eq.(D7) and this correction term gives minor effect, we use Eq.(D7).
     If `usingMachleidt` is set `false`, one can restore original expression in EM review.
 """
-function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=false,usingMachleidt=true,ImVerbose=false)
+function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=false,usingMachleidt=true,ImVerbose=false,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; Fpi6 = Fpi2^3; w2 = w^2; tw2Aq = tw2 * Aq; nd_mpi2 = nd_mpi^2
     tmp_s = 0.0
     if chi_order >= 2                   
@@ -578,11 +589,12 @@ function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=f
             tmp_s += f_N3LO_2l_Vc * tw2Aq * ((nd_mpi2 + 2.0 * q2)*(2.0*nd_mpi + tw2Aq) +4.0*gA2 * nd_mpi *tw2)
         end
     end
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV(obj.mudomain,q2,obj,obj.ImVc) #Eq.(2.12) & Eq.(2.17)
     end
     return tmp_s
 end
+
 """
     Wc_term(chi_order,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=false,useMachleidt=true)
 !!! note 
@@ -590,7 +602,7 @@ end
     Since the LECs in EKMN paper are determined through the Eqs.(D8) and these difference gives minor effect, we use EMN eq.(D8).
 
 """
-function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=false,useMachleidt=true)
+function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=false,useMachleidt=true,calc_TPE_separately=false)
     Fpi4 = Fpi2^2; Fpi6 = Fpi2^3; nd_mpi2 = nd_mpi^2; nd_mpi4 = nd_mpi^4
     w2 = w^2; tw2Aq = tw2 * Aq 
     tmp_s = 0.0
@@ -652,10 +664,9 @@ function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_
             tmp_s += (term1 + term2) * Lq * f_N3LO_2l_Wc
         end
     end
-    if chi_order >= 4 && EMN
+    if chi_order >= 4 && EMN && calc_TPE_separately
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV(obj.mudomain,q2,obj,obj.ImWc) #Eq.(2.18) 
-        ## 3PE corrections
-        obj = LoopObjects.n4lo; tmp_s += Integral_ImV(obj.mudomain3,q2,obj,obj.ImWc3) #Eq.(2.30) 
+        obj = LoopObjects.n4lo; tmp_s += Integral_ImV(obj.mudomain3,q2,obj,obj.ImWc3) #3PE Eq.(2.30) 
     end
     return tmp_s
 end
@@ -727,7 +738,7 @@ TPE contribution in a given momentum mesh point
 function single_tpe(chiEFTobj,LoopObjects,nd_mpi,nd_mpi2,Fpi2,
                     c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,
                     J,pnrank,ts,ws,dwn,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
-                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,tmpsum,to)
+                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,tmpsum,to;calc_TPE_sep=true)
     LamSFR_nd = dwn * chiEFTobj.LambdaSFR
     usingSFR = ifelse(LamSFR_nd!=0.0,true,false)
     f_T,f_SS,f_C,f_LS,f_SL = opfs
@@ -743,41 +754,37 @@ function single_tpe(chiEFTobj,LoopObjects,nd_mpi,nd_mpi2,Fpi2,
         tw2 = 2.0*nd_mpi2 + q2
         Lq,Aq = calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR_nd)
         # ## Tensor term: Vt
-        tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR)
+        tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[1])
-
         # ##Tensor term: Wt
-        tmp_s = Wt_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
+        tmp_s = Wt_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[2])
-
         ## sigma-sigma term: Vs
-        tmp_s = Vs_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR)
+        tmp_s = Vs_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[3])
-
         ## sigma-sigma term: Ws
-        tmp_s = Ws_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
+        tmp_s = Ws_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[4])
-
         ## Central term: Vc
-        tmp_s = Vc_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR)
+        tmp_s = Vc_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[5])
-
         ## Central term: Wc
-        tmp_s = Wc_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR)
+        tmp_s = Wc_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
         axpy!(tmp_s*int_w,tpj,target[6])
-
         # ## LS term: Vls
         tmp_s = Vls_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
         axpy!(tmp_s*int_w,tpj,target[7])
-
-        ## LS term: Wls        
+        ## LS term: Wls
         tmp_s = Wls_term(chiEFTobj.chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
         axpy!(tmp_s*int_w,tpj,target[8])
-
         ## sigma-L term: Vsl
         tmp_s = Vsl_term(chiEFTobj.chi_order,Lq,Fpi2;EMN=usingSFR)
         axpy!(tmp_s*int_w,tpj,target[9])
-    end
+        if !calc_TPE_sep            
+            n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
+        end
+     end
+
     for ch =1:9
         gi = gis[ch]
         for tid = 1:nthreads()
@@ -806,6 +813,46 @@ function single_tpe(chiEFTobj,LoopObjects,nd_mpi,nd_mpi2,Fpi2,
     calc_IJ_V(J,pnrank,gis[9],f_SL,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="sl")    
 end
 
+function n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
+    obj = LoopObjects.n4lo
+    ts = obj.ts; ws = obj.ws
+    fac1 = (obj.mudomain[2]-obj.mudomain[1])/2; fac2 = (obj.mudomain[1]+obj.mudomain[2])/2
+    fac1_3l = (obj.mudomain3[2]-obj.mudomain3[1])/2; fac2_3l = (obj.mudomain3[1]+obj.mudomain3[2])/2
+    fac_ImV = - 2 * q2^3 / pi 
+    fac_ImVT = 2 * q2^2 /pi 
+    sumVt = sumWt = sumVs = sumWs = sumVc = sumWc = 0.0
+    @inbounds for (ith,t) in enumerate(ts)
+        # ImV (Vc/Wc)
+        mu = fac1*t + fac2
+        ImVc = obj.ImVc[ith]; ImWc = obj.ImWc[ith]
+        sumVc += fac1 * fac_ImV * ws[ith] * ImVc  / (mu^5 *(mu^2 + q2))
+        sumWc += fac1 * fac_ImV * ws[ith] * ImWc  / (mu^5 *(mu^2 + q2))
+ 
+        # ImVT (Vt/Wt/Vs/Ws)
+        ImVt = obj.ImVt[ith]; ImWt = obj.ImWt[ith]
+        sumVt += fac1 * fac_ImVT * ws[ith] * ImVt  / (mu^3 * (mu^2 + q2))
+        sumVs += fac1 * fac_ImVT * ws[ith] * ImVt  / (mu^3 * (mu^2 + q2))
+        sumWt += fac1 * fac_ImVT * ws[ith] * ImWt  / (mu^3 * (mu^2 + q2))
+        sumWs += fac1 * fac_ImVT * ws[ith] * ImWt  / (mu^3 * (mu^2 + q2))
+
+        ## 3-loop terms
+        mu = fac1_3l * t + fac2_3l
+        ImVt3 = obj.ImVt3[ith]; ImWt3 = obj.ImWt3[ith]; ImVs3 = obj.ImVs3[ith]; ImWs3 = obj.ImWs3[ith]; ImWc3 = obj.ImWc3[ith]
+        sumVt += fac1_3l * fac_ImVT *  ws[ith] * ImVt3 / (mu^3 * (mu^2 + q2))
+        sumWt += fac1_3l * fac_ImVT *  ws[ith] * ImWt3 / (mu^3 * (mu^2 + q2))
+        sumVs += fac1_3l * fac_ImVT *  ws[ith] * ImVs3 / (mu^3 * (mu^2 + q2))
+        sumWs += fac1_3l * fac_ImVT *  ws[ith] * ImWs3 / (mu^3 * (mu^2 + q2))
+        sumWc += fac1_3l * fac_ImV  *  ws[ith] * ImWc3 /  (mu^5 *(mu^2 + q2))
+    end
+    axpy!(sumVt*int_w,tpj,target[1])
+    axpy!(sumWt*int_w,tpj,target[2])
+    axpy!(sumVs*int_w,tpj,target[3])
+    axpy!(sumWs*int_w,tpj,target[4])
+    axpy!(sumVc*int_w,tpj,target[5])
+    axpy!(sumWc*int_w,tpj,target[6])  
+
+    return nothing
+end
 function calc_IJ_V(J,pnrank,gi,opf,fc,f_idx,tVs,lsj,tllsj,
                    tdict,V12mom,V_i,V_j,to;
                    isodep=false,addtype="")
@@ -1160,10 +1207,9 @@ function Integral_ImV(mudomain,q2,obj,ImV;verbose=false)
     ts = obj.ts; ws = obj.ws
     valV = 0.0
     fac = - 2 * q2^3 / pi
-    for (ith,t) in enumerate(ts)
-        w = ws[ith]; mu = fac1*t + fac2
-        inint = ImV[ith] / (mu^5 *(mu^2 + q2))
-        valV += inint * w 
+    @inbounds for (ith,t) in enumerate(ts)
+        mu = fac1*t + fac2
+        valV += ws[ith] * ImV[ith] / (mu^5 *(mu^2 + q2))
     end
     return fac1 * valV * fac
 end
@@ -1174,9 +1220,8 @@ function Integral_ImV_T(mudomain,q2,obj,ImV;verbose=false)
     valV = 0.0
     fac = 2 * q2^2 /pi
     for (ith,t) in enumerate(ts)
-        w = ws[ith]; mu = fac1 * t + fac2
-        inint = ImV[ith] / (mu^3 * (mu^2 + q2))
-        valV += inint * w
+        mu = fac1 * t + fac2
+        valV += ws[ith] * ImV[ith] / (mu^3 * (mu^2 + q2))
     end
     return fac1 * fac * valV    
 end

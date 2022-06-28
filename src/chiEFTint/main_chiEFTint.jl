@@ -24,12 +24,13 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
 
     to = TimerOutput()
     @timeit to "prep." begin
-        @timeit to "PreCalc6j" dict6j,d6j_nabla = PreCalc6j(emax)
+        dict6j,d6j_nabla = PreCalc6j(emax)
         # prep. momentum mesh
         xr_fm,wr = Gauss_Legendre(0.0,pmax_fm,n_mesh)
         xr = xr_fm * hc
         numst2,dict_numst,arr_numst = bstate()
         V12mom = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
+        V12mom_2n3n = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
         ## prep. radial functions
         rmass = Mp*Mn/(Mp+Mn)
         br = sqrt(hc^2 /(rmass*hw))
@@ -50,7 +51,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         ## prep. for TBMEs
         jab_max = 4*emax + 2
         Numpn= Dict( [0,0,0,0] => 0 ) ;delete!(Numpn,[0,0,0,0])   
-        @timeit to "make sps" infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn)
+        infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn)
         println("# of channels 2bstate ",length(infos)," #TBME = $nTBME")
         ## prep. integrals for eff3nf
         F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh)
@@ -73,7 +74,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     dLECs=Dict{String,Float64}()
     fn_LECs = get_fn_LECs(chiEFTobj.pottype)
     read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
-    #println("chiEFTobj $chiEFTobj")
+    
     ## Start Opt stuff
     OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum,optimizer=optimizer) 
     d9j = HOBs = nothing
@@ -84,46 +85,42 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
 
     ### Calculation of NN potential and SRG
     X9,U6 = prepareX9U6(2*emax)
-    for it = 1:itnum
-        if it > 1; for i=1:length(numst2); V12mom[i] .= 0.0;end;end 
-        @timeit to "NNcalc" begin 
-            if chiEFTobj.calc_NN
-                # ***Leading Order (LO)***
-                ### OPEP
-                OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
-                # LO contact term
-                LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
-                ## ***Next-to-Leading Order(NLO)***
-                if chiEFTobj.chi_order >= 1
-                    ### contact term Q^2
-                    NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                    ### TPE terms (NLO,NNLO,N3LO)
-                    @timeit to "tpe" tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
-                end                
-                # *** N3LO (contact Q^4)
-                if chiEFTobj.chi_order >= 3
-                    N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                end
-                # *** N4LO 
-                if chiEFTobj.chi_order >= 4
-                    N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                end
+    @timeit to "NNcalc" begin 
+        if chiEFTobj.calc_NN
+            # ***Leading Order (LO)***
+            ### OPEP
+            OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
+            # LO contact term
+            LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
+            ## ***Next-to-Leading Order(NLO)***
+            if chiEFTobj.chi_order >= 1
+                ### contact term Q^2
+                NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+                ### TPE terms (NLO,NNLO,N3LO)
+                tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
+            end                
+            # *** N3LO (contact Q^4)
+            if chiEFTobj.chi_order >= 3
+                N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
+            end
+            # *** N4LO 
+            if chiEFTobj.chi_order >= 4
+                N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
             end
         end
-        if chiEFTobj.srg
-            @timeit to "SRG" SRG(chiEFTobj,xr_fm,wr,V12mom,dict_numst,to)
-        end
+    end
+    if chiEFTobj.srg
+        @timeit to "SRG" SRG(chiEFTobj,xr_fm,wr,V12mom,dict_numst,to)
+    end
+    for it = 1:itnum
+        if it > 1; for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end;end
         if chiEFTobj.calc_3N
-            calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,
-                          F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
+            @timeit to "2n3n" calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)            
         end
-        if is_plot
-            write_vmom(xr,V12mom,dict_numst[2],2,llpSJ_s)
-            momplot(xr,V12mom,dict_numst[2],2,llpSJ_s)
-        end
+        add_V12mom!(V12mom,V12mom_2n3n)
         #transform mom. int. to HO matrix element
         @timeit to "Vtrans" begin
-            V12ab = Vrel(chiEFTobj,V12mom,numst2,xr_fm,wr,n_mesh,Rnl,to)
+            V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
             dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
                                  Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)
         end
@@ -149,6 +146,13 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     #if optHFMBPT;showBOhist(itnum,BOobj,target_LECs);end
     if is_show; show(to, allocations = true,compact = false);println("");end
     return true
+end
+
+function add_V12mom!(V12mom,V12mom_2n3n,a=1.0)
+    for i = 1:length(V12mom)
+        V12mom_2n3n[i] .+= V12mom[i] * a
+    end
+    return nothing
 end
 
 function get_fn_LECs(pottype)

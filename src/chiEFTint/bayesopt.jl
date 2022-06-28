@@ -225,7 +225,7 @@ function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
         chain = zeros(Float64,dim,nstep+1)
         chain[:,1] .= params
         history = [zeros(Float64,3) for i=1:nstep]
-        sigmas = [0.1,0.2,0.2,0.3,0.3]
+        sigmas = [0.1,0.15,0.15,0.15,0.1]
         OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)   
     end
 end

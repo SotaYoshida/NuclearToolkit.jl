@@ -209,10 +209,8 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                         if tz_ab != tz_ij;continue;end
                         if (-1)^(la+lb) != prty_ij;continue;end                            
                         if tri_check(ji,jb,totJ*2)==false;continue;end
-                        aTzab = abs(tz_ab)
                         keych[1] = tz_a + tz_b; keych[2] = (-1)^(la+lb)
-                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,
-                                     dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab) 
+                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,tdict6j,Gamma,keych) 
                         if v1 == 0.0;continue;end
                         v1 = v1 / (ehole - e1b[a] - e1b[b])
                         for k in allhs                                 
@@ -228,12 +226,10 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                                 jc = oc.j
                                 if tri_check(jk,jc,totJ*2)==false;continue;end
                                 keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,
-                                                dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab)
+                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych)
                                 if v2==0.0;continue;end
                                 keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,
-                                                dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab)
+                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych)
                                 v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                 Etmp += Jfac * v1 * v2 * v3                                   
                             end
@@ -251,6 +247,10 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     return EMP3
 end
 
+function get_intkey_2(a,b;ofst=1000)
+    return ofst*a + b
+end
+
 """
     vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab;verbose=false) 
 
@@ -264,33 +264,27 @@ j_i & j_d & J'
 V^{J'}_{abij}
 ```
 """
-function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab;verbose=false) 
-    ta = a; tb = b; tc = c; td = d
+function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych;verbose=false) 
     Jmin = div(max(abs(ja-jb),abs(jc-jd)),2)
     Jmax = div(min(ja+jb,jc+jd),2)
+    nkeyab = get_intkey_2(a,b); nkeycd = get_intkey_2(c,d)
+    if a > b # this can happen only when Tz=0 now
+        nkeyab = get_intkey_2(b,a)
+    end
+    if c > d # this can happen only when Tz=0 now
+        nkeycd = get_intkey_2(d,c)
+    end
     v = 0.0
     @inbounds for Jp = Jmin:Jmax
         if Jp % 2 == 1 && (a==b || c==d);continue;end          
         nkey = get_nkey_from_key6j(ja,jd,jc,jb,Jp); t6j = tdict6j[nkey]
         if t6j == 0.0; continue;end
         keych[3] = Jp
-        tmp = dict_2b_ch[keych]
-        vch = tmp.Vch; vdict = tmp.Vdict
-        norfac = ifelse(a == b,sqrt(2.0),1.0) *  ifelse(c == d,sqrt(2.0),1.0)
-        
-        keyab[1] = ta; keyab[2] = tb        
-        if ta > tb # this can happen only when Tz=0 now
-            keyab[1] = tb; keyab[2]= ta
-            norfac *= (-1)^(div(ja+jb,2)+Jp+1) 
-        end 
-        ib = vdict[keyab]
-
-        keyab[1] = tc; keyab[2] = td
-        if tc > td  # this can happen only when Tz=0 now
-            keyab[1] = td; keyab[2]= tc
-            norfac *= (-1)^(div(jc+jd,2)+Jp+1)            
-        end
-        ik = vdict[keyab]        
+        vch = dict_2b_ch[keych].Vch; vdict = dict_2b_ch[keych].Vdict
+        norfac = ifelse(a == b,sqrt(2.0),1.0) *  ifelse(c == d,sqrt(2.0),1.0)        
+        if a > b; norfac *= (-1)^(div(ja+jb,2)+Jp+1); end 
+        if c > d; norfac *= (-1)^(div(jc+jd,2)+Jp+1); end
+        ib = vdict[nkeyab]; ik = vdict[nkeycd]   
         v -= t6j * (2*Jp+1) * norfac * Gamma[vch][ib,ik]      
     end
     return v

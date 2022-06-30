@@ -29,10 +29,7 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true)
     logprior = -0.5*Lam*dot(tvec,tvec)
     if mcmc
         Lamt = params-params_ref
-        part_c134 = @view tvec[1:3]
-        part_cDE = @view tvec[4:5]
-        part_c134 .*= 10.0
-        part_cDE .*= 0.5
+        tvec[1] *= 4.0
         logprior = -0.5*dot(Lamt,tvec)
     end    
     llh = 0.0
@@ -114,7 +111,6 @@ struct BOobject
     acquis::Vector{Float64}   
 end
 
-
 function get_LECs_params(op)
     targetLECs = String[]
     params = Float64[]; params_ref=Float64[]; pdomains = Tuple{Float64, Float64}[]
@@ -122,9 +118,7 @@ function get_LECs_params(op)
         targetLECs= ["ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE"]
         params = zeros(Float64,length(targetLECs))
         params_ref = zeros(Float64,length(targetLECs))
-        #params_ref[1] = -0.81; params_ref[2] = -3.2; params_ref[3] = 5.4    
-        #pdomains = [ (-1.5,-0.5), (-4.5,-2.0), (2.0,6.0), (-3.0,3.0), (-3.0,3.0) ]
-        params_ref[1] = -0.73; params_ref[2] = -2.38; params_ref[3] = 4.69
+        params_ref[1] = -1.10; params_ref[2] = -5.54; params_ref[3] = 4.17
         pdomains = [ (-1.2,-0.5), (-5.0,-2.0), (2.0,6.0), (-2.0,2.0), (-1.5,1.5) ]
     elseif op=="c34"
         targetLECs= ["ct3_NNLO","ct4_NNLO"]
@@ -158,10 +152,7 @@ acquis:: vector of acquisition function values
 pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
 adhoc=> tau =1.0, l=1/domain size
 """
-function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
-                op="2n3nall",
-                optimizer="MCMC"
-                )
+function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,op="2n3nall",optimizer="MCMC")
     if opt == false;return nothing;end
     targetLECs, params,params_ref,pdomains = get_LECs_params(op)
     for (k,target) in enumerate(targetLECs)
@@ -212,7 +203,7 @@ function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
                 LECs[idx] = param
                 dLECs[target] = param        
             end
-            return OPTobj
+            return OPToj
         end
     end
     if optimizer=="MCMC"
@@ -225,8 +216,10 @@ function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,
         chain = zeros(Float64,dim,nstep+1)
         chain[:,1] .= params
         history = [zeros(Float64,3) for i=1:nstep]
-        sigmas = [0.1,0.15,0.15,0.15,0.1]
-        OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)   
+        sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]
+        OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)
+        println("params_ref",params_ref)
+        return OPTobj
     end
 end
 

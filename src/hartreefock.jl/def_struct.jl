@@ -52,11 +52,11 @@ end
 struct `VdictCh`
 # Fields
 - `Vch::Int64` two-body channel (specified by JPT)
-- `Vdict::Dict{Vector{Int64},Int64}` dict to get idx from ket like |1,5>:=[1,5]
+- `Vdict::Dict{Int64,Int64}` dict to get idx from ket, which is used in only `vPandya` function for HFMBPT
 """
 struct VdictCh
     Vch::Int64
-    Vdict::Dict{Vector{Int64},Int64}
+    Vdict::Dict{Int64,Int64}
 end
 
 """

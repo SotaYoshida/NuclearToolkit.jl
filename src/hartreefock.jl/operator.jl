@@ -207,7 +207,7 @@ function Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
 end
 
 """
-    Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlevel=true,verbose=false)
+    Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true,verbose=false)
 
 Calculate expectation value of Rp2 and its HFMBPT corrections.
 
@@ -215,7 +215,7 @@ Details about HFMBPT correction can be found in
 Many-Body Methods in Chemistry and Physics by Isaiah Shavitt and Rodney J. Bartlett (2009, Cambridge Molecular Science) 
 or Appendix in [T. Miyagi et al., Phys. Rev. C 105, 0143022 (2022)](https://doi.org/10.1103/PhysRevC.105.014302).
 """
-function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlevel=true,verbose=false)
+function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true,verbose=false)
     MS = HFobj.modelspace; sps = MS.sps
     p_sps = MS.p_sps; Cp = HFobj.Cp; e1b_p = HFobj.e1b_p; occ_p = MS.occ_p
     n_sps = MS.n_sps; Cn = HFobj.Cn; e1b_n = HFobj.e1b_n; occ_n = MS.occ_n
@@ -251,9 +251,9 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
         kets = tbc.kets
         nkets = length(kets)
         if nkets == 0; continue;end
-        D = zeros(Float64,nkets,nkets)
-        Op2b = Omats[ch]
-        cOp2b = copy(Op2b)
+        D = @view MatOp[threadid()][1:nkets,1:nkets]
+        D2 = @view MatOp[threadid()+nthreads()][1:nkets,1:nkets]
+        Op2b = Omats[ch]       
         for ib = 1:nkets
             i,j = kets[ib]
             phase_ij = (-1)^( div(sps[i].j+sps[j].j,2) + 1 + J)
@@ -286,9 +286,8 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
 
             end
         end
-        cOp2b = copy(Op2b)
-        BLAS.gemm!('N','N',1.0,Op2b,D,0.0,cOp2b)        
-        BLAS.gemm!('T','N',1.0,D,cOp2b,0.0,Op2b)
+        BLAS.gemm!('N','N',1.0,Op2b,D,0.0,D2)        
+        BLAS.gemm!('T','N',1.0,D,D2,0.0,Op2b)
 
         ## calc expectation value
         Nocc = 2*J + 1
@@ -426,16 +425,12 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
         allhs = vcat(holes[1],holes[2])
         allps = vcat(particles[1],particles[2])
         nthre = nthreads()
-        keys6j = [ zeros(Int64,5) for i=1:nthre]
         keychs = [ zeros(Int64,3) for i=1:nthre]
-        keyabs = [ zeros(Int64,2) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
         @inbounds @qthreads for idx_a =1:length(allps)
             a = allps[idx_a]
             threid = threadid()
-            key6j = keys6j[threid]
             keych = keychs[threid]
-            keyab = keyabs[threid]
             oa = sps[a]; la = oa.l; ja = oa.j; tz_a = oa.tz
             S9tmp = S12tmp = 0.0
             for i in allhs
@@ -453,13 +448,12 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                         prty_ij = (-1)^(li+lj)
                         for b in allps
                             ob = sps[b]; lb = ob.l; jb = ob.j; tz_b = ob.tz
-                            tz_ab = tz_a + tz_b                                                    
+                            tz_ab = tz_a + tz_b
                             if tz_ab != tz_ij;continue;end
-                            if (-1)^(la+lb) != prty_ij;continue;end                            
+                            if (-1)^(la+lb) != prty_ij;continue;end
                             if tri_check(ji,jb,totJ*2)==false;continue;end
                             keych[1] = tz_a + tz_b; keych[2] = (-1)^(la+lb)
-                            v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,
-                                        dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab)                           
+                            v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,tdict6j,Gamma,keych)
                             if v1 == 0.0;continue;end
                             v1 = v1 / (ehole - e1b[a] - e1b[b])
                             for k in allhs
@@ -473,20 +467,19 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlev
                                     if tri_check(jk,jc,totJ*2)==false;continue;end                               
                                     # S9 term  O123 = Gamma/Gamma/Omats
                                     keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab)
+                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych)
                                     if v2!=0.0
                                         keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Omats,keych,key6j,keyab)                                                        
+                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Omats,keych)
                                         v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                         S9tmp += - Jfac * v1 * v2 * v3 
                                     end
                                     # S12 term O123 = Gamma/Omats/Gamma
                                     keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,
-                                                dict_2b_ch,tdict6j,Omats,keych,key6j,keyab)
+                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Omats,keych)
                                     if v2!=0.0
                                         keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab)
+                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych)
                                         v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                         S12tmp += - Jfac * v1 * v2 * v3  
                                     end
@@ -629,11 +622,11 @@ R^2_{ch} = R^2_p + \\langle r^2_p \\rangle + \\frac{N}{Z} \\langle r^2_n \\rangl
 where ``\\langle r^2_p \\rangle = 0.769 \\mathrm{fm}^2``, ``\\langle r^2_n \\rangle = -0.116 \\mathrm{fm}^2``,
 `` \\frac{3}{4m^2_p c^4} =0.033\\mathrm{fm}^2`` is the so-called Darwin-Foldy term, and the last term is Spin-Orbit correction term.
 """
-function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,to;hfmbptlevel=true)   
+function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true)   
     Calculate_RCM(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,to)
     Calculate_intR2p(binfo,Chan1b,HFobj,Op_Rp2)
     Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
-    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j;hfmbptlevel=hfmbptlevel)
+    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
     return Rp,Rp_PT
 end
 
@@ -642,7 +635,7 @@ end
 
 evaluate charge radii with HFMBPT
 """
-function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,to)
+function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,MatOp,to)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -650,7 +643,7 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
     DF = 0.033 
     Rp2 = 0.8775^2
     Rn2 = -0.1149
-    Rpp,Rp_MP = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,to)
+    Rpp,Rp_MP = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to)
     Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
     Rch = NaN 
     try 

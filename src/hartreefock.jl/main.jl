@@ -33,6 +33,10 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
         Z = nuc.Z; N=nuc.N; A=nuc.A   
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
+        MatOp = Matrix{Float64}[]
+        if "Rp2" in Operators
+            MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
+        end
     end
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
@@ -53,7 +57,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         else
             if "Rp2" in Operators
                 Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,to)
+                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
             end
         end
     end
@@ -68,35 +72,35 @@ end
 function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
     emax = chiEFTobj.emax
     hw = chiEFTobj.hw
-    sntf = chiEFTobj.fn_tbme
-    @timeit to "read" begin
-        nuc = def_nuc(nucs[1],ref,corenuc)
-        Z = nuc.Z; N=nuc.N; A=nuc.A 
-        binfo = basedat(nuc,sntf,hw,emax)
-        sps,p_sps,n_sps = def_sps(emax)
-        lp = div(length(sps),2)
-        new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)           
-        dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps)
-        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
-        dictTBMEs = dictsnt.dictTBMEs
+    sntf = chiEFTobj.fn_tbme    
+    nuc = def_nuc(nucs[1],ref,corenuc)
+    Z = nuc.Z; N=nuc.N; A=nuc.A 
+    binfo = basedat(nuc,sntf,hw,emax)
+    sps,p_sps,n_sps = def_sps(emax)
+    lp = div(length(sps),2)
+    new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)           
+    dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps)
+    Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
+    dictTBMEs = dictsnt.dictTBMEs
+    MatOp = Matrix{Float64}[]
+    if "Rp2" in Operators
+        MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
     end
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A
         #show_Hamil_norm(Hamil;normtype="sum")
         binfo = basedat(nuc,sntf,hw,emax)  
-        @timeit to "update" if i > 1
+        if i > 1
             recalc_v!(A,dicts)
             update_1b!(binfo,sps,Hamil)
             update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
             dictTBMEs = dictsnt.dictTBMEs
         end      
-        @timeit to "hf_iteration" begin 
-            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose)
-            if "Rp2" in Operators
-                Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,to)
-            end
+        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose)
+        if "Rp2" in Operators
+            Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
+            eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
         end
     end
     return true
@@ -431,10 +435,10 @@ calculate ``\\Gamma`` (two-body HF interaction)
 """
 function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
     nchan = length(Chan2b)
-    Ds = [ zeros(Float64,maxnpq,maxnpq) ]        
-    M  = zeros(Float64,maxnpq,maxnpq)   
+    Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
+    M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
     npqmax = 0
-    for ch = 1:nchan
+    @threads for ch = 1:nchan
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J; kets = tmp.kets
         npq = length(kets)
@@ -473,7 +477,7 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
             end 
         end
         Gam = Gamma[ch]
-        tM  = @views M[1:npq,1:npq]
+        tM  = @views M[threadid()][1:npq,1:npq]
         BLAS.gemm!('N','N',1.0,v,D,0.0,tM)
         BLAS.gemm!('T','N',1.0,D,tM,0.0,Gam)
     end
@@ -589,13 +593,11 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 - `Gamma:: Vector{Matrix{Float64}}` two-body int.
 
 """
-function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,
-                      Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=100,verbose=false,HFtol=1.e-14,inttype="snt")
+function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
+                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt")
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)
-
     p1b = Hamil.onebody[1]
     n1b = Hamil.onebody[2]
     V2 = Hamil.twobody
@@ -619,7 +621,6 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,
     h_p = copy(mat1b); h_n = copy(mat1b)
     update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
     calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs) 
-
     if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
     for it = 1:itnum        
         ## diagonalize proton/neutron 1b hamiltonian

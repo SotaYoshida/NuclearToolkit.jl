@@ -523,7 +523,7 @@ function def_chan2b(binfo,dicts,sps,Chan1b)
         for prty = 1:-2:-1        
             for J = 0:Jmax
                 kets = Vector{Int64}[ ]
-                vdict = Dict{Vector{Int64},Int64}()
+                vdict = Dict{Int64,Int64}()
                 for idx_a = 1:dim1b
                     a = pn1 + 2*(idx_a-1)
                     la = sps[a].l; ja = sps[a].j
@@ -539,14 +539,16 @@ function def_chan2b(binfo,dicts,sps,Chan1b)
                         if a > b;ta=b;tb=a;end
                         if !([ta,tb] in kets)
                             push!(kets,[ta,tb])
-                            vdict[[ta,tb]] = length(kets)
+                            nkey_ab = get_intkey_2(ta,tb)
+                            vdict[nkey_ab] = length(kets)
                         end
                     end
                 end
                 nchan += 1
                 kets = sort(kets)
                 for (ik,ket) in enumerate(kets)
-                    vdict[ket] = ik
+                    intkey = get_intkey_2(ket[1],ket[2])
+                    vdict[intkey] = ik
                 end
                 push!(Chan2b, chan2b(Tz,prty,J,kets))
                 dim = length(kets)

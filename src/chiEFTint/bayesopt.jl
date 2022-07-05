@@ -54,7 +54,7 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout)
         "  logllh  ",@sprintf("%9.2e",llh),
         "  logpost ",@sprintf("%9.2e",logpost),"\n" )
     else
-        println("eval: ","logprior ",@sprintf("%9.2e",logprior),
+        println(io,"eval: ","logprior ",@sprintf("%9.2e",logprior),
                 "  logllh  ",@sprintf("%9.2e",llh),
                 "  logpost ",@sprintf("%9.2e",logpost),
                 " Acc.Rate ",@sprintf("%6.2f",100*OPTobj.acchit/it), "\n" )

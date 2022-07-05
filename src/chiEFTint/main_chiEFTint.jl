@@ -153,7 +153,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
     else
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
         for it = 1:itnum
-            println("it $it done @$myrank \n\n\n\n\n")
+            println(io,"it $it done @$myrank")
             mpi_hfmbpt(it,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
                        ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
                        numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;Operators=[])

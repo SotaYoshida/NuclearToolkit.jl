@@ -13,7 +13,7 @@ using Test
     @test hf_main([nuc],sntf,hw,emax;verbose=false,doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace)
 
     ## shell model calculation
-    vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
+    vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
     @test main_sm(vs_sntf,"Be8",n_eigen,targetJ)
     
 end

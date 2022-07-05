@@ -828,9 +828,8 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(emax,chiEFTobj,to)
+function PreCalcHOB(emax,chiEFTobj,to;io=stdout)
     Nnmax = chiEFTobj.Nnmax
-    println("Now precalculating HOB...")
     Nmax = max(2*emax,Nnmax)
     if emax >= 10; Nmax = Nnmax + 10;end
     Jmax = jmax2 = 2*emax + 1
@@ -866,7 +865,6 @@ function PreCalcHOB(emax,chiEFTobj,to)
     end
     keycg = [ zeros(Float64,3) for i=1:nthreads()]        
     dWS = dWS2n(dtri,dcgm0,keycg)
-    println("hitCG $hitCG dWS  =>", @sprintf("%7.2f",Base.summarysize(dWS)/1024/1024)," MB ")
 
     #### 9j with {la 1/2 ja; lb 1/2 jb; L S J} structure
     num9j = 0
@@ -952,7 +950,8 @@ function PreCalcHOB(emax,chiEFTobj,to)
         tHOB = gmosh2(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,to)
         HOBs[nkey1][nkey2] = tHOB
     end  
-    println("@emax $emax 9j($num9j) =>", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
+    println(io,"@emax $emax ","hitCG $hitCG dWS  =>", @sprintf("%7.2f",Base.summarysize(dWS)/1024/1024)," MB ",
+            "  9j($num9j) =>", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
             "  HOB ($hit)=>",@sprintf("%7.2f",Base.summarysize(HOBs)/1024/1024), " MB")
     dWS = nothing; dcgm0 =nothing; dtri=nothing 
     return dict9j,HOBs

@@ -227,16 +227,17 @@ function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspac
     hw = binfo.hw
     emax = binfo.emax
     dict_ms2snt = Chan1b.ms2snt
+    ref = binfo.ref
     MS = HFobj.modelspace; sps = MS.sps
     cDelta = strip(@sprintf("%5.1f",IMSRGobj.denominatorDelta))
     for i=1:1+length(Operators)
         Op = IMSRGobj.H
         cOp = "Hamiltonian"
-        fname = "vsimsrg_" * vspace * "_core"*binfo.nuc.corenuc* "ref"* binfo.nuc.cnuc *"_"*"hw"*string(hw)*"e"*string(emax)* "_Delta$cDelta.snt"
+        refnuc = ifelse(ref=="core",binfo.nuc.corenuc,binfo.nuc.cnuc)
+        fname = "vsimsrg_" * vspace * "_core"*binfo.nuc.corenuc* "ref"*refnuc* "_" * binfo.nuc.cnuc *"_"*"hw"*string(hw)*"e"*string(emax)* "_Delta$cDelta.snt"
         if i !=1
-            Op = effOps[i-1]
-            cOp = Operators[i-1]
-            fname = "vsimsrg_" * vspace * "_core" *binfo.nuc.corenuc* "ref"* binfo.nuc.cnuc * "_"*"hw"*string(hw)*"e"*string(emax)*"_Delta"*cDelta*"_"*cOp*".snt"
+            Op = effOps[i-1]; cOp = Operators[i-1]
+            fname = "vsimsrg_" * vspace * "_core" *binfo.nuc.corenuc* "ref"*refnuc * "_" * binfo.nuc.cnuc * "_"*"hw"*string(hw)*"e"*string(emax)*"_Delta"*cDelta*"_"*cOp*".snt"
         end
         io = open(fname,"w")
 

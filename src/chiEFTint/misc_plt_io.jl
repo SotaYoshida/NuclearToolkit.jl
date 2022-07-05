@@ -58,7 +58,7 @@ end
     init_chiEFTparams(;fn_params="optional_parameters.jl")
 constructor of chiEFTparams, see `chiEFTparams` mutable struct for more details.
 """
-function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1)
+function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1,io=stdout)
     n_mesh = 50
     pmax_fm = 5.0
     emax = 4
@@ -97,7 +97,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
         println("Since $fn_params is not found, the default parameters will be used.")
         return params
     else
-        read_chiEFT_parameter!(fn_params,params)
+        read_chiEFT_parameter!(fn_params,params;io=io)
         tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
         params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
         return params
@@ -108,7 +108,7 @@ end
     read_chiEFT_parameter!(fn,params)
 Function to overwrite params from the parameter file `fn`.
 """
-function read_chiEFT_parameter!(fn,params::chiEFTparams)
+function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     include(fn)
     if @isdefined(n_mesh); params.n_mesh = n_mesh ; end
     if @isdefined(pmax_fm); params.pmax_fm = pmax_fm ; end
@@ -134,7 +134,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams)
     if occursin("emn",params.pottype)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
-    println("parameters in $fn will be used.")
+    println(io,"parameters in $fn will be used.")
     return nothing
 end
 
@@ -402,7 +402,7 @@ end
 function to make println(stdout) more readable.
 This is usuful for debug.
 """
-function print_vec(s,v;ine=false)
+function print_vec(s,v,io=std;ine=false)
     s *= " "
     for i = 1:length(v)
         if ine
@@ -412,7 +412,7 @@ function print_vec(s,v;ine=false)
             #s *= @sprintf "%25.15f" v[i] 
     	end
     end
-    println(s)
+    println(io,s)
 end
 
 """

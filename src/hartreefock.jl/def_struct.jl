@@ -146,12 +146,14 @@ struct `basedat` contains base infomation of the calculation
 - `sntf::String` filename/path to input interaction
 - `hw::Int64` hbar omega parameter used to define single particle states
 - `emax::Int64` emax truncation for the entire calculations
+- `ref::String` to specify ref="core" or ref="nucl"
 """
 struct basedat
     nuc::nuclei
     sntf::String
     hw::Int64
-    emax::Int64    
+    emax::Int64
+    ref::String 
 end
 
 """

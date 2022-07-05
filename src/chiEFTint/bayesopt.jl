@@ -21,7 +21,7 @@ function myCholesky!(tmpA,ln,cLL)
     return nothing
 end
 
-function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true)
+function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout)
     thist = OPTobj.history[it]
     params = OPTobj.params
     params_ref = OPTobj.params_ref
@@ -50,9 +50,9 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true)
     thist[2] = llh    
     thist[3] = logpost
     if !mcmc
-        println("eval: ","logprior ",@sprintf("%9.2e",logprior),
-                "  logllh  ",@sprintf("%9.2e",llh),
-                "  logpost ",@sprintf("%9.2e",logpost),"\n" )
+        println(io,"eval: ","logprior ",@sprintf("%9.2e",logprior),
+        "  logllh  ",@sprintf("%9.2e",llh),
+        "  logpost ",@sprintf("%9.2e",logpost),"\n" )
     else
         println("eval: ","logprior ",@sprintf("%9.2e",logprior),
                 "  logllh  ",@sprintf("%9.2e",llh),
@@ -75,6 +75,22 @@ mutable struct MCMCobject
     cand::Vector{Float64}
     chain::Matrix{Float64}
     history::Vector{Vector{Float64}}
+end
+mutable struct MPIMCMCobject
+    a::Float64
+    dim::Int64    
+    nstep::Int64
+    burnin::Int64
+    thining::Int64
+    acchit::Int64
+    targetLECs::Vector{String}
+    params::Vector{Float64}
+    params_ref::Vector{Float64}
+    cand::Vector{Float64}
+    chain::Array{Float64,3}
+    history::Vector{Vector{Float64}}
+    ens1::Vector{Int64}
+    ens2::Vector{Int64}
 end
 
 struct LHSobject
@@ -152,12 +168,12 @@ acquis:: vector of acquisition function values
 pKernel:: hypara for GP kernel, first one is `tau` and the other ones are correlation lengths
 adhoc=> tau =1.0, l=1/domain size
 """
-function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,op="2n3nall",optimizer="MCMC")
+function prepOPT(LECs,idxLECs,dLECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MCMC",MPIcomm=false)
     if opt == false;return nothing;end
     targetLECs, params,params_ref,pdomains = get_LECs_params(op)
     for (k,target) in enumerate(targetLECs)
         idx = idxLECs[target]
-        dLECs[target]=params[k] = LECs[idx]
+        dLECs[target]= params[k] = LECs[idx]
     end 
     pDim = length(targetLECs)
 
@@ -216,10 +232,40 @@ function prepOPT(LECs,idxLECs,dLECs,opt,to;num_cand=500,op="2n3nall",optimizer="
         chain = zeros(Float64,dim,nstep+1)
         chain[:,1] .= params
         history = [zeros(Float64,3) for i=1:nstep]
-        sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]
-        OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)
-        println("params_ref",params_ref)
-        return OPTobj
+        if MPIcomm #AffineInv MCMC
+            rank_master = 0
+            comm = MPI.COMM_WORLD; npsize = MPI.Comm_size(comm)
+            chain = zeros(Float64,nstep,npsize,dim)
+            myrank = MPI.Comm_rank(comm)
+            for n=1:dim; params[n] += 0.2 * randn(); end
+            X0 = @view chain[1,myrank+1,:]; X0 .= params
+            if myrank == rank_master
+                for src_idx = 1:npsize
+                    src_rank = src_idx-1
+                    if src_rank == rank_master;continue;end
+                    X0_ = @view chain[1,src_idx,:]
+                    MPI.Recv!(X0_,src_rank,999,comm)
+                end
+            else
+                MPI.Isend(X0,rank_master,999,comm)
+            end
+            MPI.Barrier(comm)
+            ens1 = collect(2:2:npsize)
+            ens2 = collect(3:2:npsize)
+            #println("ens1 $ens1 ens2 $ens2 npsize $npsize")
+            a = 2.0 #GW10 recommendation
+            OPTobj = MPIMCMCobject(a,dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,cand,chain,history,ens1,ens2)
+            for (k,target) in enumerate(targetLECs)
+                idx = idxLECs[target]
+                dLECs[target] = LECs[idx] = params[k]
+            end 
+            return OPTobj
+        else
+            sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]        
+            OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)
+            return OPTobj
+        end
+        #println("params_ref ",params_ref)
     end
 end
 

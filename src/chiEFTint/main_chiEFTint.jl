@@ -11,10 +11,18 @@ This function is exported and can be simply called make_chiEFTint() in the run s
 - `is_plot::Bool`, to visualize optimization process of LECs
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="")
+function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="",MPIcomm=false,io=stdout)
     if optimizer!="";optHFMBPT=true;end
     if nucs == []; optHFMBPT=false;end
-    chiEFTobj = init_chiEFTparams()
+    if MPIcomm; 
+        MPI.Init()
+        if !isdir("mpilog");run(`mkdir mpilog`);end
+        myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+        io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
+    else
+        io = open("logfile.dat","w")
+    end
+    chiEFTobj = init_chiEFTparams(;io=io)
     emax = chiEFTobj.emax
     pmax_fm = chiEFTobj.pmax_fm
     n_mesh = chiEFTobj.n_mesh
@@ -28,7 +36,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         # prep. momentum mesh
         xr_fm,wr = Gauss_Legendre(0.0,pmax_fm,n_mesh)
         xr = xr_fm * hc
-        numst2,dict_numst,arr_numst = bstate()
+        numst2,dict_numst,arr_numst = bstate(;io=io)
         V12mom = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
         V12mom_2n3n = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
         ## prep. radial functions
@@ -51,9 +59,9 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
         ## prep. for TBMEs
         jab_max = 4*emax + 2
         Numpn= Dict( [0,0,0,0] => 0 ) ;delete!(Numpn,[0,0,0,0])   
-        infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn)
-        println("# of channels 2bstate ",length(infos)," #TBME = $nTBME")
-        ## prep. integrals for eff3nf
+        infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn;io=io)
+        println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
+        ## prep. integrals for 2n3n
         F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh)
         F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
         wsyms=[]
@@ -75,11 +83,11 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     fn_LECs = get_fn_LECs(chiEFTobj.pottype)
     read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
     
-    ## Start Opt stuff
-    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to;num_cand=itnum,optimizer=optimizer) 
+    ## Start Opt stuff    
+    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
     d9j = HOBs = nothing
     if optHFMBPT          
-        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to)
+        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to;io=io)
     end
     ## END: BO stuff
 
@@ -112,40 +120,157 @@ function make_chiEFTint(;optHFMBPT=false,itnum=20,is_show=false,writesnt=true,nu
     if chiEFTobj.srg
         @timeit to "SRG" SRG(chiEFTobj,xr_fm,wr,V12mom,dict_numst,to)
     end
-    for it = 1:itnum
-        if it > 1; for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end;end
-        if chiEFTobj.calc_3N
-            @timeit to "2n3n" calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)            
-        end
-        add_V12mom!(V12mom,V12mom_2n3n)
-        #transform mom. int. to HO matrix element
-        @timeit to "Vtrans" begin
-            V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
-            dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
-                                 Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)
-        end
-        ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
-        if nucs != [ ] && writesnt == false && optHFMBPT           
-            print("it = $it", OPTobj.targetLECs)
-            print_vec("",OPTobj.params)
-            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
-            if optimizer=="BayesOpt"
-                BO_HFMBPT(it,OPTobj,HFdata,to)
-            elseif optimizer=="LHS"
-                LHS_HFMBPT(it,OPTobj,HFdata,to)
-            elseif optimizer=="MCMC"
-                MCMC_HFMBPT(it,OPTobj,HFdata,to)
+    if !MPIcomm
+        for it = 1:itnum
+            if it > 1; for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end;end
+            if chiEFTobj.calc_3N
+                calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
+                add_V12mom!(V12mom,V12mom_2n3n)
             end
-            for (k,target) in enumerate(OPTobj.targetLECs)
-                idx = idxLECs[target]
-                LECs[idx] = dLECs[target] = OPTobj.params[k] 
+            #transform mom. int. to HO matrix element
+            @timeit to "Vtrans" begin
+                V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
+                dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)
             end
+            ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
+            if nucs != [ ] && writesnt == false && optHFMBPT 
+                print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
+                @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
+                if optimizer=="BayesOpt"
+                    BO_HFMBPT(it,OPTobj,HFdata,to)
+                elseif optimizer=="LHS"
+                    LHS_HFMBPT(it,OPTobj,HFdata,to)
+                elseif optimizer=="MCMC"
+                    MCMC_HFMBPT(it,OPTobj,HFdata,to)
+                end
+                for (k,target) in enumerate(OPTobj.targetLECs)
+                    idx = idxLECs[target]
+                    LECs[idx] = dLECs[target] = OPTobj.params[k] 
+                end
+            end
+            if !optHFMBPT;break;end
         end
-        if !optHFMBPT;break;end
+    else
+        myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+        for it = 1:itnum
+            println("it $it done @$myrank \n\n\n\n\n")
+            mpi_hfmbpt(it,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
+                       ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
+                       numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;Operators=[])
+        end
+        MPI.Finalize()
     end
-    #if optHFMBPT;showBOhist(itnum,BOobj,target_LECs);end
+    if io != stdout; close(io);end
     if is_show; show(to, allocations = true,compact = false);println("");end
     return true
+end
+
+function gz(a=2.0) 
+    return (((a-1)*rand() +1)^2) / a
+end
+
+function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
+                    ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
+                    numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;
+                    Operators=["Rp2"],rank_master=0,writesnt=false)
+    comm = MPI.COMM_WORLD;myrank = MPI.Comm_rank(comm);npsize = MPI.Comm_size(comm)
+    chain = OPTobj.chain
+    if t == 1
+        if myrank == rank_master
+            for dst_idx = 1:npsize                
+                dst_rank = dst_idx-1
+                if dst_rank == rank_master;continue;end
+                X0 = @view chain[1,dst_idx,:]
+                MPI.Isend(X0,dst_rank,999,comm)
+            end
+        else
+            X0 = @view chain[1,myrank+1,:]
+            MPI.Recv!(X0,rank_master,999,comm)
+            OPTobj.params .= X0
+        end
+        MPI.Barrier(comm)
+        for (k,target) in enumerate(OPTobj.targetLECs)
+            idx = idxLECs[target]
+            LECs[idx] = dLECs[target] = OPTobj.params[k]
+        end
+
+        for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end
+        calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
+        add_V12mom!(V12mom,V12mom_2n3n)
+        V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
+        dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
+        print_vec("it = "*@sprintf("%8i",1),OPTobj.params,io)
+        hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
+        eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io)
+        return nothing
+    end
+    walker_i = myrank + 1
+    candidate = OPTobj.cand
+    S_at_t = @view chain[t-1,:,:]
+    if myrank == rank_master #master=>worker
+        for dst_idx = 1:npsize
+            dst_rank = dst_idx -1
+            if dst_rank == rank_master;continue;end
+            MPI.Isend(S_at_t,dst_rank,99,comm)
+        end
+    else #worker <= master
+        MPI.Recv!(S_at_t,rank_master,99,comm)
+    end    
+    MPI.Barrier(comm)
+    for nbatch = 0:1
+        subset = ifelse(nbatch==0,OPTobj.ens1,OPTobj.ens2)
+        S_complement = ifelse(nbatch==0,OPTobj.ens2,OPTobj.ens1)        
+        if myrank != rank_master 
+            if walker_i % 2 == nbatch
+                Xi = @view S_at_t[walker_i,:]
+                walker_j = sample(S_complement)
+                Xj = @view S_at_t[walker_j,:]               
+                zval = gz(OPTobj.a)
+                candidate .= Xj + zval .*  (Xi - Xj)
+                #print_vec("myrank $myrank walker i/j $walker_i $walker_j Xi $Xi Xj $Xj cand ",candidate)
+                for (k,target) in enumerate(OPTobj.targetLECs)
+                    idx = idxLECs[target]
+                    LECs[idx] = dLECs[target] = candidate[k] 
+                end    
+                for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end
+                calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
+                add_V12mom!(V12mom,V12mom_2n3n)
+                V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
+                dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
+                hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
+                print_vec("it = "*@sprintf("%8i",t),candidate,io)
+                eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io)
+                logratio = 1.0
+                if t > 1
+                    oeval = OPTobj.history[t-1]; neval = OPTobj.history[t]
+                    logratio = (OPTobj.dim -1) * log(zval) + neval[3] - oeval[3]
+                end
+                Accept = ifelse(log(rand())<logratio,true,false)
+                if Accept 
+                    Xi .= candidate
+                    OPTobj.acchit += 1
+                else
+                    neval .= oeval
+                    for (k,target) in enumerate(OPTobj.targetLECs)
+                        idx = idxLECs[target]
+                        LECs[idx] = dLECs[target] = Xi[k] 
+                    end   
+                end
+                OPTobj.params .= Xi
+                MPI.Isend(Xi,0,myrank,comm) # worker => master
+            end
+        else # master <= worker
+            for walkernum_src in subset
+                src_rank = walkernum_src -1 
+                tmp = @view chain[t,walkernum_src,:]
+                MPI.Recv!(tmp,src_rank,src_rank,comm)
+                #print_vec("recv!! @$myrank src_rank $src_rank",tmp)
+            end
+        end
+        MPI.Barrier(comm) 
+    end
+    MPI.Barrier(comm) 
+    return nothing
 end
 
 function add_V12mom!(V12mom,V12mom_2n3n,a=1.0)
@@ -169,15 +294,6 @@ function get_fn_LECs(pottype)
     end
     return fn
 end
-# function odeJIT(to)
-#     tspan = (0.0,1.0)
-#     H = [0.0 0.0; 0.0 0.0]
-#     p = prealloc(1.0,H,copy(H),copy(H),copy(H))
-#     prob = ODEProblem(fode,H,tspan,p)
-#     @timeit to "JIT"  solve(prob,Tsit5(),reltol=1.e+10,abstol=1.e+10,
-#                             save_everystep=false)
-#     return nothing
-# end
 
 """
     SRG(xr,wr,V12mom,dict_numst,to)
@@ -349,31 +465,6 @@ function srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;
     return nothing
 end
 
-# function fode(du,u,p,t)
-#     face = p.fac; eta = p.eta; R = p.R; T = p.T
-#     commutator(T,u,eta,face)
-#     commutator(eta,u,du,1.0)
-#     return nothing
-# end
-
-# mutable struct prealloc
-#     fac::Float64
-#     eta::Matrix{Float64}
-#     R::Matrix{Float64}
-#     T::Matrix{Float64}
-#     Hs::Matrix{Float64}
-# end
-# function srg_tr_ode(H,p,sSRG,to;
-#                     r_err=1.e-6,a_err=1.e-6,tol=1.e-6)
-#     Hs = p.Hs
-#     tspan = (0.0,sSRG)
-#     prob = ODEProblem(fode,H,tspan,p)
-#     @timeit to "solve" sol = solve(prob,Tsit5(),reltol=r_err,abstol=a_err,save_everystep=false)
-#     #@timeit to "solve" sol = solve(prob,RK4(),reltol=1e-8,abstol=1e-8,save_everystep=false)
-#     Hs .= sol(sSRG)
-#     return nothing
-# end
-
 function genLaguerre(n,alpha,x)
     if n==0
         return 1
@@ -457,14 +548,14 @@ function QL(z,J::Int64,ts,ws,QLdict)
     return s
 end
 
-function make_sp_state(chiEFTobj,jab_max,Numpn)
+function make_sp_state(chiEFTobj,jab_max,Numpn;io=stdout)
     emax = chiEFTobj.emax
     kh = Dict( [0,0] => 0 ) ;delete!(kh,[0,0])
     kn = Dict( [0,0] => 0 ) ;delete!(kn,[0,0])
     kl = Dict( [0,0] => 0 ) ;delete!(kl,[0,0])
     kj = Dict( [0,0] => 0 ) ;delete!(kj,[0,0])    
     maxsps = Int((emax+1) * (emax+2) / 2)
-    println("# of sp states $maxsps")    
+    println(io,"# of sp states $maxsps")    
     n = 0
     for NL=0:emax
         for L=0:NL
@@ -655,7 +746,7 @@ function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
     return Rnl
 end
 
-function bstate()
+function bstate(;io=stdout)
     #iz,lz1,lz2,isz,jz
     numst2 = [ [0,0,0,0,0] ];deleteat!(numst2,1)
     dict_numst = [ Dict([0,0]=>1) for i=1:3]
@@ -718,7 +809,7 @@ function bstate()
             end
         end
     end
-    println("# of two-body states $num")
+    println(io,"# of two-body states $num")
     return numst2,dict_numst,arr_numst
 end
 

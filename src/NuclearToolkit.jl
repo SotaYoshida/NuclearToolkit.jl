@@ -6,6 +6,7 @@ using Glob
 using LatinHypercubeSampling
 using LaTeXStrings
 using LinearAlgebra
+using MPI
 using Printf
 using Random
 using StatsBase

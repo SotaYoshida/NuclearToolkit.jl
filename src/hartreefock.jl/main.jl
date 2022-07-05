@@ -16,7 +16,7 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl")
+function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout)
     to = TimerOutput()
     chiEFTobj = init_chiEFTparams()
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
@@ -29,7 +29,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
         nuc = def_nuc(nucs[1],ref,corenuc)
-        binfo = basedat(nuc,sntf,hw,emax)
+        binfo = basedat(nuc,sntf,hw,emax,ref)
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
         Z = nuc.Z; N=nuc.N; A=nuc.A   
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
@@ -41,8 +41,8 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A   
-        binfo = basedat(nuc,sntf,hw,emax)
-        print("target: $tnuc Ref. => Z=$Z N=$N ")
+        binfo = basedat(nuc,sntf,hw,emax,ref)
+        print(io,"target: $tnuc Ref. => Z=$Z N=$N ")
         if i > 1
             recalc_v!(A,dicts)
             update_1b!(binfo,sps,Hamil)
@@ -50,7 +50,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         end
         @timeit to "HF" begin 
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,
-                                 Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose) 
+                                 Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io) 
         end
         if doIMSRG
            imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,to)
@@ -69,13 +69,13 @@ end
     hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
+function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)    
     emax = chiEFTobj.emax
     hw = chiEFTobj.hw
     sntf = chiEFTobj.fn_tbme    
     nuc = def_nuc(nucs[1],ref,corenuc)
     Z = nuc.Z; N=nuc.N; A=nuc.A 
-    binfo = basedat(nuc,sntf,hw,emax)
+    binfo = basedat(nuc,sntf,hw,emax,ref)
     sps,p_sps,n_sps = def_sps(emax)
     lp = div(length(sps),2)
     new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)           
@@ -89,15 +89,14 @@ function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=fa
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A
-        #show_Hamil_norm(Hamil;normtype="sum")
-        binfo = basedat(nuc,sntf,hw,emax)  
+        binfo = basedat(nuc,sntf,hw,emax,ref)  
         if i > 1
             recalc_v!(A,dicts)
             update_1b!(binfo,sps,Hamil)
             update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
             dictTBMEs = dictsnt.dictTBMEs
         end      
-        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose)
+        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io)
         if "Rp2" in Operators
             Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
             eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
@@ -552,7 +551,7 @@ obtain spherical HF solution and calc. MBPT correction (upto 2nd&3rd order) to g
 """
 function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
                 e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b::tChan2b,Gamma,maxnpq,                
-                dict_2b_ch,dict6j,to) where{tChan2b <: Vector{chan2b}}
+                dict_2b_ch,dict6j,to;io=stdout) where{tChan2b <: Vector{chan2b}}
     ## Calc. f (1-body term)
     fp = Cp' * (h_p*Cp); fn = Cn' *(h_n*Cn) # equiv to vals_p/n
     make_symmetric!(fp); make_symmetric!(fn)
@@ -568,11 +567,11 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     exists = get(amedata,binfo.nuc.cnuc,false)   
     Eexp = 0.0
     if exists==false
-        println("E_HF ", @sprintf("%12.4f",E0), 
+        println(io,"E_HF ", @sprintf("%12.4f",E0), 
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: Not Available")
     else
         Eexp = - binfo.nuc.A * amedata[binfo.nuc.cnuc][1]/1000.0
-        println("E_HF ", @sprintf("%12.4f",E0),
+        println(io,"E_HF ", @sprintf("%12.4f",E0),
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))    
     end
     tmp = tHFdata.data
@@ -594,7 +593,7 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 
 """
 function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt")
+                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt",io=stdout)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)
@@ -648,7 +647,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     ## HNO: get normal-ordered Hamiltonian 
     #update_occ!(pconf,nconf,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
     E0 = EHFs[1][1]
-    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to)
+    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to;io=io)
     return HFobj
 end
 

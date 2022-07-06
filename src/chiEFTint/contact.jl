@@ -9,7 +9,6 @@ function LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to)
     n_reg = 3    
     ress = [2*C_CIB+C_CSB,0.0,2*C_CIB-C_CSB]
     for pnrank = 1:3
-        TF = true
         res = ress[pnrank]
         ##1S0 (LO)
         l=0;lp=0;S=0;J=0
@@ -113,7 +112,7 @@ function N3LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to)
 end
 
 function N4LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to;n_reg=2)
-    fac = hc^3  *  1.e-14  / (2*pi)^3
+    fac = hc^3  *  1.e-20  / (2*pi)^3
     LECs_N4LO = [LECs["E_3F2"],LECs["E_1F3"],LECs["E_3F4"]]
     llpSJ_s = [[3,3,1,2],[3,3,0,3],[3,3,1,4]]
     pfunc = f_x3y3
@@ -127,4 +126,3 @@ function N4LO(chiEFTobj,xr,LECs,V12mom,dict_numst,to;n_reg=2)
     end
     return nothing
 end
-

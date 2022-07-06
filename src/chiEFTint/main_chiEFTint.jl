@@ -100,21 +100,21 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
             OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
             # LO contact term
             LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
-            ## ***Next-to-Leading Order(NLO)***
+            ## ***Next-to-LeadingOrder(NLO)***
             if chiEFTobj.chi_order >= 1
                 ### contact term Q^2
                 NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                ### TPE terms (NLO,NNLO,N3LO)
+                ### TPE terms (NLO,NNLO,N3LO,N4LO)
                 tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
             end                
             # *** N3LO (contact Q^4)
-            if chiEFTobj.chi_order >= 3
+            #if chiEFTobj.chi_order >= 3
                 N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            end
+            #end
             # *** N4LO 
-            if chiEFTobj.chi_order >= 4
+            #if chiEFTobj.chi_order >= 4
                 N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            end
+            #end
         end
     end
     if chiEFTobj.srg
@@ -125,8 +125,8 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
             if it > 1; for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end;end
             if chiEFTobj.calc_3N
                 calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
-                add_V12mom!(V12mom,V12mom_2n3n)
             end
+            add_V12mom!(V12mom,V12mom_2n3n)            
             #transform mom. int. to HO matrix element
             @timeit to "Vtrans" begin
                 V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
@@ -662,17 +662,22 @@ end
 read LECs from "src/chiEFTint/LECs.jl" (default) and 
 store them as ```LECs```(Vector{Float}), ```idxLECs```(Vector{Int}), and ```dLECs```(Dict{str,Float}).
 """
-function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")    
+function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")  
     if initialize
-        if !isfile(inpf);inpf="../"*inpf;end
+        if !isfile(inpf);inpf="../"*inpf;end # line for test/
+        l_E_3F2 = l_E_3F4 = l_E_1F3 = l_e14 = l_e17 = 0.0
         include(inpf)
-        E_3F2 = E_1F3 = E_3F4 = E_1F3 = e14 = e17 = 0.0
+        if @isdefined(E_3F2); l_E_3F2 = E_3F2;end
+        if @isdefined(E_3F4); l_E_3F4 = E_3F4;end
+        if @isdefined(E_1F3); l_E_1F3 = E_1F3;end
+        if @isdefined(e14); l_e14 = e14;end
+        if @isdefined(e17); l_e17 = e17;end
         leclist = [C0_1S0,C0_3S1,C_CSB,C_CIB,
                    C2_3S1,C2_3P0,C2_1P1,C2_3P1,C2_1S0,C2_3SD1,C2_3P2,
                    hD_1S0,D_1S0,D_1P1,D_3P0,D_3P1,D_3P2,hD_3S1,D_3S1,hD_3SD1,D_3SD1,D_3D1,D_1D2,D_3D2,D_3PF2,D_3D3,       
-                   E_3F2,E_1F3,E_3F4,
+                   l_E_3F2,l_E_1F3,l_E_3F4,
                    c1_NNLO,c2_NNLO,c3_NNLO,c4_NNLO,ct1_NNLO,ct3_NNLO,ct4_NNLO,cD,cE,
-                   d12,d3,d5,d145,e14,e17,
+                   d12,d3,d5,d145,l_e14,l_e17,
                    c_vs_1,c_vs_2,c_vs_3,c_vs_4,c_vs_5]
         lecname = ["C0_1S0","C0_3S1","C_CSB","C_CIB",
                    "C2_3S1","C2_3P0","C2_1P1","C2_3P1","C2_1S0","C2_3SD1","C2_3P2",

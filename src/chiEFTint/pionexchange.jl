@@ -334,9 +334,6 @@ function calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR,verbose=false)
         s = sqrt(LamSFR^2-4*nd_mpi^2)
         Lq = w/(2*q) * log((LamSFR^2 * w^2 + q^2 * s^2 + 2*LamSFR*q*w*s)/(4.0*nd_mpi^2 * (LamSFR^2 + q^2) ) )
         Aq = atan(q*(LamSFR-2*nd_mpi)/(q^2 + 2*LamSFR*nd_mpi))  / (2.0*q)  
-        if verbose
-            println("w/2q ",w/(2q), " log ", log((LamSFR^2 * w^2 + q^2 * s^2 + 2*LamSFR*q*w*s)/(4.0*nd_mpi^2 * (LamSFR^2 + q^2) ) ))
-        end
         return Lq,Aq
     else
         Lq = w/q * log((w+q)/(2.0*nd_mpi) )
@@ -459,8 +456,7 @@ function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
     ## N3LO 
     if chi_order >= 3 
         if EMN
-            ## 2-loop correction 
-            obj = LoopObjects.n3lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImVt) #using Vt
+            obj = LoopObjects.n3lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImVt) 
         else
             f_N3LO_Vs = gA4 / (32.0 * pi^2 * Fpi4)
             f_N3LO_2l_Vs = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)            
@@ -490,7 +486,7 @@ function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMa
     if chi_order >= 2
         f_NNLO_Ws = - gA2 / (32.0 * pi * Fpi4) 
         if EMN 
-            tmp_s += (c4 * w2*Aq) * f_NNLO_Ws 
+           tmp_s += (c4 * w2Aq) * f_NNLO_Ws             
             if chi_order >=3 #leading relativistic correction 
                 if useMachleidt
                     tmp_s += -1/4 * (gA2*(3*nd_mpi2 + q2) -w2) *Aq *f_NNLO_Ws
@@ -524,7 +520,7 @@ function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMa
         end
     end
     if chi_order >= 4 && EMN && calc_TPE_separately
-        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImWt) # EKMN(2.16)&(2.17)
+        obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain,q2,obj,obj.ImWt) # EKMN(2.13)(2.16)
         obj = LoopObjects.n4lo; tmp_s += Integral_ImV_T(obj.mudomain3,q2,obj,obj.ImWs3) # 3loop EKMN(2.28) & EKMN(2.33)
     end 
     tmp_s *= -q2        
@@ -617,21 +613,22 @@ function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_
     if chi_order >= 2 
         f_NNLO_Wc = gA2 / (128.0 * pi * Fpi4)
         term1 = 3.0* gA2 * nd_mpi^5 / w^2
+        tmp_s += f_NNLO_Wc  * term1
         if EMN 
             if chi_order >=3 # leading rel. correction
                 if useMachleidt
                     term2 = 2* (gA2*(3.0*nd_mpi2 +2.0*q2) - 2.0*nd_mpi^2 -q2) * tw2Aq
-                    tmp_s += f_NNLO_Wc  * (term1+ term2)
+                    tmp_s += f_NNLO_Wc  * term2
                 else
                     term2 = 2* (gA2*(3.0*nd_mpi2 +2.0*q2) - 2.0*nd_mpi^2 -q2) * tw2Aq
                     term2 += gA2 * nd_mpi * w2
-                    tmp_s += f_NNLO_Wc  * (term1+ term2)
+                    tmp_s += f_NNLO_Wc  * term2
                 end
             end
         else #EM Eq(4.14)+Eq.(4.22) nd_mpi*w2 term may be missed in EKMN paper
             term2 = - (4.0*nd_mpi^2 + 2.0*q2 -gA2*(4.0*nd_mpi2 +3.0*q2)) * tw2Aq
             it_pi = gA2 * ( nd_mpi * w2 + tw2 * tw2Aq) 
-            tmp_s += (term1+term2+it_pi) * f_NNLO_Wc
+            tmp_s += (term2+it_pi) * f_NNLO_Wc
         end
     end
     ## N3LO
@@ -712,8 +709,8 @@ function Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false)
         f_N3LO_b_Wls = 1.0 /(256.0*pi^2 * Fpi4) 
         tmp_s += f_N3LO_a_Wls*Lq * (gA2 *(8.0*nd_mpi2 + 5.0*q2) + w2)
         if !EMN
-                tmp_s += f_N3LO_b_Wls*Lq * (16.0*gA2 *(nd_mpi2 + 3.0/8.0 *q2)
-                                    + 4.0/3.0 * gA4 *(4.0*nd_mpi4 /w2 -11.0/4.0 * q2 -9.0*nd_mpi2) -w2)
+            tmp_s += f_N3LO_b_Wls*Lq * (16.0*gA2 *(nd_mpi2 + 3.0/8.0 *q2)
+                     + 4.0/3.0 * gA4 *(4.0*nd_mpi4 /w2 -11.0/4.0 * q2 -9.0*nd_mpi2) -w2)
         end
     end
     return tmp_s
@@ -1002,7 +999,7 @@ function n4lo_ImVW_classAB!(obj,mpi,Fpi2,c1,c2,c3,c4,r_e14,r_e17,ts,ws)
     facWtA = c4 * gA2 *mpi^5 / (4096 * pi^2 * Fpi6)
     facVtB = gA4 *mpi^5 *(c3-c4) / (4096 * pi^2 * Fpi6)
     facWtB = facVcB = gA2 * mpi^5 / (4096* pi^2 * Fpi6)    
-    @threads for ith = 1:length(ts)
+    for ith = 1:length(ts)
         t = ts[ith]; mu = fac1*t + fac2; u = mu/mpi; u2 = u^2
         u2m4 = u2-4.0
         Bu = log( (u+sqrt(u2m4))/2)
@@ -1024,8 +1021,8 @@ function n4lo_ImVW_classAB!(obj,mpi,Fpi2,c1,c2,c3,c4,r_e14,r_e17,ts,ws)
         Wt[ith] += facWtB * tV / mu^2
         ## ImVcB EKMN eq.(2.17)
         tV = facVcB * (u2-2) * (1/u2 -2) * ( 2*sqrt(u2m4)*(24*c1+c2*u2m4+6*c3*(u2-2))*Bu + u*(c2*(8-5*u2/3)+6*c3*(2-u2)-24*c1))
-        tV += 3*gA2*mpi^5 *(2-u2)^3 *r_e14 / (16 *Fpi4 * u)
-        Vc[ith] += tV
+        tV += 3*gA2*(mpi^5) *((2-u2)^3) *r_e14 / (16 *Fpi4 * u) 
+        Vc[ith] += tV 
         ## ImWc EKMN eq.(2.18)
         tV  = -c1 * mpi^5 / (64*Fpi6*pi^2) * ( (3*gA2+1)/8 *sqrt(u2m4) *(2-u2) + ( (3*gA2+1)/u - 2*gA2*u)*Bu)
         tV += -c2 * mpi^5 / (64*Fpi6*pi^2) * (sqrt(u2m4)/96 *(7*u2-6-u2^2+gA2*(5*u2-6-2*u2^2)) + (gA2*u2-1-gA2)*Bu/(4*u))

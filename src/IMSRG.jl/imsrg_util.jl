@@ -735,7 +735,7 @@ function write_omega_bin(binfo,n_written,Omega)
             rm.(glob("flowOmega/*bin"))
         end
     else
-        run(`mkdir flowOmega`)
+        if n_written==0;run(`mkdir flowOmega`);end
     end    
     pid = getpid()
     nw = n_written + 1

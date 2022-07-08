@@ -356,8 +356,9 @@ function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
                         nb = sps[b].occ
                         n_ab = na * nb 
                         nbar_ab = (1-na)*(1-nb)
-                        sqfac_ab = ifelse(a==b,sqrt(2.0),1.0)
-                        for c_space in [holes,particles]
+                        sqfac_ab = ifelse(a==b,sqrt(2.0),1.0)                            
+                        for idx_cspace = 1:2
+                            c_space = ifelse(idx_cspace==1,holes,particles)
                             for pn_c = 1:2
                                 for c in c_space[pn_c]
                                     jc = sps[c].j; nc = sps[c].occ; nbar_c = 1-nc

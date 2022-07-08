@@ -609,10 +609,8 @@ Update one-body(1b) part of Hamiltonian for different target nuclei
 """
 function update_1b!(binfo,sps,Hamil)
     #Hamil = Operator([0.0],[p1b,n1b],V2,true,false)
-    p1b = Hamil.onebody[1]
-    n1b = Hamil.onebody[2]
-    Anum = binfo.nuc.Aref
-    hw = binfo.hw
+    p1b = Hamil.onebody[1]; n1b = Hamil.onebody[2]
+    Anum = binfo.nuc.Aref; hw = binfo.hw
     ### store one-body part
     p_sps,n_sps = get_pn_sps(sps)
     lp =length(p_sps); ln =length(n_sps)       
@@ -643,7 +641,7 @@ end
 Update two-body(2b) part of Hamiltonian for different target nuclei
 """
 function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
-    emax = binfo.emax; A = binfo.nuc.Aref
+    emax = binfo.emax; A = binfo.nuc.A
     V2 = Hamil.twobody
     Chan2b = Chan2bD.Chan2b
     tkey = zeros(Float64,4)

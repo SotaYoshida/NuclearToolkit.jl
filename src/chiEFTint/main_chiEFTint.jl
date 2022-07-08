@@ -108,13 +108,13 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
                 tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
             end                
             # *** N3LO (contact Q^4)
-            #if chiEFTobj.chi_order >= 3
+            if chiEFTobj.chi_order >= 3
                 N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            #end
+            end
             # *** N4LO 
-            #if chiEFTobj.chi_order >= 4
+            if chiEFTobj.chi_order >= 4
                 N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            #end
+            end
         end
     end
     if chiEFTobj.srg

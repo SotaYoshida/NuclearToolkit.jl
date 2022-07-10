@@ -44,12 +44,11 @@ ct4_NNLO = 4.87
 cD =  0.0
 cE =  0.0
 
-
 ct1_NNLO = -1.10
-ct3_NNLO = -4.0
-ct4_NNLO = 4.8
-cD =  0.20
-cE =  0.5
+ct3_NNLO = -4.1
+ct4_NNLO = 4.4
+cD =  0.2
+cE =  0.9
 
 
 ## N3LO GeV^-2

@@ -171,7 +171,7 @@ end
 function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
                     ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
                     numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;
-                    Operators=["Rp2"],rank_master=0,writesnt=false)
+                    Operators=["Rp2"],rank_master=0,writesnt=false,debug=false)
     comm = MPI.COMM_WORLD;myrank = MPI.Comm_rank(comm);npsize = MPI.Comm_size(comm)
     chain = OPTobj.chain
     if t == 1
@@ -199,8 +199,10 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
         V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
         dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
         print_vec("it = "*@sprintf("%8i",1),OPTobj.params,io)
-        hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
-        eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io)
+        if !debug
+            hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
+        end
+        eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
         return nothing
     end
     walker_i = myrank + 1
@@ -227,6 +229,7 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
                 zval = gz(OPTobj.a)
                 candidate .= Xj + zval .*  (Xi - Xj)
                 #print_vec("myrank $myrank walker i/j $walker_i $walker_j Xi $Xi Xj $Xj cand ",candidate)
+                OPTobj.params .= candidate
                 for (k,target) in enumerate(OPTobj.targetLECs)
                     idx = idxLECs[target]
                     LECs[idx] = dLECs[target] = candidate[k] 
@@ -237,8 +240,10 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
                 V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
                 dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
                 print_vec("it = "*@sprintf("%8i",t),candidate,io)
-                hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
-                eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io)
+                if !debug
+                    hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
+                end
+                eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
                 logratio = 1.0
                 if t > 1
                     oeval = OPTobj.history[t-1]; neval = OPTobj.history[t]
@@ -263,7 +268,6 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
                 src_rank = walkernum_src -1 
                 tmp = @view chain[t,walkernum_src,:]
                 MPI.Recv!(tmp,src_rank,src_rank,comm)
-                #print_vec("recv!! @$myrank src_rank $src_rank",tmp)
             end
         end
         MPI.Barrier(comm) 

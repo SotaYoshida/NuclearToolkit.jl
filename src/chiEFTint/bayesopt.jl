@@ -21,7 +21,7 @@ function myCholesky!(tmpA,ln,cLL)
     return nothing
 end
 
-function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout)
+function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout,debug=false)
     thist = OPTobj.history[it]
     params = OPTobj.params
     params_ref = OPTobj.params_ref
@@ -44,7 +44,8 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout)
             tllh = 0.5 * (vtho-vexp)^2 / varE
             llh -= tllh
         end 
-    end 
+    end
+    if debug; llh = 0.0;end
     logpost = logprior + llh
     thist[1] = logprior
     thist[2] = llh    

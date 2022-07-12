@@ -198,11 +198,11 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
         add_V12mom!(V12mom,V12mom_2n3n)
         V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
         dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
-        print_vec("it = "*@sprintf("%8i",1),OPTobj.params,io)
         if !debug
             hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
         end
         eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
+        print_vec("it = "*@sprintf("%8i",1),OPTobj.params,io)
         return nothing
     end
     walker_i = myrank + 1
@@ -239,7 +239,6 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
                 add_V12mom!(V12mom,V12mom_2n3n)
                 V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
                 dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
-                print_vec("it = "*@sprintf("%8i",t),candidate,io)
                 if !debug
                     hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
                 end
@@ -261,6 +260,7 @@ function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9
                     end   
                 end
                 OPTobj.params .= Xi
+                print_vec("it = "*@sprintf("%8i",t),Xi,io)
                 MPI.Isend(Xi,0,myrank,comm) # worker => master
             end
         else # master <= worker

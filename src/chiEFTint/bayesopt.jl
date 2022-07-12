@@ -53,12 +53,12 @@ function eval_HFMBPT(it,OPTobj,HFdata,varE,Lam;mcmc=true,io=stdout,debug=false)
     if !mcmc
         println(io,"eval: ","logprior ",@sprintf("%9.2e",logprior),
         "  logllh  ",@sprintf("%9.2e",llh),
-        "  logpost ",@sprintf("%9.2e",logpost),"\n" )
+        "  logpost ",@sprintf("%9.2e",logpost))
     else
         println(io,"eval: ","logprior ",@sprintf("%9.2e",logprior),
                 "  logllh  ",@sprintf("%9.2e",llh),
                 "  logpost ",@sprintf("%9.2e",logpost),
-                " Acc.Rate ",@sprintf("%6.2f",100*OPTobj.acchit/it), "\n" )
+                " Acc.Rate ",@sprintf("%6.2f",100*OPTobj.acchit/it))
     end
     return nothing
 end

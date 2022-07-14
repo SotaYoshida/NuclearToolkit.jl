@@ -31,17 +31,17 @@ Users can generate nucleon-nucleon (NN) potentials based on chiral effective fie
 
 In nuclear physics community, many public codes are already available.
 Although it may not be possible to list them all, ANTOINE [@ANTOINE], NuShellX [@NuShellX], BIGSTICK [@BIGSTICK1,@BIGSTICK2], and KSHELL [@KSHELL1,@KSHELL2] for valence shell-model and imsrg [@imsrgcode] for IM-SRG.
-People are using those various codes, which are typically written in FORTRAN77, Fortran90, C++, etc., and call them in their homemade codes.
+People are using those various codes, which are typically written in FORTRAN77, Fortran90, C++, etc., and call them in their homemade shell scripts or Python codes.
 `NuclearToolkit.jl`, which is not a wrapper of those existing codes, provides
 a new interface that combines these various methods into one and works on both laptops and supercomputers in almost the same way. That is achieved by high readability and portability of Julia language[@Bezanson2012].
 
-A part of the code, which was originally developed as an independent package ``ShellModel.jl`` [@ShellModel.jl], have already been used in a published work [@PTEP_SY], and the IM-SRG method implemented in the package is able to derive shell-model effective interactions for the model space of interest and is becoming a kind of gold standard for studying open-shell nuclei from first principles.
+A part of the code, which was originally developed as an independent package ``ShellModel.jl`` [@ShellModel.jl], have already been used in a published work [@PTEP_SY], and the IM-SRG method implemented in the package is able to derive a shell-model effective interaction for a target model space of interest and is becoming a kind of gold standard for studying open-shell nuclei from first principles.
 Therefore, the author expects that many future studies will emerge to tackle the cutting edge of nuclear many-body problems with this package.
 
 
 # Acknowledgements
 
 This work was supported by JSPS KAKENHI Grant Number 22K14030.
-The author acknowledges Noritaka Shimizu and Takayuki Miyagi for discussions at early stage of the code development.
+The author acknowledges Noritaka Shimizu and Takayuki Miyagi for discussions at early stage of developing the codes.
 
 # References

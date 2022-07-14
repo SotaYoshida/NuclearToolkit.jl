@@ -21,7 +21,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
     chiEFTobj = init_chiEFTparams()
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "PreCalc 6j" begin
-        dict6j,d6j_int = PreCalc6j(emax)
+        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)
         dict6j = adhoc_rewrite6jdict(emax,dict6j) # trans dict[array] -> dict[int]
     end
     @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(emax,chiEFTobj,d6j_int,to)

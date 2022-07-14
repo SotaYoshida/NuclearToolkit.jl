@@ -32,7 +32,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
 
     to = TimerOutput()
     @timeit to "prep." begin
-        dict6j,d6j_nabla = PreCalc6j(emax)
+        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)
         # prep. momentum mesh
         xr_fm,wr = Gauss_Legendre(0.0,pmax_fm,n_mesh)
         xr = xr_fm * hc

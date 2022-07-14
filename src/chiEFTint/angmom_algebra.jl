@@ -1431,21 +1431,21 @@ function PreCalc6j(emax)
             end
         end
     end
-    # d6j_nabla = Dict{Vector{Int64},Float64}() 
-    # Jp2 = 1; totJ=1
-    # for ja = 1:2:Jmax
-    #     for jb = 1:2:Jmax
-    #         if tri_check(ja,jb,2)==false;continue;end
-    #         for l2 =0:emax
-    #             if tri_check(jb//2,l2,1//2)==false;continue;end
-    #             for l1 = 0:emax
-    #                 if tri_check(l2,totJ,l1)==false;continue;end                    
-    #                 if tri_check(ja//2,1//2,l1)==false;continue;end
-    #                 d6j_nabla[[ja,jb,l2,l1,0]] = wigner6j(Float64,ja//2,jb//2,1,l2,l1,1//2)
-    #             end
-    #         end    
-    #     end
-    # end
+    d6j_nabla = Dict{Vector{Int64},Float64}() 
+    Jp2 = 1; totJ=1
+    for ja = 1:2:Jmax
+        for jb = 1:2:Jmax
+            if tri_check(ja,jb,2)==false;continue;end
+            for l2 =0:emax
+                if tri_check(jb//2,l2,1//2)==false;continue;end
+                for l1 = 0:emax
+                    if tri_check(l2,totJ,l1)==false;continue;end                    
+                    if tri_check(ja//2,1//2,l1)==false;continue;end
+                    d6j_nabla[[ja,jb,l2,l1,0]] = wigner6j(Float64,ja//2,jb//2,1,l2,l1,1//2)
+                end
+            end    
+        end
+    end
     d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
     hit = 0
     @qthreads for J = 0:Jmax 
@@ -1469,5 +1469,5 @@ function PreCalc6j(emax)
             end    
         end
     end
-    return d6j,d6j_int
+    return d6j,d6j_nabla,d6j_int
 end

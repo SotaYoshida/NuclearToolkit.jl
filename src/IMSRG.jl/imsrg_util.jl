@@ -623,7 +623,7 @@ function adhoc_rewrite6jdict(emax,dict6j,ofst_unit=1000)
     end
     return new_dict6j
 end 
-function  get_nkey_from_key6j(tkey,ofst_unit=1000)
+function get_nkey_from_key6j(tkey,ofst_unit=1000)
     nkey = tkey[1] + tkey[2] * ofst_unit + tkey[3] * ofst_unit^2 + tkey[4] * ofst_unit^3 +  tkey[5] * ofst_unit^4
     return nkey
 end

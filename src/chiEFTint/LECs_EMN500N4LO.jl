@@ -38,17 +38,11 @@ c2_NNLO =  3.57
 c3_NNLO = -5.54
 c4_NNLO =  4.17
 ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
-ct1_NNLO = -0.80
-ct3_NNLO = -3.24
-ct4_NNLO = 4.87
-cD =  0.0
-cE =  0.0
 
-ct1_NNLO = -1.10
-ct3_NNLO = -4.1
-ct4_NNLO = 4.4
-cD =  0.2
-cE =  0.9
+ct1_NNLO = -1.01; ct3_NNLO = -2.0; ct4_NNLO = 4.8; cD = cE = 0.0
+
+#ct1_NNLO = -0.80; ct3_NNLO = -3.38; ct4_NNLO = 3.69; cD = 0.25; cE = 0.3
+
 
 
 ## N3LO GeV^-2

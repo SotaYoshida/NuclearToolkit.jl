@@ -87,7 +87,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
     OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
     d9j = HOBs = nothing
     if optHFMBPT          
-        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,to;io=io)
+        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,d6j_int,to;io=io)
     end
     ## END: BO stuff
 

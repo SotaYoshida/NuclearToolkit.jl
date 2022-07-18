@@ -879,7 +879,7 @@ Constructor for IMSRGobject
 """
 function init_IMSRGobject(HFobj;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_criterion=1.e-6,denominatorDelta=0.0,filename="optional_parameters.jl")
     tf = isfile(filename)
-    ds = 0.5
+    ds = min(dsmax,0.5)
     s = [0.0,ds] 
     E0 = HFobj.E0
     fp = copy(HFobj.H.onebody[1])

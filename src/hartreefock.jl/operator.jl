@@ -671,7 +671,7 @@ end
 
 evaluate charge radii with IMSRG.
 """
-function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n,HOBs,dictMono,dict6j,to)
+function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n,HOBs,dictMono,dict6j,MatOp,to)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -679,7 +679,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     DF = 0.033; Rp2 = 0.8775^2; Rn2 = -0.1149
     Op_Rp2 = InitOp(Chan1b,Chan2b)
     ## HF level
-    Rpp,Rp_PT = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,to)
+    Rpp,Rp_PT = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to)
     getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to;firstNO=true) 
     Rpp_HF = Op_Rp2.zerobody[1]
     Rch2_HF = Rpp_HF + Rp2 + N/Z *Rn2 + DF

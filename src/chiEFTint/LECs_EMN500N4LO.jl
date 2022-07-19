@@ -40,7 +40,7 @@ c4_NNLO =  4.17
 ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
 
 ct1_NNLO = -1.01; ct3_NNLO = -2.0; ct4_NNLO = 4.8; cD = cE = 0.0
-
+ct1_NNL0 = -1.07359; ct3_NNLO = -4.68088; ct4_NNLO = 4.27993; cD = -0.2385; cE = 0.80687
 #ct1_NNLO = -0.80; ct3_NNLO = -3.38; ct4_NNLO = 3.69; cD = 0.25; cE = 0.3
 
 

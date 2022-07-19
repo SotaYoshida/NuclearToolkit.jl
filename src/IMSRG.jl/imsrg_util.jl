@@ -19,7 +19,7 @@
 - `valence_generator_type` only the "shell-model-atan" is implemented
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 """
-function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,to;
+function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
                     core_generator_type="atan",valence_generator_type="shell-model-atan")
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
@@ -36,7 +36,7 @@ function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencesp
     IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to)
     if vsIMSRG
         IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;valenceflow=true)
-        effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,to)
+        effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
             getNormalOrderedO(binfo,HFobj,IMSRGobj.H,Chan1b,Chan2bD,dict6j,to;undo=true,OpeqH=true)
             set_sps_to_core!(binfo,HFobj)
@@ -50,7 +50,7 @@ function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencesp
         end
         write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,valencespace)
     else
-        flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,to)
+        flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
     end
     return nothing
 end
@@ -66,6 +66,7 @@ function read_imsrg_parameter!(fn,IMSRGobj)
     if @isdefined(maxnormOmega); IMSRGobj.maxnormOmega = maxnormOmega; end
     if @isdefined(eta_criterion); IMSRGobj.eta_criterion = eta_criterion; end
     if @isdefined(denominatorDelta); IMSRGobj.denominatorDelta = denominatorDelta;end
+    IMSRGobj.s[2] = min(IMSRGobj.dsmax,0.5)
     println("parameters in $fn will be used.")
     return nothing
 end
@@ -670,7 +671,7 @@ function IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j
     istep = 0; print_flowstatus(istep,s,ncomm,norms,IMSRGobj) 
     @timeit to "IMSRG flow" for istep = 1:maxstep
         if sqrt(norms[3]^2+norms[4]^2) < eta_criterion;break;end
-    	ds = min(ds,smax-s) #最後を考慮
+    	ds = min(ds,smax-s)
     	s += ds
         IMSRGobj.s[1] = s; IMSRGobj.s[2] = ds
         #debug_print(debugmode,Hs,Omega,eta,"s")
@@ -891,7 +892,6 @@ function init_IMSRGobject(HFobj;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_crite
     Omega = Operator([0.0],[copy(0.0 .*fp),copy(0.0 .*fn)], 0.0 .*deepcopy(Gamma),false,true)
     n_written_omega = [0]
     Ncomm =[0] 
-
     IMSRGobj = IMSRGobject(H0,Hs,s,smax,dsmax,maxnormOmega,eta,Omega,eta_criterion,denominatorDelta,n_written_omega,Ncomm)
     if !tf
         println("Since $filename is not found, the default parameters will be used.")
@@ -907,12 +907,12 @@ end
 
 consistent IMSRG flow of scaler operators (Rp2) using written Omega
 """
-function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,to)
+function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
     effOperators = Operator[ ]
     for c_op in Operators
         if c_op=="Rp2"
             println("Operator:$c_op")
-            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j,HOBs,dictMono,dict6j,to)
+            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j,HOBs,dictMono,dict6j,MatOp,to)
             push!(effOperators,eOp)
         else
             println("IMSRG flow of Operator=$c_op is not supported now ")

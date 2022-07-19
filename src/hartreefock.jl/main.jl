@@ -53,7 +53,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
                                  Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io) 
         end
         if doIMSRG
-           imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,to)
+           imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to)
         else
             if "Rp2" in Operators
                 Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)

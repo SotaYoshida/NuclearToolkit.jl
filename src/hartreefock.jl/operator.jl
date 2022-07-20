@@ -304,7 +304,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         # MBPT correction
         Gam = Gamma[ch]
         for ib = 1:nkets
-            a, b = kets[ib]
+            a,b = kets[ib]
             idx_a = div(a,2)+ a%2
             idx_b = div(b,2)+ b%2
             #if (sps[a].occ ==1 || sps[b].occ ==1); continue; end            
@@ -341,7 +341,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 end
                 # S2 = S6 term G_abij G_abcj Sci 
                 for ii = 1:nkets
-                    c,q = kets[ii] 
+                    c,q = kets[ii]
                     #if sps[c].occ + sps[q].occ != 1; continue;end
                     if (sps[c].occ ==0.0 && sps[q].occ == 0.0) || (sps[c].occ !=0.0 && sps[q].occ !=0.0) ; continue;end
                     if !( c==j || q==j);continue;end
@@ -377,7 +377,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                     if sps[q].occ * sps[k].occ ==0.0; continue;end
                     if !( q==i || k==i);continue;end
                     phase = 1.0
-                    if q != i && k ==a
+                    if q != i && k == i
                         phase *= (-1)^(div(sps[q].j+sps[k].j,2)+J+1) 
                         k,q = kets[ii]
                     end

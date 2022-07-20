@@ -39,10 +39,10 @@ c3_NNLO = -5.54
 c4_NNLO =  4.17
 ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
 
-ct1_NNLO = -1.01; ct3_NNLO = -2.0; ct4_NNLO = 4.8; cD = cE = 0.0
-ct1_NNL0 = -1.07359; ct3_NNLO = -4.68088; ct4_NNLO = 4.27993; cD = -0.2385; cE = 0.80687
-#ct1_NNLO = -0.80; ct3_NNLO = -3.38; ct4_NNLO = 3.69; cD = 0.25; cE = 0.3
-
+ct1_NNLO = -1.10; ct3_NNLO = -4.7534; ct4_NNLO = 4.0889; cD = -0.2766; cE = 0.8202 #Opt
+#ct1_NNLO = -1.0566; ct3_NNLO = -3.7364; ct4_NNLO = 4.514; cD = -0.1224; cE = 0.3444 # A
+#ct1_NNLO = -1.3457; ct3_NNLO = -6.2049; ct4_NNLO = 3.3264; cD = -0.9014; cE = 1.5203 # B
+#ct1_NNLO = -0.8296; ct3_NNLO = -3.4152; ct4_NNLO = 4.5944; cD = -1.4004; cE =-0.1819 # C
 
 
 ## N3LO GeV^-2

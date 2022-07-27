@@ -17,6 +17,7 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
 function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout)
+    @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     chiEFTobj = init_chiEFTparams()
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)

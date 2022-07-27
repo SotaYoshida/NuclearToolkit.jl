@@ -319,9 +319,6 @@ end
 returns ``[X_2,Y_2]_1 - [Y_2,X_2]_1``, whose elements are given as
 
 ``[X_2,Y_2]_{ij} = 1/(2[j_i]) \\sum_{abc}\\sum_{J}[J](n'_an'_bn_c-n_an_bn'_c)(X_{2,ciab}Y_{2,abcj}-Y_{2,ciab}X_{2,abcj})``
-
-Note that our code gives diffrent results from the IMSRG code by S.R.Stroberg here.
-If you replace `sqfac_ab^2` in this function by 2.0, the results agree with each other.
 """
 function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
     Chan2b = Chan2bD.Chan2b

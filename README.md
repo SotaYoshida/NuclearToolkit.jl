@@ -6,7 +6,7 @@
 <img src="https://github.com/SotaYoshida/NuclearToolkit.jl/blob/main/docs/src/assets/logo_full.png" width=60%>
 
 
-Julia Toolkit for nuclear structure calculations covering:
+Julia package for nuclear structure calculations covering:
 - generating Chiral EFT interactions
 - many-body calculations (HFMBPT, IMSRG/VS-IMSRG, valence shell-model, etc.)
 
@@ -24,7 +24,7 @@ When working on a working node (w/o permissions to access ```~/```), overwrite t
 
 Execute `sample_script.jl` like
 ```
-julia -t 6 sample_script.jl
+julia -t 10 sample_script.jl
 ```
 
 This sample script do 
@@ -34,6 +34,6 @@ This sample script do
 
 ## How to cite
 
-When you use `NuclearToolkit.jl`, please consider to cite:
+When you use `NuclearToolkit.jl` in your work, please cite:
 
 > Ref: (in prep.)

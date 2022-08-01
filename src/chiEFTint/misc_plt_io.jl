@@ -52,6 +52,7 @@ mutable struct chiEFTparams
     n_mesh_P::Int64
     Pmax_fm::Float64
     kF::Float64
+    BetaCM::Float64
 end
 
 """
@@ -86,13 +87,15 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
     n_mesh_P = 10
     Pmax_fm = 3.0
+    ## Lawson's beta for HCM
+    BetaCM = 0.0
     ### Fermi momentum for 2n3n
     kF = 1.35   #kF = 0.3 * XF(Anum)
     LambdaSFR = 0.0
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           calc_monopole,calc_std,coulomb,
-                          target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF)
+                          target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
         println("Since $fn_params is not found, the default parameters will be used.")
         return params
@@ -134,6 +137,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if occursin("emn",params.pottype)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
+    if @isdefined(BetaCM); params.BetaCM = BetaCM; end
     println(io,"parameters in $fn will be used.")
     return nothing
 end
@@ -402,7 +406,7 @@ end
 function to make println(stdout) more readable.
 This is usuful for debug.
 """
-function print_vec(s,v,io=std;ine=false)
+function print_vec(s,v,io=stdout;ine=false)
     s *= " "
     for i = 1:length(v)
         if ine

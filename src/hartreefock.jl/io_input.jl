@@ -177,10 +177,11 @@ function readsnt(sntf,binfo,to)
         V2b = Vjj + Vpp*hw/Anum
         nkey = get_nkey_from_abcdarr(tkey)
         t = get(tdict,nkey,false)
+        Vcm = 0.0
         if t == false
-            tdict[nkey] = [ [totJ,V2b,Vjj,Vpp*hw] ]
+            tdict[nkey] = [ [totJ,V2b,Vjj,Vpp*hw,Vcm] ]
         else
-            push!(tdict[nkey],[totJ,V2b,Vjj,Vpp*hw])
+            push!(tdict[nkey],[totJ,V2b,Vjj,Vpp*hw,Vcm])
         end
     end
     return sps,dicts1b,dicts
@@ -289,10 +290,11 @@ function readsnt_bin(sntf,binfo,to)
         V2b = Vjj + Vpp*hw/Anum
         nkey = get_nkey_from_abcdarr(tkey)
         t = get(tdict,nkey,false)
+        Vcm= 0.0
         if t == false
-            tdict[nkey] = [ [totJ,V2b,Vjj,Vpp*hw] ]
+            tdict[nkey] = [ [totJ,V2b,Vjj,Vpp*hw,Vcm] ]
         else
-            push!(tdict[nkey],[totJ,V2b,Vjj,Vpp*hw])
+            push!(tdict[nkey],[totJ,V2b,Vjj,Vpp*hw,Vcm])
         end    
     end
     close(f)
@@ -324,14 +326,6 @@ end
 
 """
     store_1b2b(sps,dicts1b,dicts,binfo)
-
-Function summarize data from input snt/snt.bin file.It returns
-- `Hamil::Operator` input interaction
-- `dictsnt` dict to get TBMEs and monopole components
-- `Chan1b` struct chan1b
-- `Chan2bD` struct chan2b 
-- `Gamma` preallocated two-body density matrices
-- `maxnpq` maximum size of length(kets) for two-body channels
 """
 function store_1b2b(sps,dicts1b,dicts,binfo)
     Anum = binfo.nuc.Aref; hw = binfo.hw
@@ -377,9 +371,9 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
             vmono = 0.0            
             for t in ts
                 J = t[1]
-                v = t[3] + t[4] /Anum
+                v = t[3] + t[4] /Anum + t[5] * Anum
                 vmono += (2*J+1) * v
-            end       
+            end
             tdict[tkey] = vmono *sqfac
             exkey = [tkey[3],tkey[4],tkey[1],tkey[2]]
             tdict[exkey] = vmono *sqfac
@@ -397,12 +391,12 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
                 parity = (-1)^(div(ja+jb,2)+1)
                 for t in ts
                     J = t[1]
-                    v = t[3] + t[4] /Anum
+                    v = t[3] + t[4] /Anum + t[5] * Anum
                     phase = parity * (-1)^J
                     vmono += ((2*J+1)*phase) * v
                 end
                 tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac #/ (Na*Nb)
+                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
            
             if tkey[3] != tkey[4]
@@ -413,7 +407,7 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
                 parity = (-1)^(div(jc+jd,2)+1)
                 for t in ts
                     J = t[1]
-                    v = t[3] + t[4] /Anum
+                    v = t[3] + t[4] /Anum + t[5] * Anum
                     phase = parity * (-1)^J
                     vmono += ((2*J+1)*phase) * v
                 end
@@ -431,7 +425,7 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
                 phase = (-1)^(div(jc+jd,2)+div(jc+jd,2))
                 for t in ts
                     J = t[1]
-                    v = t[3] + t[4] /Anum                    
+                    v = t[3] + t[4] /Anum  + t[5] * Anum                  
                     vmono += ((2*J+1)*phase) * v
                 end
                 tdict[exkey] = vmono *sqfac 
@@ -572,7 +566,7 @@ function def_chan2b(binfo,dicts,sps,Chan1b)
                         intkey = get_nkey_from_abcdarr(tkey)
                         for JV in tdict[intkey]
                             tJ = JV[1]
-                            v = JV[3] + JV[4] /Anum    
+                            v = JV[3] + JV[4] /Anum  + JV[5] * Anum
                             if Int(tJ) != J;continue;end                            
                             vmat[i,j] = vmat[j,i] = v
                         end
@@ -619,6 +613,7 @@ function update_1b!(binfo,sps,Hamil)
         tsps = ifelse(pn==1,p_sps,n_sps)
         v1b = ifelse(pn==1,p1b,n1b)
         lmax = ifelse(pn==1,lp,ln)
+        v1b .= 0.0
         for i = 1:lmax
             n = tsps[i].n; l = tsps[i].l; j = tsps[i].j
             temax = 2*n+l
@@ -638,12 +633,13 @@ end
 """
     update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
 
-Update two-body(2b) part of Hamiltonian for different target nuclei
+Update two-body(2b) kinetic part for different target nuclei
 """
-function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
+function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
     emax = binfo.emax; A = binfo.nuc.A
     V2 = Hamil.twobody
     Chan2b = Chan2bD.Chan2b
+    #for ch = 1:length(Chan2b);V2[ch] .= 0.0;end
     tkey = zeros(Float64,4)
     for pnrank=1:3
         tdictl = dicts[pnrank]        
@@ -723,7 +719,7 @@ function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
                         intkey = get_nkey_from_abcdarr(tkey)
                         for JV in tdict[intkey]
                             tJ = JV[1]
-                            v = JV[3] + JV[4] /A
+                            v = JV[3] + JV[4] /A + JV[5] * A
                             if Int(tJ) != J;continue;end
                             vmat[i,j] = vmat[j,i] = v
                         end

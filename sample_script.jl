@@ -7,11 +7,12 @@ function run()
     ### HFMBPT & VS-IMSRG calculation 
     hw = 20; emax=4
     nuc = "O16"; core = "O16"; vspace="sd-shell"
-    sntf = "tbme_emn500n4lo_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
-    hf_main([nuc],sntf,hw,emax;verbose=false,doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace)
+    #sntf = "tbme_em500n3lo_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
+    sntf = "tbme_emn500n4lo_2n3n_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
+    hf_main([nuc],sntf,hw,emax;verbose=false,doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,Operators=["Rp2"])
 
     ## shell model calculation
-    vs_sntf = "vsimsrg_sd-shell_core"*core*"ref"*nuc*"_hw"*string(hw)*"e"*string(emax)*"_Delta0.0.snt"
+    vs_sntf = "vsimsrg_"*vspace*"_core"*core*"ref"*nuc*"_"*nuc*"_hw"*string(hw)*"e"*string(emax)*"_Delta0.0.snt"
     n_eigen=10;targetJ=[]
     main_sm(vs_sntf,"Mg24",n_eigen,targetJ)
     return nothing

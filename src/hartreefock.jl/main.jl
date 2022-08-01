@@ -32,26 +32,52 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         nuc = def_nuc(nucs[1],ref,corenuc)
         binfo = basedat(nuc,sntf,hw,emax,ref)
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
-        Z = nuc.Z; N=nuc.N; A=nuc.A   
+        Z = nuc.Z; N=nuc.N; A=nuc.A
+        BetaCM = chiEFTobj.BetaCM       
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
+        HCM = InitOp(Chan1b,Chan2bD.Chan2b)
+        TCM = InitOp(Chan1b,Chan2bD.Chan2b)
+        VCM = InitOp(Chan1b,Chan2bD.Chan2b)
+        E0cm = 1.5 * BetaCM * hw
+        if BetaCM !=0.0
+            Calculate_RCM(binfo,Chan1b,Chan2bD.Chan2b,sps,VCM,d9j,HOBs,to;non0_ij=false)           
+            fac_HCM = 0.5 * BetaCM * Mm * hw^2 / (hc^2)
+            aOp!(VCM,fac_HCM)            
+            aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
+            CalculateTCM!(TCM,binfo,Chan1b,Chan2bD.Chan2b,sps)
+            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
+            update_dicts_withHCM!(HCM,Chan2bD,dicts)
+        end 
         MatOp = Matrix{Float64}[]
         if "Rp2" in Operators
             MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
         end
     end
+    Aold = A
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A   
         binfo = basedat(nuc,sntf,hw,emax,ref)
         print(io,"target: $tnuc Ref. => Z=$Z N=$N ")
+        if BetaCM !=0.0 && Aold != A
+            difA_RCM(VCM,Aold,A)
+            aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
+            difA_TCM(TCM,Aold,A)
+            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
+            update_dicts_withHCM!(HCM,Chan2bD,dicts)
+        end 
+
+        recalc_v!(A,dicts)
+        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)       
         if i > 1
-            recalc_v!(A,dicts)
             update_1b!(binfo,sps,Hamil)
             update_2b!(binfo,sps,Hamil,dictsnt.dictTBMEs,Chan2bD,dicts)
         end
+        addHCM1b!(Hamil,HCM,A)
+        addHCM1b!(Hamil,TCM)
+
         @timeit to "HF" begin 
-            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,
-                                 Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io) 
+            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
            imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to)
@@ -61,9 +87,48 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
                 eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
             end
         end
+        Aold = A
     end
     if is_show; show(io,to, allocations = true,compact = false);println(""); end
     return true
+end
+
+function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
+    for pn = 1:2
+        Hamil.onebody[pn] += fac .* HCM.onebody[pn]
+    end
+    return nothing
+end
+
+function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
+    Chan2b = Chan2bD.Chan2b
+    nchan = length(Chan2b)
+    @threads for ch = 1:nchan
+        tkey = zeros(Int64,4)
+        tbc = Chan2b[ch]
+        kets = tbc.kets
+        J = tbc.J
+        Hcm = HCM.twobody[ch]
+        pnrank = 2 + div(tbc.Tz,2)
+        nkets = length(tbc.kets)
+        for i=1:nkets
+            bra = kets[i]            
+            tbra = @view tkey[1:2] 
+            tbra .= bra
+            for j=i:nkets
+                ket = kets[j]
+                tket = @view tkey[3:4] 
+                tket .= ket
+                tHcm = Hcm[i,j]
+                nkey = get_nkey_from_abcdarr(tkey)
+                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
+                    if J != target[1];continue;end
+                    target[5] = tHcm
+                end
+            end
+        end
+    end
+    return nothing
 end
 
 """
@@ -207,7 +272,7 @@ function recalc_v!(A,dicts)
         for tkey in keys(tdict)
             tmp = tdict[tkey]            
             for i = 1:length(tmp)
-                tmp[i][2] = tmp[i][3] + tmp[i][4]/A 
+                tmp[i][2] = tmp[i][3] + tmp[i][4]/A + tmp[i][5] *A
             end
         end 
     end
@@ -563,7 +628,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     modelspace = ModelSpace(p_sps,n_sps,sps,occ_p,occ_n,holes,particles,spaces)
     ## Calc. Gamma (2bchanel matrix element)    
     calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
-    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma)   
+    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=true)
     EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to)
     exists = get(amedata,binfo.nuc.cnuc,false)   
     Eexp = 0.0
@@ -575,6 +640,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
         println(io,"E_HF ", @sprintf("%12.4f",E0),
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))    
     end
+    println("")
     tmp = tHFdata.data
     E = tmp[1]
     E[1] = E0+EMP2+EMP3; E[2] = Eexp
@@ -594,7 +660,7 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 
 """
 function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt",io=stdout)
+                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt",io=stdout,E0cm=0.0)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)
@@ -614,13 +680,12 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     rho_n = copy(mat1b); Cn = copy(mat1b); Un = copy(mat1b);for i=1:dim1b;Un[i,i]=occ_n[i,i];end
     calc_rho!(rho_p,Up,occ_p,Cp);calc_rho!(rho_n,Un,occ_n,Cn)
     e1b_p = zeros(Float64,dim1b); e1b_n = zeros(Float64,dim1b)
-    ## tilde(V)
     Vt_pp = copy(mat1b); Vt_nn = copy(mat1b); Vt_pn = copy(mat1b); Vt_np = copy(mat1b)
     calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,abcd,Chan1b)
     ## Fock matrix
     h_p = copy(mat1b); h_n = copy(mat1b)
     update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
-    calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs) 
+    calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
     if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
     for it = 1:itnum        
         ## diagonalize proton/neutron 1b hamiltonian
@@ -628,26 +693,25 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
         ## Update 1b density matrix
         Up .= vecsp; Un .= vecsn
         ReorderHFSPS!(h_p,h_n,Up,Un,valsp,valsn,Chan1b)
-        #update_occ!(pconf,nconf,p_sps,n_sps,occ_p,occ_n,valsp,valsn)
         calc_rho!(rho_p,Up,occ_p,Cp);calc_rho!(rho_n,Un,occ_n,Cn)     
+   
         ## Re-evaluate tilde(V) and Fock matrix
         calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,abcd,Chan1b)
         update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)        
         calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
-        
+
         if HF_conv_check(EHFs;tol=HFtol)
             #print("HF converged @ $it  \t")
             valsp,vecsp = eigen(h_p); valsn,vecsn = eigen(h_n)
-            e1b_p .= valsp;e1b_n .= valsn; Cp .= vecsp; Cn .= vecsn            
+            e1b_p .= valsp;e1b_n .= valsn; Cp .= vecsp; Cn .= vecsn
             ReorderHFSPS!(h_p,h_n,Cp,Cn,e1b_p,e1b_n,Chan1b)
             break
         end
         tnorm = norm(Up'*Up-Matrix{Float64}(I, dim1b,dim1b),Inf)
         if tnorm > 1.e-10;println("Unitarity check: res. norm(p) $tnorm");end
     end
-    ## HNO: get normal-ordered Hamiltonian 
-    #update_occ!(pconf,nconf,p_sps,n_sps,occ_p,occ_n,e1b_p,e1b_n)
-    E0 = EHFs[1][1]
+    ## HNO: get normal-ordered Hamiltonian
+    E0 = EHFs[1][1] - E0cm
     HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to;io=io)
     return HFobj
 end
@@ -687,9 +751,9 @@ function calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,Es;
             if rho_p[i,j] == 0.0;continue;end
             E2bpp += 0.5 * rho_p[i,j] *Vt_pp[i,j]
             E2bpn += 0.5 * rho_p[i,j] *Vt_pn[i,j]
-            if rho_p[i,j] != 0.0 && verbose
-                println("i $i j $j \t rho_p ",@sprintf("%15.6f",rho_p[i,j]),"  p from pp: ",@sprintf("%15.6f",Vt_pp[i,j])," pn ", @sprintf("%15.6f",Vt_pn[i,j]))
-            end
+            # if rho_p[i,j] != 0.0 && verbose
+            #     println("i $i j $j \t rho_p ",@sprintf("%15.6f",rho_p[i,j]),"  p from pp: ",@sprintf("%15.6f",Vt_pp[i,j])," pn ", @sprintf("%15.6f",Vt_pn[i,j]))
+            # end
         end        
     end
     for i = 1:ln
@@ -697,9 +761,9 @@ function calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,Es;
             if rho_n[i,j] == 0.0;continue;end
             E2bnn += 0.5* rho_n[i,j] *Vt_nn[i,j]
             E2bpn += 0.5* rho_n[i,j] *Vt_np[i,j]
-            if rho_n[i,j] != 0.0 && verbose
-                println("i ",i+lp," j ",j+lp, " \t rho_n ",@sprintf("%15.6f",rho_n[i,j]),"  n from nn: ",@sprintf("%15.6f",Vt_nn[i,j])," np ", @sprintf("%15.6f",Vt_np[i,j]))
-            end
+            # if rho_n[i,j] != 0.0 && verbose
+            #     println("i ",i+lp," j ",j+lp, " \t rho_n ",@sprintf("%15.6f",rho_n[i,j]),"  n from nn: ",@sprintf("%15.6f",Vt_nn[i,j])," np ", @sprintf("%15.6f",Vt_np[i,j]))
+            # end
         end        
     end
     E2b = E2bpp + E2bpn + E2bnn
@@ -762,6 +826,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     if a < i; tkey[2] = i; tkey[4] = j;tkey[1] = a; tkey[3] = b; end
                     vmono = dict_pp[tkey]
                     Vt_pp[idx_i,idx_j] += rho_ab * vmono
+                    # if rho_ab != 0.0; println("pp: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     if a!=b
                         if a < i                       
                             tkey[3] = a; tkey[1] = b
@@ -770,6 +835,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                         end
                         vmono = dict_pp[tkey]
                         Vt_pp[idx_i,idx_j] += rho_ab * vmono
+                        # if rho_ab !=0.0; println("pp: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     end
                 end
             end
@@ -784,10 +850,12 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     tkey[1] = i;tkey[3] = j;  tkey[2] = a; tkey[4] = b
                     vmono = dict_pn[tkey]
                     Vt_pn[idx_i,idx_j] += rho_ab * vmono
+                    #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     if a!=b
                         tkey[1] = i; tkey[3] = j; tkey[2] = b; tkey[4] = a
                         vmono = dict_pn[tkey]
                         Vt_pn[idx_i,idx_j] += rho_ab * vmono
+                        #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     end
                 end
             end

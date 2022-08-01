@@ -2,7 +2,7 @@
     aOp!(Op::Operator,a::Float64)
 function to multiply scaler to an operator::Operator
 """
-function aOp!(Op::Operator,a::Float64)
+function aOp!(Op::Operator,a)
     Op.zerobody[1] *= a 
     for pn =1:2
         lmul!(a,Op.onebody[pn])
@@ -17,7 +17,7 @@ end
     aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
 function to overwrite ```Op2``` by ```a*Op1 + b*Op2```
 """
-function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
+function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a,b)
     aOp!(Op2,b)
     Op2.zerobody[1] += a * Op1.zerobody[1]
     for pn = 1:2
@@ -31,10 +31,10 @@ function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
 end
 
 """
-    aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a::Float64,b::Float64,c::Float64)
+    aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
 function to overwrite `Op3` by `c*Op3 + a*Op1 + b*Op2`
 """
-function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a::Float64,b::Float64,c::Float64)
+function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
     aOp!(Op3,c)
     Op3.zerobody[1] += a * Op1.zerobody[1] + b * Op2.zerobody[1]
     for pn = 1:2
@@ -73,13 +73,80 @@ function InitOp(Chan1b,Chan2b)
 end
 
 """
-    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
+function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
+"""
+function difA_RCM(Op::Operator,Aold,Anew)
+    for pn = 1:2
+        Op.onebody[pn] .*= Aold^2 / (Anew^2)
+    end
+    O2b = Op.twobody
+    nch = length(O2b)     
+    for ch = 1:nch
+        O2b[ch] .*= Aold^2 / (Anew^2)
+    end
+    return nothing
+end
+function difA_TCM(Op::Operator,Aold,Anew)
+    for pn = 1:2
+        Op.onebody[pn] .*= Aold / (Anew)
+    end
+    return nothing
+end
+
+"""
+TCM/A
+"""
+function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
+    hw = binfo.hw
+    A = binfo.nuc.A
+    for pn = 1:2
+        chan1b = Chan1b.chs1b[pn]
+        onebody = Op.onebody[pn]
+        for a in keys(chan1b)
+            oa =sps[a]; na = oa.n; la =oa.l
+            idx_a = div(a,2) + a%2
+            for b in chan1b[a]
+                ob =sps[b]; nb = ob.n; lb =ob.l
+                idx_b = div(b,2) + b%2
+                tij = 0.0
+                if na == nb
+                  tij = 0.5 * (2*na+la+3/2) *hw / A 
+                elseif na == nb-1
+                  tij = 0.5 * sqrt( nb * (nb+lb+1/2) ) *hw/A
+                end
+                onebody[idx_b,idx_a] = onebody[idx_a,idx_b] = tij/A
+            end
+        end
+    end
+    # nchan = length(Chan2b)
+    # for ch = 1:nchan
+    #     tbc = Chan2b[ch]
+    #     kets = tbc.kets
+    #     nkets = length(kets)
+    #     V2 = Op.twobody[ch]
+    #     for ibra = 1:nkets
+    #         i,j = kets[ibra]
+    #         oi = sps[i]; oj = sps[j]
+    #         if 2*(oi.n+oj.n) + oi.l + oj.l > binfo.emax*2;continue;end
+    #         for iket = ibra:nkets
+    #             k,l = kets[iket]
+    #             ok = sps[k]; ol = sps[l]
+    #             if 2*(ok.n+ol.n) + ok.l + ol.l > binfo.emax*2;continue;end
+    #             p1p2 = 0.0 / A
+    #             V2[ibra,iket] = V2[iket,ibra] = p1p2
+    #         end
+    #     end
+    # end
+    return nothing
+end
+
+"""
+    Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
 calculate ``R_{CM}`` term
 
 Note that rirj term is also included here to avoid redundancy.
 """
-function Calculate_RCM(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
-    sps = HFobj.modelspace.sps
+function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
     b2 = hc2 / (Mm * binfo.hw)
     A = binfo.nuc.A; Z = binfo.nuc.Z
     ## one-body part
@@ -103,7 +170,6 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,d9j,HOBs,to;non0_cm=true
         end
         onebody .*= b2 / A^2
     end
-    #println("onebody @RCM ",Op_Rp2.onebody[1])
     ## two-body part 
     twobody = Op_Rp2.twobody
     frirj = - 4/(A*Z)
@@ -623,7 +689,7 @@ where ``\\langle r^2_p \\rangle = 0.769 \\mathrm{fm}^2``, ``\\langle r^2_n \\ran
 `` \\frac{3}{4m^2_p c^4} =0.033\\mathrm{fm}^2`` is the so-called Darwin-Foldy term, and the last term is Spin-Orbit correction term.
 """
 function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true)   
-    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,to)
+    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
     Calculate_intR2p(binfo,Chan1b,HFobj,Op_Rp2)
     Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
     Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)

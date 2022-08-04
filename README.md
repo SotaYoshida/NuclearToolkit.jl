@@ -16,6 +16,7 @@ Assuming that you have already installed Julia (v>=1.7.0),
 ```jldoctest
 julia>import Pkg; Pkg.add("NuclearToolkit")
 ```
+Note that the above does not work at the moment. Please wait a couple of days.
  
 Pkg (Julia's builtin package manager) intalls packages in ```$JULIA_DEPOT_PATH```, which is by default ```~/.julia```.  
 When working on a working node (w/o permissions to access ```~/```), overwrite the ```JULIA_DEPOT_PATH``` by ```export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"```.

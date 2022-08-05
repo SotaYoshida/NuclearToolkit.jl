@@ -37,4 +37,4 @@ This sample script performs
 
 When you use `NuclearToolkit.jl` in your work, please cite:
 
-> Ref: (in prep.)
+(For now) [arXiv:2208.02464](https://arxiv.org/abs/2208.02464)

@@ -60,7 +60,7 @@ While NuclearToolkit covers a wide range of methods, the overall code length is 
 
 ## Optional parameters
 For some parameters, the default values are used unless the user specifies those in the file, `optional_parameters.jl`.
-See the [Optional parameters](build/parameters.html) page for more details.
+See the [Optional parameters](parameters) page for more details.
 
 ## Issues/Pull requests
 

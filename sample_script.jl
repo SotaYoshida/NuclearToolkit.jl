@@ -7,8 +7,7 @@ function run()
     ### HFMBPT & VS-IMSRG calculation 
     hw = 20; emax=4
     nuc = "O16"; core = "O16"; vspace="sd-shell"
-    #sntf = "tbme_em500n3lo_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
-    sntf = "tbme_emn500n4lo_2n3n_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
+    sntf = "tbme_em500n3lo_srg2.0hw"*string(hw)*"emax"*string(emax)*".snt.bin"
     hf_main([nuc],sntf,hw,emax;verbose=false,doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,Operators=["Rp2"])
 
     ## shell model calculation

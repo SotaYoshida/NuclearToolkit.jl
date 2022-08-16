@@ -44,8 +44,8 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
             fac_HCM = 0.5 * BetaCM * Mm * hw^2 / (hc^2)
             aOp!(VCM,fac_HCM)            
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
-            CalculateTCM!(TCM,binfo,Chan1b,Chan2bD.Chan2b,sps)
-            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
+            CalculateTCM!(TCM,binfo,Chan1b,Chan2bD.Chan2b,sps,dicts)
+            aOp1_p_bOp2!(TCM,HCM,1.0,1.0)
             update_dicts_withHCM!(HCM,Chan2bD,dicts)
         end 
         MatOp = Matrix{Float64}[]
@@ -63,18 +63,16 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
             difA_RCM(VCM,Aold,A)
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
             difA_TCM(TCM,Aold,A)
-            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
+            aOp1_p_bOp2!(TCM,HCM,1.0,1.0)
             update_dicts_withHCM!(HCM,Chan2bD,dicts)
         end 
-
         recalc_v!(A,dicts)
-        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)       
+        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
         if i > 1
             update_1b!(binfo,sps,Hamil)
             update_2b!(binfo,sps,Hamil,dictsnt.dictTBMEs,Chan2bD,dicts)
         end
         addHCM1b!(Hamil,HCM,A)
-        addHCM1b!(Hamil,TCM)
 
         @timeit to "HF" begin 
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
@@ -130,6 +128,53 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
     end
     return nothing
 end
+
+
+function check_p1p2!(H::Operator,Chan2bD,dicts,A,tf=false)
+    Chan2b = Chan2bD.Chan2b
+    nchan = length(Chan2b)
+    for ch = 1:nchan
+        tkey = zeros(Int64,4)
+        tbc = Chan2b[ch]
+        kets = tbc.kets
+        J = tbc.J
+        pnrank = 2 + div(tbc.Tz,2)
+        nkets = length(tbc.kets)
+        Mat = zeros(Float64,nkets,nkets)
+        if !tf 
+            for i=1:nkets
+                bra = kets[i]            
+                tbra = @view tkey[1:2] 
+                tbra .= bra
+                for j=i:nkets
+                    ket = kets[j]
+                    tket = @view tkey[3:4] 
+                    tket .= ket
+                    nkey = get_nkey_from_abcdarr(tkey)
+                    for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
+                        if J != target[1];continue;end
+                        Mat[i,j] = Mat[j,i] = target[4]
+                    end
+                end
+            end
+            println("\nch $ch")
+            for i = 1:nkets
+                print_vec("row $i ",Mat[i,:] ./ A)
+            end
+        else
+            println("\nTcm @ ch $ch norm ",@sprintf("%10.4e", norm(H.twobody[ch],2)))
+            # for i = 1:nkets
+            #     print_vec("row $i ",H.twobody[ch][i,:])
+            # end
+        end
+        # println("H")
+        # for i = 1:nkets
+        #     print_vec("row $i ",H.twobody[ch][i,:])
+        # end
+    end
+    return nothing
+end
+
 
 """
     hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
@@ -266,7 +311,7 @@ This is needed because in the readsnt/readsnt_bin function, the interaction part
 are stored separately to avoid multiple reads of the input file when calculating multiple nuclei.
 """
 function recalc_v!(A,dicts)
-    #V2b = Vjj + Vpp*hw/Anum
+    #V2b = Vjj + Vpp*hw/Anum + beta*HCM
     for pnrank = 1:3
         tdict = dicts[pnrank]
         for tkey in keys(tdict)

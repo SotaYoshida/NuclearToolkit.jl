@@ -181,7 +181,8 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,n
     twobody = Op_Rp2.twobody
     frirj = - 4/(A*Z)
     nch = length(Chan2b)
-    @qthreads for ch = 1:nch
+    #@qthreads for ch = 1:nch
+    @threads for ch = 1:nch
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J;kets = tmp.kets
         factor_rirj = ifelse(Tz==0, 0.5, 1.0)
@@ -500,7 +501,8 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         nthre = nthreads()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
-        @inbounds @qthreads for idx_a =1:length(allps)
+        #@inbounds @qthreads for idx_a =1:length(allps)
+        @inbounds @threads for idx_a =1:length(allps)
             a = allps[idx_a]
             threid = threadid()
             keych = keychs[threid]

@@ -9,12 +9,9 @@ First, prepare Julia environment v >= 1.7.0.
 Second, add the package in Pkg mode
 ```julia
 julia>]add NuclearToolkit
-``` 
-Note: The above is currently not working, since this package has not yet registered as an official package.  
-The adhoc prescription for now is to execute below
-```bash
-julia src/package_install.jl
 ```
+
+Too see how to run the code, it is strongly recommended to clone the repository.
 
 A sample script provided to perform
 - calculating NN potential by Chiral EFT

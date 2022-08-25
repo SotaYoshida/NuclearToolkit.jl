@@ -1193,7 +1193,6 @@ function calcOBTD(OBTDs,idxs,p_sps,n_sps,
                   pbits,nbits,
                   wfs)
     lps=length(p_sps);lns=length(n_sps);lblock = length(nbits)
-    #@inbounds @qthreads for k=1:length(idxs)
     @inbounds for k=1:length(idxs)
         #for k=1:length(idxs)       
         tmp = idxs[k]
@@ -1467,7 +1466,7 @@ function calcTBTD(TBTDs,
                   opTBTD1,pjumps,njumps,
                   pbits,nbits,tdims,wfs,idxs,bif_idxs,
                   olabels,oTBMEs,labels,to)
-    @inbounds @qthreads for k=1:length(idxs)
+    @inbounds @threads for k=1:length(idxs)
         #@inbounds for k=1:length(idxs)
         tmp = idxs[k]
         i = tmp.i; j=tmp.j; Nij=tmp.Nth

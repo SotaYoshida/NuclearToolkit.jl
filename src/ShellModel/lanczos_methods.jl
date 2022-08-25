@@ -112,7 +112,6 @@ function operate_H!(wf,twf,
                     Mps,delMs,
                     to=nothing) 
     #lblock = length(pbits)
-    #@inbounds @qthreads for bi=1:lblock
     @inbounds @threads for bi in block_tasks
         if bi==0; continue;end #empty job
         ret = [0,0,0]; ret2 = [0,0,0]
@@ -332,7 +331,6 @@ function bl_operate_H!(q,wf,twf,pbits,nbits,jocc_p,jocc_n,
                        SPEs,ppinfo,nninfo,tdims,bis,bfs,block_tasks,
                        p_NiNfs,n_NiNfs,Vpn, Mps,delMs,to=nothing) 
     #lblock = length(pbits)
-    #@inbounds @qthreads for bi=1:lblock
     @inbounds @threads for bi in block_tasks
         if bi==0; continue;end #empty job
         ret = [0,0,0]; ret2 = [0,0,0]

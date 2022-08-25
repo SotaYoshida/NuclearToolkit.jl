@@ -333,7 +333,7 @@ function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
     for pn_ij = 1:2
         t1b = m1bs[pn_ij]
         chan1b = Chan1b.chs1b[pn_ij]
-        @qthreads for idx_i = 1:dim1b
+        @threads for idx_i = 1:dim1b
             i = 2*(idx_i-1) + pn_ij
             oi = sps[i]; ji = oi.j; ni = oi.occ
             jdeno = 1.0/(ji+1)
@@ -421,7 +421,7 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
     phkets = PandyaObj.phkets
     PhaseMats = PandyaObj.PhaseMats
     Zbars = PandyaObj.Zbars; XYbars = PandyaObj.XYbars; keys6j = PandyaObj.keys6j
-    @qthreads for ich=1:nchPandya
+    @threads for ich=1:nchPandya
         tmpMat = PandyaObj.tMat[threadid()]
         key6j = keys6j[threadid()]
         Zbar = Zbars[ich]; Zbar .= 0.0
@@ -488,7 +488,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
     tdict_ichidx = PandyaObj.dict_ich_idx_from_ketcc
     hermite = ret.hermite
     ofst1 = 1000
-    @inbounds @qthreads for ich = 1:length(numbers_addinv)
+    @inbounds @threads for ich = 1:length(numbers_addinv)
         ch = numbers_addinv[ich][1]
         tbc = Chan2b[ch]; tkets = tbc.kets; J = tbc.J
         nKets = length(tkets)
@@ -683,7 +683,7 @@ function comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
     util122 = PandyaObj.util122
     tMats = PandyaObj.tMat    
     XYbars = PandyaObj.XYbars
-    @qthreads for ch = 1:nch
+    @threads for ch = 1:nch
         x2 = x2bs[ch]; y2 = y2bs[ch]; z2 = m2bs[ch]
         tkets = Chan2b[ch].kets; dim = length(tkets)
         tmp_util = util122[ch]     
@@ -745,7 +745,7 @@ function comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
     m2bs = ret.twobody; x2bs = X.twobody; y2bs = Y.twobody
     nch = length(Chan2b)
     Mats_hh = PandyaObj.Mats_hh; Mats_pp = PandyaObj.Mats_pp; Mats_ph = PandyaObj.Mats_ph
-    @qthreads for ch = 1:nch
+    @threads for ch = 1:nch
         tmpMat = PandyaObj.tMat[threadid()]
         x2 = x2bs[ch]; y2 = y2bs[ch]; z2 = m2bs[ch]
         tbc = Chan2b[ch]; kets = tbc.kets; nkets = length(kets)

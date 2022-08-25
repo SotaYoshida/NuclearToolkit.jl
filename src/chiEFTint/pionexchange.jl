@@ -282,25 +282,6 @@ function tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opf
             tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                              J,pnrank,ts,ws,fff,dwn,nd_mpi,xr,pjs_para,gis_para,opfs_para,
                              f_idx,tVs_para,lsj,tllsj_para,tdict,V12mom,tmpsum,to)
-
-            # @inbounds for i= 1:n_mesh
-            # #@inbounds @threads for i= 1:n_mesh
-            #     tVs = zeros(Float64,6)
-            #     x = xr[i];xdwn = x*dwn
-            #     xdwn2 = xdwn^2       
-            #     ex = sqrt(1.0+xdwn2)
-            #     @inbounds for j = 1:n_mesh
-            #         y = xr[j];ydwn = y*dwn;ydwn2=ydwn^2
-            #         ey = sqrt(1.0+ydwn2)
-            #         k2=0.5*(xdwn2 + ydwn2)
-            #         ree = 1.0/sqrt(ex*ey)
-            #         fc = fff * hc3 * freg(x,y,2) * ree
-            #         single_tpe(chiEFTobj,LoopObjects,nd_mpi,nd_mpi2,Fpi2,
-            #                    c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,
-            #                    J,pnrank,ts,ws,dwn,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
-            #                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,i,j,tmpsum[threadid()],to)                   
-            #     end
-            # end
         end
     end
     return nothing
@@ -750,88 +731,10 @@ end
 
 
 """
-    single_tpe(nd_mpi,nd_mpi2,Fpi2,Fpi4,Fpi6,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,J,pnrank,ts,ws,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
+    tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,J,pnrank,ts,ws,fff,dwn,nd_mpi,xr,pjs_para,gis_para,opfs_para,f_idx,tVs_para,lsj,tllsj_para,tdict,V12mom,tmpsum,to;calc_TPE_sep=true)
 
-TPE contribution in a given momentum mesh point
+Calculating TPE contribution in a given momentum mesh point.
 """
-function single_tpe(chiEFTobj,LoopObjects,nd_mpi,nd_mpi2,Fpi2,
-                    c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,
-                    J,pnrank,ts,ws,dwn,xdwn,ydwn,xdwn2,ydwn2,k2,pjs,
-                    gis,opfs,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,target,to;calc_TPE_sep=true)
-    LamSFR_nd = dwn * chiEFTobj.LambdaSFR
-    usingSFR = ifelse(LamSFR_nd!=0.0,true,false)
-    f_T,f_SS,f_C,f_LS,f_SL = opfs
-    f_sq!(f_T,xdwn,ydwn);f_ls!(f_LS,xdwn,ydwn);f_sl!(f_SL,xdwn,ydwn)
-    for i=1:length(gis); gis[i] .= 0.0; end
-
-    @inbounds for n = 1:length(ts)
-        tpj = @view pjs[n,:]
-        t = ts[n]
-        int_w = ws[n]
-        q2 = xdwn2 + ydwn2 -2.0*xdwn*ydwn*t; q = sqrt(q2)
-        w2 = 4.0*nd_mpi2 + q2; w = sqrt(w2)
-        tw2 = 2.0*nd_mpi2 + q2
-        Lq,Aq = calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR_nd)
-        # ## Tensor term: Vt
-        tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[1])
-        # ##Tensor term: Wt
-        tmp_s = Wt_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[2])
-        ## sigma-sigma term: Vs
-        tmp_s = Vs_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[3])
-        ## sigma-sigma term: Ws
-        tmp_s = Ws_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[4])
-        ## Central term: Vc
-        tmp_s = Vc_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[5])
-        ## Central term: Wc
-        tmp_s = Wc_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-        axpy!(tmp_s*int_w,tpj,target[6])
-        # ## LS term: Vls
-        tmp_s = Vls_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
-        axpy!(tmp_s*int_w,tpj,target[7])
-        ## LS term: Wls
-        tmp_s = Wls_term(chiEFTobj.chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
-        axpy!(tmp_s*int_w,tpj,target[8])
-        ## sigma-L term: Vsl
-        tmp_s = Vsl_term(chiEFTobj.chi_order,Lq,Fpi2;EMN=usingSFR)
-        axpy!(tmp_s*int_w,tpj,target[9])        
-        if !calc_TPE_sep            
-            n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
-        end
-    end
-
-    for ch =1:9
-        gi = gis[ch]       
-        axpy!(1.0,target[ch],gi)
-        target[ch] .= 0.0
-    end
-    
-    #Vt
-    calc_IJ_V(J,pnrank,gis[1],f_T,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #Wt
-    calc_IJ_V(J,pnrank,gis[2],f_T,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true)
-    #Vs
-    calc_IJ_V(J,pnrank,gis[3],f_SS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #Ws
-    calc_IJ_V(J,pnrank,gis[4],f_SS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true)     
-    #Vc
-    calc_IJ_V(J,pnrank,gis[5],f_C,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #Wc
-    calc_IJ_V(J,pnrank,gis[6],f_C,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep =true)
-    #Vls
-    calc_IJ_V(J,pnrank,gis[7],f_LS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="ls")    
-    #Wls
-    calc_IJ_V(J,pnrank,gis[8],f_LS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true,addtype="ls")
-    #Vsl
-    calc_IJ_V(J,pnrank,gis[9],f_SL,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="sl")    
-
-    return nothing
-end
-
 function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                  J,pnrank,ts,ws,fff,dwn,nd_mpi,xr,pjs_para,gis_para,opfs_para,
                  f_idx,tVs_para,lsj,tllsj_para,tdict,V12mom,tmpsum,to;calc_TPE_sep=true)

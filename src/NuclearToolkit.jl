@@ -13,7 +13,6 @@ using StatsBase
 using Statistics
 using SpecialFunctions
 using TimerOutputs
-using ThreadPools
 using WignerSymbols
 
 ### ChiEFTint.jl  chiEFTint/

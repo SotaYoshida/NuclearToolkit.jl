@@ -191,7 +191,7 @@ function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
             izs = izs_ab[ich]
             vv = zeros(Float64,ndim,ndim)
         end
-        @timeit to "vtrans" @inbounds @qthreads for i = 1:ndim
+        @timeit to "vtrans" @inbounds @threads for i = 1:ndim
             t2v=zeros(Int64,2)
             t5v=zeros(Int64,5)
             iza,ia,izb,ib = izs[i]
@@ -1448,7 +1448,7 @@ function PreCalc6j(emax)
     end
     d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
     hit = 0
-    @qthreads for J = 0:Jmax 
+    @threads for J = 0:Jmax 
         target_dict = d6j_int[J+1]
         for j1 = 0:jmax
             for j2 = j1:jmax

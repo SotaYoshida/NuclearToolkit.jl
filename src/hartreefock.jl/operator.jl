@@ -72,6 +72,9 @@ function InitOp(Chan1b,Chan2b)
     return Operator([0.0],onebody,twobody,true,false)
 end
 
+"""
+function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
+"""
 function difA_RCM(Op::Operator,Aold,Anew)
     for pn = 1:2
         Op.onebody[pn] .*= Aold^2 / (Anew^2)
@@ -85,11 +88,7 @@ function difA_RCM(Op::Operator,Aold,Anew)
 end
 function difA_TCM(Op::Operator,Aold,Anew)
     for pn = 1:2
-        Op.onebody[pn] .*= (Aold / Anew)^2
-    end
-    nch = length(Op.twobody)
-    for ch = 1:nch
-        Op.twobody[ch] .*= (Aold/ Anew)^2
+        Op.onebody[pn] .*= Aold / (Anew)
     end
     return nothing
 end
@@ -97,7 +96,7 @@ end
 """
 TCM/A
 """
-function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps,dicts)
+function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
     hw = binfo.hw
     A = binfo.nuc.A
     for pn = 1:2
@@ -119,31 +118,25 @@ function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps,dicts)
             end
         end
     end
-    nchan = length(Chan2b)
-    for ch = 1:nchan
-        tkey = zeros(Int64,4)
-        tbc = Chan2b[ch]
-        kets = tbc.kets
-        J = tbc.J
-        pnrank = 2 + div(tbc.Tz,2)
-        nkets = length(tbc.kets)
-        Mat = Op.twobody[ch]
-        for i=1:nkets
-            bra = kets[i]            
-            tbra = @view tkey[1:2] 
-            tbra .= bra
-            for j=i:nkets
-                ket = kets[j]
-                tket = @view tkey[3:4] 
-                tket .= ket
-                nkey = get_nkey_from_abcdarr(tkey)
-                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
-                    if J != target[1];continue;end
-                    Mat[i,j] = Mat[j,i] = -target[4] / A^2
-                end
-            end
-        end
-    end
+    # nchan = length(Chan2b)
+    # for ch = 1:nchan
+    #     tbc = Chan2b[ch]
+    #     kets = tbc.kets
+    #     nkets = length(kets)
+    #     V2 = Op.twobody[ch]
+    #     for ibra = 1:nkets
+    #         i,j = kets[ibra]
+    #         oi = sps[i]; oj = sps[j]
+    #         if 2*(oi.n+oj.n) + oi.l + oj.l > binfo.emax*2;continue;end
+    #         for iket = ibra:nkets
+    #             k,l = kets[iket]
+    #             ok = sps[k]; ol = sps[l]
+    #             if 2*(ok.n+ol.n) + ok.l + ol.l > binfo.emax*2;continue;end
+    #             p1p2 = 0.0 / A
+    #             V2[ibra,iket] = V2[iket,ibra] = p1p2
+    #         end
+    #     end
+    # end
     return nothing
 end
 
@@ -181,7 +174,6 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,n
     twobody = Op_Rp2.twobody
     frirj = - 4/(A*Z)
     nch = length(Chan2b)
-    #@qthreads for ch = 1:nch
     @threads for ch = 1:nch
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J;kets = tmp.kets
@@ -501,7 +493,6 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         nthre = nthreads()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
-        #@inbounds @qthreads for idx_a =1:length(allps)
         @inbounds @threads for idx_a =1:length(allps)
             a = allps[idx_a]
             threid = threadid()

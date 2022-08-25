@@ -51,7 +51,7 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
         ## prep. for partial-wave decompositon
         lsjs = [ [ [J,J,0,J],[J,J,1,J],[J+1,J+1,1,J],[J-1,J-1,1,J],[J+1,J-1,1,J],[J-1,J+1,1,J]] for J = 0:jmax]
         llpSJ_s = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[1,1,1,2]]
-        tllsj = [0,0,0,0,0]
+        tllsj = zeros(Int,5)
         opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL
         f_ss!(opfs[2]);f_c!(opfs[3])
         ## prep. Gauss point for integrals
@@ -62,11 +62,10 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
         infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn;io=io)
         println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
         ## prep. integrals for 2n3n
-        F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh)
-        F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
+        F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
         wsyms=[]
         QWs = prep_QWs(chiEFTobj,xr,ts,ws,to)
-        if calc_3N
+        if chiEFTobj.calc_3N
             prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
             wsyms = prep_wsyms()
         end
@@ -95,23 +94,16 @@ function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nuc
     X9,U6 = prepareX9U6(2*emax)
     @timeit to "NNcalc" begin 
         if chiEFTobj.calc_NN
-            # ***Leading Order (LO)***
-            ### OPEP
             OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
-            # LO contact term
             LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
-            ## ***Next-to-LeadingOrder(NLO)***
             if chiEFTobj.chi_order >= 1
-                ### contact term Q^2
                 NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
                 ### TPE terms (NLO,NNLO,N3LO,N4LO)
                 tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
             end                
-            # *** N3LO (contact Q^4)
             if chiEFTobj.chi_order >= 3
                 N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
             end
-            # *** N4LO 
             if chiEFTobj.chi_order >= 4
                 N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
             end
@@ -383,23 +375,24 @@ function SRG(chiEFTobj,xr,wr,V12mom,dict_numst,to)
             tkey[2]=l2; tkey[3]=l1; V12idx = tdict[tkey]; tv4 = V12mom[V12idx]
             for (i,x) in enumerate(xr)
                 for (j,y) in enumerate(xr) 
-                    V[i,j] = tv1[i,j] * x * y * sqrt(wr[i] * wr[j])
-                    V[n_mesh+i,n_mesh+j] = tv2[i,j] * x*y * sqrt(wr[i] * wr[j])
-                    V[i,n_mesh+j] = tv3[i,j] * x * y * sqrt(wr[i] * wr[j])
-                    V[n_mesh+i,j] = tv4[i,j] * x * y * sqrt(wr[i] * wr[j])
+                    tfac = x * y * sqrt(wr[i] * wr[j])
+                    V[i,j] = tv1[i,j] * tfac 
+                    V[n_mesh+i,n_mesh+j] = tv2[i,j] * tfac 
+                    V[i,n_mesh+j] = tv3[i,j] * tfac 
+                    V[n_mesh+i,j] = tv4[i,j] * tfac 
                 end
-                T[i,i] = (x *hc)^2 / (2*rmass)
-                T[n_mesh+i,n_mesh+i] = (x *hc)^2 / (2*rmass)
+                T[i,i] = T[n_mesh+i,n_mesh+i] = (x *hc)^2 / (2*rmass)
             end
             H .= V;H .+= T
             srg_tr(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
             H .= V; H .-= T # Veff = H(s) - T # H is reused as Veff            
             for (i,x) in enumerate(xr)
                 for (j,y) in enumerate(xr)
-                    tv1[i,j] = H[i,j] / ( x * y * sqrt(wr[i] * wr[j]))
-                    tv2[i,j] = H[n_mesh+i,n_mesh+j] / (x*y *sqrt(wr[i] * wr[j]))
-                    tv3[i,j] = H[i,n_mesh+j] / ( x*y * sqrt(wr[i]*wr[j]))
-                    tv4[i,j] = H[n_mesh+i,j] / ( x*y * sqrt(wr[i]*wr[j]))
+                    deno =  x * y * sqrt(wr[i]*wr[j])
+                    tv1[i,j] = H[i,j] / deno # ( x * y * sqrt(wr[i]*wr[j]))
+                    tv2[i,j] = H[n_mesh+i,n_mesh+j] /  deno #(x*y *sqrt(wr[i]*wr[j]))
+                    tv3[i,j] = H[i,n_mesh+j] / deno #( x*y * sqrt(wr[i]*wr[j]))
+                    tv4[i,j] = H[n_mesh+i,j] / deno # ( x*y * sqrt(wr[i]*wr[j]))
                 end
             end
         end

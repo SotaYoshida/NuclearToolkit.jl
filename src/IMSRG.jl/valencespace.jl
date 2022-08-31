@@ -109,13 +109,12 @@ function update_vsspace_chs!(HFobj,valencespace,Chan2b)
                 end
             end
             ## ni+nj=0, vv,qv,qq
-            if v_i + v_j == 2
+            if v_i + v_j == 2 
+                # if you need additional truncations, specify here
                 add_ch_ket!(ch,ik,vv)
-            end
-            if v_i + v_j == 1 && (sps[i].q || sps[j].q)
+            elseif v_i + v_j == 1 && (sps[i].q || sps[j].q)
                 add_ch_ket!(ch,ik,qv) 
-            end
-            if sps[i].q && sps[j].q
+            elseif sps[i].q && sps[j].q
                 add_ch_ket!(ch,ik,qq) 
             end
         end       

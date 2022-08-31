@@ -75,9 +75,15 @@ end
 
 Function to carry out Talmi-Mochinsky transformation
 """
-function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
-                 Numpn,V12ab,arr_numst,dict6j,d6j_nabla, X9,U6,to;calc_relcm=false,writesnt=true)
-    emax = chiEFTobj.emax
+function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
+    V12ab = Vrel(chiEFTobj,to)
+    params = chiEFTobj.params
+    dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
+    xrP = chiEFTobj.xrP; wrP = chiEFTobj.wrP; Rnl = chiEFTobj.Rnl; RNL = chiEFTobj.RNL
+    nTBME = chiEFTobj.nTBME; infos = chiEFTobj.infos; izs_ab = chiEFTobj.izs_ab
+    arr_numst = chiEFTobj.arr_numst;
+    dict6j = chiEFTobj.dict6j; d6j_nabla = chiEFTobj.d6j_nabla; X9 = chiEFTobj.X9; U6 = chiEFTobj.U6
+    emax = chiEFTobj.params.emax
     Nrmax = 2*emax
     nume = zeros(Int64,Nrmax+1,Nrmax+1)
     numknn = [ [ [ zeros(Int64,div(K1,2)+1,div(KK-K1,2)+1) for K1=0:KK] for Lam=0:KK] for KK=0:Nrmax]
@@ -163,45 +169,46 @@ function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
     end
     nljdict = Dict(0=>0); delete!(nljdict,0)
     if writesnt 
-        target_nlj = chiEFTobj.target_nlj
-        tbme_fmt = chiEFTobj.tbme_fmt
-        io=open(chiEFTobj.fn_tbme,"w")
+        target_nlj = params.target_nlj
+        tbme_fmt = params.tbme_fmt
+        io=open(params.fn_tbme,"w")
         if tbme_fmt  == "myg"
             println(io, nTBME)
             println(io,"tza,  a, tzb,  b, tzc,  c, tzd,  d, J12,   <ab|v|cd>,   <ab|p_ip_j|cd>/mhw")
         elseif tbme_fmt=="snt"
             if length(target_nlj)!=0
-                nljdict = def_sps_snt(emax,chiEFTobj.target_nlj)[2]
+                nljdict = def_sps_snt(params.emax,params.target_nlj)[2]
             end
-            write_spes(chiEFTobj,io,nljsnt,nofst,nTBME,nljdict)
+            write_spes(params,io,nljsnt,nofst,nTBME,nljdict)
         elseif tbme_fmt=="snt.bin"
             if length(target_nlj)!=0
                 nljdict = def_sps_snt(emax,target_nlj)[2]
             end
-            write_spes(chiEFTobj,io,nljsnt,nofst,nTBME,nljdict;bin=true)
+            write_spes(params,io,nljsnt,nofst,nTBME,nljdict;bin=true)
         end
     end
     tbmes = [ Dict{Vector{Int64},Vector{Vector{Float64}}}() for pnrank=1:3]
     tkeys = [zeros(Int64,4) for i=1:4]
     key6j = zeros(Int64,5)
-    @inbounds for ich=1:length(infos)
-        @timeit to "misc" begin
-            izz,ip,Jtot,ndim=infos[ich]
-            pnrank = Int(div(izz,2))+2
-            izs = izs_ab[ich]
-            vv = zeros(Float64,ndim,ndim)
-        end
+    t2vs=[zeros(Int64,2) for i=1:nthreads()]
+    t5vs=[zeros(Int64,5) for i=1:nthreads()]            
+    @inbounds for ich in eachindex(infos) #1:length(infos)
+        izz,ip,Jtot,ndim=infos[ich]
+        pnrank = Int(div(izz,2))+2
+        izs = izs_ab[ich]
+        vv = zeros(Float64,ndim,ndim)
         @timeit to "vtrans" @inbounds @threads for i = 1:ndim
-            t2v=zeros(Int64,2)
-            t5v=zeros(Int64,5)
+        #@timeit to "vtrans" @inbounds for i = 1:ndim
+            t2v=t2vs[threadid()]
+            t5v=t5vs[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
-                izc,ic,izd,id= izs[j]                
+                izc,ic,izd,id= izs[j]
                 v12 = vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                             nljsnt,V12ab,X9,U6,nume,numknn,Ndim,Transbk,arr_numst,t2v,t5v,to)
-                if chiEFTobj.v_chi_order >= 1
+                             nljsnt,V12ab,nume,numknn,Ndim,Transbk,t2v,t5v,to)
+                if chiEFTobj.params.v_chi_order >= 1
                     vvs = zeros(Float64,5)
-                    NLOvs(chiEFTobj,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
+                    NLOvs(params,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
                           X9,U6,t5v,Jtot,iza,ia,izb,ib,izc,ic,izd,id,to)
                     for i=1:5
                         v12 += vvs[i]
@@ -211,9 +218,9 @@ function TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,
             end
         end       
         if writesnt 
-            write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=nofst)
+            write_tbme(params,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=nofst)
         else
-            set_tbme(chiEFTobj,tbmes[pnrank],ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j,to;ofst=nofst)
+            set_tbme(params,tbmes[pnrank],ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j,to;ofst=nofst)
         end
     end
     if writesnt 
@@ -678,8 +685,9 @@ function def_fgw(;maxjj=200)
 end
 
 function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                nljsnt,V12ab,X9,U6,nume,numknn,Ndim,Transbk,arr_numst,t2v,t5v,to)
-    emax = chiEFTobj.emax
+                nljsnt,V12ab,nume,numknn,Ndim,Transbk,t2v,t5v,to)
+    emax = chiEFTobj.params.emax
+    X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_numst = chiEFTobj.arr_numst
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
     nc,lc,jdc = nljsnt[ic]; nd,ld,jdd = nljsnt[id]
@@ -875,8 +883,9 @@ function overwritekeyHOB!(key,N,Lam,n,lam,n1,l1,n2,l2,L)
 end 
 
 """
-    PreCalcHOB(chiEFTobj,to)
+    PreCalcHOB(chiEFTobj,dict6j,to)
 
+calculating `dict9j`, dict of 9j for Pandya transformation and harmonic oscillator brackets (`HOBs`).
 see also "struct HarmonicOscillatorBrackets" in hartreefock.jl/def_struct.jl
 
 In the early version, dict9j is defined as
@@ -888,7 +897,8 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(emax,chiEFTobj,dict6j,to;io=stdout)
+function PreCalcHOB(chiEFTobj,dict6j,to;io=stdout)
+    emax = chiEFTobj.emax
     Nnmax = chiEFTobj.Nnmax
     Nmax = max(2*emax,Nnmax)
     if emax >= 10; Nmax = Nnmax + 10;end
@@ -1126,10 +1136,19 @@ end
 const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
 const l2lnd =[[ wigner3j(Float64,l1,2,l2,0,0,0) for l2=0:8] for l1=0:8]
 
+
+struct wsyms_j1_1or2
+    cg1s::Matrix{Float64}
+    cg2s::Matrix{Float64}
+    d6_121::Array{Float64,3}
+    d6_21::Array{Float64,4}
+    d6_222::Array{Float64,3}
+    d9_12::Array{Float64,4}
+end
 """
     prep_wsyms()
 
-cg1s = (1,0,l,0|l',0), cg2s = (2,0,l,0|l',0)
+preparing Clebsch-Gordan coefficients for some special cases: cg1s = (1,0,l,0|l',0), cg2s = (2,0,l,0|l',0)
 """
 function prep_wsyms()
     lmax = 7
@@ -1137,8 +1156,8 @@ function prep_wsyms()
     cg1s = zeros(Float64,dim,dim)
     cg2s = zeros(Float64,dim,dim)
     d6_121 = zeros(Float64,dim,dim,dim)
-    d6_222 = zeros(Float64,dim,dim,dim)
     d6_21 = zeros(Float64,dim,dim,dim,dim)
+    d6_222 = zeros(Float64,dim,dim,dim)
     d9_12 = zeros(Float64,dim,dim,dim,dim)
     for li = 0:dim-1
         for lj =0:dim-1
@@ -1154,7 +1173,7 @@ function prep_wsyms()
             end
         end
     end
-    return cg1s,cg2s,d6_121,d6_21,d6_222,d9_12
+    return wsyms_j1_1or2(cg1s,cg2s,d6_121,d6_21,d6_222,d9_12)
 end
 
 """ 
@@ -1350,7 +1369,6 @@ function jj_std(sps,dictsps,dictTBMEs;fname="")
     return nothing
 end
 
-
 function monopole(monodict,fname)
     io = open(fname,"w")
     nume = zeros(Float64,5)
@@ -1372,10 +1390,6 @@ function monopole(monodict,fname)
     return nothing
 end
 
-function sample_std()
-    sps,dictsps,dictTBMEs = readsnt("usdb.snt",18)
-    spin_tensor_decomposition(sps,dictsps,dictTBMEs)
-end
 
 function nlj_from_str(str)
     lstr = match(r"[a-z]",str).match

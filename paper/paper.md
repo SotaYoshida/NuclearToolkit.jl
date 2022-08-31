@@ -19,8 +19,8 @@ bibliography: paper.bib
 
 
 # Summary
-One of the ultimate goals in nuclear physics is to understand and predict various properties of nuclei from a fundamental interaction among nucleons, nuclear force.
-Owing to recent developments in the community, especialy in describing the nuclear force and in nuclear many-body methods, it is becoming possible to make quantitative discussions and predictions on various properties with first-principles calculations.
+One of the ultimate goals in nuclear physics is to understand and predict various properties of nuclei from a fundamental interaction among nucleons, the nuclear force.
+Owing to recent developments in the community, especially in describing the nuclear force and in nuclear many-body methods, it is becoming possible to make quantitative discussions and predictions on various properties with first-principles calculations.
 On the other hand, it is a common situation that different degrees of freedom can be important (e.g., nucleons, alpha-cluster) to describe one nucleus or one state of a target nucleus, so nuclear models are becoming more and more diverse.
 It can therefore be difficult to familiarize oneself with the technical details of all those methods. ``NuclearToolkit.jl`` was designed to circumvent the situation and to be helpful for both students and researchers to tackle nuclear many-body problems.
 

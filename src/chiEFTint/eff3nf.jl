@@ -1,3 +1,25 @@
+struct QLs
+    QL0s::Vector{Matrix{Float64}}
+    QWL2s::Vector{Matrix{Float64}}
+    QWL1s::Vector{Matrix{Float64}}
+    QWL0s::Vector{Matrix{Float64}}
+    QWlss::Vector{Matrix{Float64}}
+    ndQW1s::Vector{Vector{Matrix{Float64}}}
+    ndQW2s::Vector{Vector{Matrix{Float64}}}
+    QLdict::Vector{Dict{Float64,Float64}}
+end
+struct Fis_2n3n
+    F0s::Vector{Float64}
+    F1s::Vector{Float64}
+    F2s::Vector{Float64}
+    F3s::Vector{Float64}
+end
+struct util_2n3n
+    Fis::Fis_2n3n
+    QWs::QLs
+    wsyms::wsyms_j1_1or2
+end
+
 function XF(Anum)
     return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
 end
@@ -27,48 +49,70 @@ function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
     return nothing
 end
 
+"""
+    prep_integrals_for2n3n(chiEFTobj)
 
-function calc_vmom_3nf(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,
-                       F0s,F1s,F2s,F3s,QWs,wsyms,
-                       lsjs,llpSJ_s,tmp_llsj;pnm=false)
-    kF = chiEFTobj.kF
-    n_mesh = chiEFTobj.n_mesh
+preparing integrals and Wigner symbols for density-dependent 3NFs:
+- `Fis::Fis_2n3n` vectors {F0s,F1s,F2s,F3s}, Eqs.(A13)-(A16) in [Kohno2013].
+- `QWs::` second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
+- `wsyms::` Wingner symbols with specific `j` used for both 2n and 2n3n.
+
+Reference:  
+[Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
+"""
+function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
+    calc_3N = chiEFTobj.calc_3N
+    n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
+    F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
+    QWs = prep_QWs(chiEFTobj,xr,ts,ws)
+    if calc_3N
+        prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)        
+    end
+    wsyms = prep_wsyms()
+    Fis = Fis_2n3n(F0s,F1s,F2s,F3s)
+    return util_2n3n(Fis,QWs,wsyms)
+end
+
+function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
+    if !chiEFTobj.params.calc_3N; return nothing; end
+    if it > 1; for i in eachindex(chiEFTobj.numst2); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
+    dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr
+    V12mom = chiEFTobj.V12mom; dict_numst = chiEFTobj.dict_numst
+    util_2n3n = chiEFTobj.util_2n3n; lsjs = chiEFTobj.lsjs
+    tmp_llsj = chiEFTobj.tllsj                    
+    kF = chiEFTobj.params.kF
+    n_mesh = chiEFTobj.params.n_mesh
     LamChi = 700.0/hc
     rho = ifelse(pnm,2.0,4.0) * kF^3 / (6.0 * pi^2)
     nreg = 3
-    hc3 = hc^3
     mpi = sum(mpis)/3.0/hc; mpi2 = mpi^2
     bbf =  2.0/3.0 / (4.0 * pi^2)
 
-    r_c1 = LECs["ct1_NNLO"] *1.e-3 *gA^2 * mpi2  / ((Fpi/hc)^4) *hc^2
-    r_c3 = LECs["ct3_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
-    r_c4 = LECs["ct4_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
-    
-    r_cD = LECs["cD"] * hc * abs(gA) / (8.0*(Fpi/hc)^4 *LamChi)
-    ## contact: V_E(CON)
-    r_cE= -6.0/4.0 * LECs["cE"] * rho / ( (Fpi/hc)^4 *LamChi) * hc
-    V_E(chiEFTobj,xr,r_cE*bbf,V12mom,dict_numst,to)
+    r_c1 = dLECs["ct1_NNLO"] *1.e-3 *gA^2 * mpi2  / ((Fpi/hc)^4) *hc^2
+    r_c3 = dLECs["ct3_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
+    r_c4 = dLECs["ct4_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
+    r_cD = dLECs["cD"] * hc * abs(gA) / (8.0*(Fpi/hc)^4 *LamChi)
+    r_cE= -6.0/4.0 * dLECs["cE"] * rho / ( (Fpi/hc)^4 *LamChi) * hc
+    # Contact term
+    V_E(chiEFTobj.params,xr,r_cE*bbf,V12mom,dict_numst,to)
     ## pion exchange: V_C(TPE), V_D(OPE)    
     tllsj = [copy(tmp_llsj) for i =1:nthreads()]
     for pnrank =1:3
         tdict = dict_numst[pnrank]
-        MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
+        #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
         itt = itts[pnrank]
         @views tllsj[1:nthreads()][1] .= itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             @inbounds for i= 1:n_mesh
-                x = xr[i]#;xdwn = x * dwn;xdwn2= xdwn^2
-                #ex = sqrt(1.0+xdwn2)
+                x = xr[i]
                 @inbounds for j = 1:n_mesh
-                    y = xr[j]#; ydwn = y*dwn;ydwn2= ydwn^2
-                    #ey = sqrt(1.0+ydwn2)
-                    fac3n = bbf  *freg(x,y,nreg) #/sqrt(ex*ey)
+                    y = xr[j]
+                    fac3n = bbf  *freg(x,y,nreg)
                     ## eff3nf 
                     single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,
                                   r_c1,r_c3,r_c4,r_cD,r_cE,
-                                  F0s,F1s,F2s,F3s,QWs,wsyms,ts,ws,
-                                  lsj,tllsj[threadid()],
+                                  util_2n3n,lsj,tllsj[threadid()],
                                   tdict,V12mom,i,j,to)
                 end
             end
@@ -108,7 +152,14 @@ function S12(ell,ellp,J)
     return r
 end
 
-function prep_QWs(chiEFTobj,xr,ts,ws,to)
+""" 
+    prep_QWs(chiEFTobj,xr,ts,ws)
+
+returns struct `QWs`, second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
+Note that QWs.QLdict is also used in OPEP to avoid redundant calculations.
+Reference:  [Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
+"""
+function prep_QWs(chiEFTobj,xr,ts,ws)
     n_mesh = chiEFTobj.n_mesh
     kF = chiEFTobj.kF
     dim = lmax + 2
@@ -141,20 +192,21 @@ function prep_QWs(chiEFTobj,xr,ts,ws,to)
                 end 
             end
         end
-    end
-    return QL0s,QWL2s,QWL1s,QWL0s,QWlss,ndQW1s,ndQW2s,QLdict
+    end    
+    return QLs(QL0s,QWL2s,QWL1s,QWL0s,QWlss,ndQW1s,ndQW2s,QLdict)
 end
 
 function single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,
-                       c1,c3,c4,cD,cE,
-                       F0s,F1s,F2s,F3s,QWs,wsyms,ts,ws,
+                       c1,c3,c4,cD,cE,util_2n3n,
                        lsj,tllsj,tdict,V12mom,V_i,V_j,to)
     allsum = 0.0
     f_idx = 6; if J==0;f_idx = 3;end
-    QL0s = @views QWs[1]; QWL2s= @views QWs[2]
-    QWL1s= @views QWs[3]; QWL0s= @views QWs[4]
-    QWlss= @views QWs[5]; ndQW1s= @views QWs[6]; ndQW2s = @views QWs[7]
-    cg1s,cg2s,d6_121,d6_21,d6_222,d9_12 = wsyms
+    F0s = util_2n3n.Fis.F0s; F1s = util_2n3n.Fis.F1s
+    F2s = util_2n3n.Fis.F2s; F3s = util_2n3n.Fis.F3s
+    QL0s = util_2n3n.QWs.QL0s ;  QWL2s = util_2n3n.QWs.QWL2s
+    QWL1s = util_2n3n.QWs.QWL1s; QWL0s = util_2n3n.QWs.QWL0s; QWlss = util_2n3n.QWs.QWlss
+    ndQW1s = util_2n3n.QWs.ndQW1s; ndQW2s = util_2n3n.QWs.ndQW2s
+    wsyms = util_2n3n.wsyms
     z  = (x^2 + y^2 + mpi2*hc^2) / (2.0 * x*y)
     x_fm = x/hc; x_fm2 = x_fm^2
     y_fm = y/hc; y_fm2 = y_fm^2
@@ -484,8 +536,10 @@ function  Vt_c4_nd(V_i,V_j,ell,ellp,J,x_fm2,y_fm2,XYT,rho,mpi2,
                    QWL0yx,QWL0_lp1,QWL0_lm1,QWL0_lp2yx,QWL0_lm2,
                    QWJ0p1,QWJ0m1,QWL2_l,QWL2_lp,QWL2_J,
                    QX1,QX1p,QX1J,ndQW1s,ndQW2s,wsyms,d3jinvnd)
+    cg1s = wsyms.cg1s;   cg2s = wsyms.cg2s
+    d6_121 = wsyms.d6_121; d6_21  = wsyms.d6_21
+    d6_222 = wsyms.d6_222; d9_12  = wsyms.d9_12
 
-    cg1s,cg2s,d6_121,d6_21,d6_222,d9_12 = wsyms
     Q4TA  = (0.5*rho-mpi2*(F0X+F0Y)-x_fm2*F2X/3.0-y_fm2*F2Y/3.0  )
     Q4TA *= (y_fm2*QL0+x_fm2*QL0p-XYT*QJ)/XYT 
     Q4TA += 0.5*XYT/(2.0*J+1.0) * (QWJ0p1 -QWJ0m1) 
@@ -691,7 +745,9 @@ function Vt_c4_d(V_i,V_j,ell,ellp,J,x_fm2,y_fm2,XYT,rho,mpi2,
                  QWJ0p1,QWJ0m1,QWL2_l,QWL2_lp,QWL2_J,QW2_lm1,QW2_lp1,
                  QX1,QX1p,QX1J,QX1_m1,QX1_p1,
                  ndQW1s,ndQW2s,wsyms,d3jinv)
-    cg1s,cg2s,d6_121,d6_21,d6_222,d9_12 = wsyms
+    cg1s = wsyms.cg1s;   cg2s = wsyms.cg2s
+    d6_121 = wsyms.d6_121; d6_21  = wsyms.d6_21
+    d6_222 = wsyms.d6_222; d9_12  = wsyms.d9_12
     Q4TA = (0.5 *rho -mpi2*(F0X+F0Y)) * (
         (x_fm2 +y_fm2)/XYT *QL0 
         -0.5 * (2*ell+3)/(2*ell+1) *QLm1 

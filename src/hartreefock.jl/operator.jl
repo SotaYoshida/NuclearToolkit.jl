@@ -1,6 +1,6 @@
 """
     aOp!(Op::Operator,a::Float64)
-function to multiply scaler to an operator::Operator
+function to multiply scaler to an operator.
 """
 function aOp!(Op::Operator,a)
     Op.zerobody[1] *= a 
@@ -95,6 +95,8 @@ end
 
 """
 TCM/A
+
+One doesn't have to calc. two-body part here, since the necessary part is already calculated in Vpp.
 """
 function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
     hw = binfo.hw
@@ -118,25 +120,7 @@ function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
             end
         end
     end
-    # nchan = length(Chan2b)
-    # for ch = 1:nchan
-    #     tbc = Chan2b[ch]
-    #     kets = tbc.kets
-    #     nkets = length(kets)
-    #     V2 = Op.twobody[ch]
-    #     for ibra = 1:nkets
-    #         i,j = kets[ibra]
-    #         oi = sps[i]; oj = sps[j]
-    #         if 2*(oi.n+oj.n) + oi.l + oj.l > binfo.emax*2;continue;end
-    #         for iket = ibra:nkets
-    #             k,l = kets[iket]
-    #             ok = sps[k]; ol = sps[l]
-    #             if 2*(ok.n+ol.n) + ok.l + ol.l > binfo.emax*2;continue;end
-    #             p1p2 = 0.0 / A
-    #             V2[ibra,iket] = V2[iket,ibra] = p1p2
-    #         end
-    #     end
-    # end
+
     return nothing
 end
 

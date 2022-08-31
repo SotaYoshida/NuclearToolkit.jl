@@ -375,8 +375,7 @@ constructor of utils for Pandya transformation and others
 numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya) 
 """
 function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
-    Chan2b = Chan2bD.Chan2b
-    Jmax = binfo.emax * 2 + 1
+    Chan2b = Chan2bD.Chan2b    
     numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj)
     MS = HFobj.modelspace; sps = MS.sps
 
@@ -385,7 +384,7 @@ function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0
     Mats_hh = Matrix{Float64}[ ]
     Mats_pp = Matrix{Float64}[ ]
     Mats_ph = Matrix{Float64}[ ]
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         tbc = Chan2b[ch];kets = tbc.kets
         ppidx = get(HFobj.modelspace.spaces.pp,ch,Int64[]); nhh = length(ppidx) 
         hhidx = get(HFobj.modelspace.spaces.hh,ch,Int64[]); nhh = length(hhidx) 
@@ -611,7 +610,7 @@ key = [ji,jj,jk,jl,J'] -> new_key::Int64
 new_dict is Vector for total J
 """
 function adhoc_rewrite6jdict(emax,dict6j,ofst_unit=1000)
-    Jmax = 2*emax+1 
+    Jmax = 2*emax+1
     new_dict6j = [ Dict{Int64,Float64}() for tJ=0:Jmax]
     for totJ = 0:Jmax
         tdict  = dict6j[totJ+1]

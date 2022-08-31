@@ -1,4 +1,3 @@
-#const char_l = ["s","p","d","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t"]
 const nuclist = [
      "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
     "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
@@ -6,10 +5,6 @@ const nuclist = [
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
     "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
     "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og" ]
-
-# function delta(a,b)
-#     return ifelse(a==b,1.0,0.0)
-# end
 
 """
     get_ZNref(ref,Z,N,corenuc)
@@ -48,7 +43,7 @@ end
     def_nuc(Z,N,ref,corenuc)
 constructor of `nuclei` strict from given `cnuc`,`ref`,`corenuc`
 """
-function def_nuc(cnuc,ref,corenuc)   
+function def_nuc(cnuc::String,ref::String,corenuc::String)
     reg = r"[0-9]+"
     A = match(reg,cnuc).match 
     el = replace(cnuc, A=>"")
@@ -73,7 +68,7 @@ end
     cZN_from_corenuc(rZ,rN,corenuc)
 get ``Z`` and ``N`` of the core nucleus
 """
-function cZN_from_corenuc(rZ,rN,corenuc)
+function cZN_from_corenuc(rZ,rN,corenuc::String)
     if corenuc == ""
         return rZ,rN
     end
@@ -298,7 +293,6 @@ function readsnt_bin(sntf,binfo,to)
         end    
     end
     close(f)
-    #println("dicts TBME =>", @sprintf("%7.2f",Base.summarysize(dicts)/1024/1024)," MB ")
     return sps,dicts1b,dicts
 end
 

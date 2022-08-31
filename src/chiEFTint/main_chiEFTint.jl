@@ -1,465 +1,232 @@
 """
-    make_chiEFTint(;is_plot=false,BO=false,optHFMBPT=false,itnum=20,writesnt=true,nucs=[])
+    make_chiEFTint(;is_show=false,optHFMBPT=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,io=stdout)
 
 main function in chiEFTint.
 This generates NN-potential in momentum space and then transforms it in HO basis.
-This function is exported and can be simply called make_chiEFTint() in the run script. 
+This function is exported and can be simply called make_chiEFTint() in your script. 
 
-# Optional arguments: Note that these are mainly for the author's purposes, so you do not specify these.
-- `optHFMBPT::Bool` to optimize LECs using BO&HFMBPT
-- `itnum::Int=20` number of iteration for BO&HFMBPT
-- `is_plot::Bool`, to visualize optimization process of LECs
+# Optional arguments: Note that these are mainly for too specific purposes, so you do not specify these.
+- `is_show::Bool` to show `TimerOutputs`
+- `optHFMBPT::Bool` to optimize LECs using HFMBPT
+- `itnum::Int` number of iteration for LECs calibration with HFMBPT
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
+- `optimizer::String` method for LECs calibration. "MCMC","LHC","BayesOpt" are available
+- `MPIcomm::Bool`, to carry out LECs sampling with HF-MBPT and affine inveriant MCMC
+- `Operators::Vector{String}` specifies operators you need to use for LECs calibration
 """
-function make_chiEFTint(;optHFMBPT=false,itnum=1,is_show=false,writesnt=true,nucs=[],is_plot=false,optimizer="",MPIcomm=false,io=stdout)
-    if optimizer!="";optHFMBPT=true;end
-    if nucs == []; optHFMBPT=false;end
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=String[],optimizer="",MPIcomm=false,io=stdout,corenuc="",ref="nucl",Operators=[])
+    to = TimerOutput()
+    optHFMBPT=false
+    if (optimizer!="" && nucs != String[]) || MPIcomm
+        optHFMBPT=true; writesnt=false
+    end
     if MPIcomm; 
-        MPI.Init()
         if !isdir("mpilog");run(`mkdir mpilog`);end
+        MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
         io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
     else
         io = open("logfile.dat","w")
     end
-    chiEFTobj = init_chiEFTparams(;io=io)
-    emax = chiEFTobj.emax
-    pmax_fm = chiEFTobj.pmax_fm
-    n_mesh = chiEFTobj.n_mesh
-    Pmax_fm = chiEFTobj.Pmax_fm
-    hw = chiEFTobj.hw
-    v_chi_order = chiEFTobj.v_chi_order
-
-    to = TimerOutput()
-    @timeit to "prep." begin
-        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)
-        # prep. momentum mesh
-        xr_fm,wr = Gauss_Legendre(0.0,pmax_fm,n_mesh)
-        xr = xr_fm * hc
-        numst2,dict_numst,arr_numst = bstate(;io=io)
-        V12mom = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
-        V12mom_2n3n = [ zeros(Float64,n_mesh,n_mesh) for i=1:length(numst2)]
-        ## prep. radial functions
-        rmass = Mp*Mn/(Mp+Mn)
-        br = sqrt(hc^2 /(rmass*hw))
-        Rnl = Rnl_all_ab(chiEFTobj,lmax,br,n_mesh,xr_fm)
-        ## prep. for valence space oparators
-        ntmp = 3; if v_chi_order > 0;ntmp=n_mesh;end
-        xrP_fm,wrP = Gauss_Legendre(0.0,Pmax_fm,ntmp)
-        xrP = xrP_fm .* hc   
-        RNL = Rnl_all_ab(chiEFTobj,lcmax,br,ntmp,xrP_fm)
-        ## prep. for partial-wave decompositon
-        lsjs = [ [ [J,J,0,J],[J,J,1,J],[J+1,J+1,1,J],[J-1,J-1,1,J],[J+1,J-1,1,J],[J-1,J+1,1,J]] for J = 0:jmax]
-        llpSJ_s = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[1,1,1,2]]
-        tllsj = zeros(Int,5)
-        opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL
-        f_ss!(opfs[2]);f_c!(opfs[3])
-        ## prep. Gauss point for integrals
-        ts, ws = Gauss_Legendre(-1,1,96)
-        ## prep. for TBMEs
-        jab_max = 4*emax + 2
-        Numpn= Dict( [0,0,0,0] => 0 ) ;delete!(Numpn,[0,0,0,0])   
-        infos,izs_ab,nTBME = make_sp_state(chiEFTobj,jab_max,Numpn;io=io)
-        println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
-        ## prep. integrals for 2n3n
-        F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
-        wsyms=[]
-        QWs = prep_QWs(chiEFTobj,xr,ts,ws,to)
-        if chiEFTobj.calc_3N
-            prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
-            wsyms = prep_wsyms()
-        end
-    end
-    rdict6j = nothing
-    if optHFMBPT
-        rdict6j = adhoc_rewrite6jdict(emax,dict6j)
-    end
-    HFdata = prepHFdata(nucs,"",["E"],"")
-    ### LECs
-    LECs = Float64[ ]
-    idxLECs=Dict{String,Int64}()
-    dLECs=Dict{String,Float64}()
-    fn_LECs = get_fn_LECs(chiEFTobj.pottype)
-    read_LECs!(LECs,idxLECs,dLECs;initialize=true,inpf=fn_LECs)
     
-    ## Start Opt stuff    
-    OPTobj = prepOPT(LECs,idxLECs,dLECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
-    d9j = HOBs = nothing
-    if optHFMBPT          
-        d9j,HOBs = PreCalcHOB(emax,chiEFTobj,d6j_int,to;io=io)
+    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to)
+    @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
+    @timeit to "renorm." SRG(chiEFTobj,to)
+    HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
+    if optHFMBPT #calibrate 2n3n LECs by HFMBPT
+        caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators) 
+    else # write out snt/snt.bin file
+        add2n3n(chiEFTobj,to)
+        @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,to;writesnt=writesnt)
     end
-    ## END: BO stuff
 
-    ### Calculation of NN potential and SRG
-    X9,U6 = prepareX9U6(2*emax)
-    @timeit to "NNcalc" begin 
-        if chiEFTobj.calc_NN
-            OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QWs[end])
-            LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)                
-            if chiEFTobj.chi_order >= 1
-                NLO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-                ### TPE terms (NLO,NNLO,N3LO,N4LO)
-                tpe(chiEFTobj,dLECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
-            end                
-            if chiEFTobj.chi_order >= 3
-                N3LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            end
-            if chiEFTobj.chi_order >= 4
-                N4LO(chiEFTobj,xr,dLECs,V12mom,dict_numst,to)
-            end
-        end
-    end
-    if chiEFTobj.srg
-        @timeit to "SRG" SRG(chiEFTobj,xr_fm,wr,V12mom,dict_numst,to)
-    end
-    if !MPIcomm
-        for it = 1:itnum
-            if it > 1; for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end;end
-            if chiEFTobj.calc_3N
-                calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
-            end
-            add_V12mom!(V12mom,V12mom_2n3n)            
-            #transform mom. int. to HO matrix element
-            @timeit to "Vtrans" begin
-                V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
-                dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)
-            end
-            ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
-            if nucs != [ ] && writesnt == false && optHFMBPT 
-                print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
-                @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=["Rp2"])
-                if optimizer=="BayesOpt"
-                    BO_HFMBPT(it,OPTobj,HFdata,to)
-                elseif optimizer=="LHS"
-                    LHS_HFMBPT(it,OPTobj,HFdata,to)
-                elseif optimizer=="MCMC"
-                    MCMC_HFMBPT(it,OPTobj,HFdata,to)
-                end
-                for (k,target) in enumerate(OPTobj.targetLECs)
-                    idx = idxLECs[target]
-                    LECs[idx] = dLECs[target] = OPTobj.params[k] 
-                end
-            end
-            if !optHFMBPT;break;end
-        end
-    else
-        myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-        for it = 1:itnum
-            mpi_hfmbpt(it,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
-                       ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
-                       numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;Operators=[])
-        end
-        MPI.Finalize()
-    end
     if io != stdout; close(io);end
     if is_show; show(to, allocations = true,compact = false);println("");end
     return true
 end
 
-function gz(a=2.0) 
-    return (((a-1)*rand() +1)^2) / a
+struct ChiralEFTobject
+    params::chiEFTparams
+    xr_fm::Vector{Float64}
+    xr::Vector{Float64}
+    wr::Vector{Float64}
+    dict6j::Vector{Dict{Vector{Int64}, Float64}}    
+    d6j_nabla::Dict{Vector{Int64}, Float64}  
+    d6j_int::Vector{Dict{Int64, Float64}}
+    Rnl::Array{Float64,3}
+    xrP_fm::Vector{Float64}
+    xrP::Vector{Float64}
+    wrP::Vector{Float64}
+    RNL::Array{Float64,3}
+    lsjs::Vector{Vector{Vector{Int64}}}
+    llpSJ_s::Vector{Vector{Int64}}
+    tllsj::Vector{Int64}
+    opfs::Vector{Vector{Float64}}
+    ts::Vector{Float64}
+    ws::Vector{Float64}
+    Numpn::Dict{Vector{Int64},Int64}
+    infos::Vector{Vector{Int64}} 
+    izs_ab::Vector{Vector{Vector{Int64}}}
+    nTBME::Int64
+    util_2n3n::util_2n3n
+    rdict6j::Vector{Dict{Int64,Float64}}
+    LECs::LECs
+    X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}
+    U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}
+    V12mom::Vector{Matrix{Float64}}
+    V12mom_2n3n::Vector{Matrix{Float64}}
+    numst2::Vector{Vector{Int64}}
+    dict_numst::Vector{Dict{Vector{Int64}, Int64}} 
+    arr_numst::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
+end
+"""
+
+It returns 
+- `chiEFTobj::ChiralEFTobject` parameters and arrays to generate NN (+2n3n) potentials
+- `OPTobj` (mutable) struct for LECs calibrations. It can be `LHSobject`/`BOobject`/`MCMCobject`/`MPIMCMCobject` struct.
+- `d9j::Vector{Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}}` array of Wigner-9j symbols used for Pandya transformation in HF-MBPT/IMSRG calculations.
+- `HOBs::Dict{Int64, Dict{Int64, Float64}}` dictionary for harmonic oscillator brackets.
+
+#
+"""
+function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1)
+    # default parameters
+    n_mesh = 50
+    pmax_fm = 5.0
+    emax = 4
+    Nnmax= 20
+    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4Lo
+    calc_NN = true
+    calc_3N = false #density-dependent 3NF
+    hw = 20.0
+    if use_hw_formula != 0; hw = hw_formula(Anum,use_hw_formula); end
+    ## SRG evolution (srg_lambda is in fm^{-1}
+    srg = true
+    srg_lambda = 2.0    
+    ## file name and format for TBME 
+    tx = "bare";if srg; tx ="srg"*string(srg_lambda);end;if calc_3N; tx="2n3n_"*tx;end
+    tbme_fmt = "snt.bin"
+    fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,hw))*"emax"*string(emax)*"."*tbme_fmt
+    coulomb = true
+    pottype = "em500n3lo"
+    target_nlj=Vector{Int64}[]
+    ##for valence space operators (usually not used)
+    v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
+    n_mesh_P = 10
+    Pmax_fm = 3.0
+    ## Lawson's beta for HCM
+    BetaCM = 0.0
+    ## Fermi momentum for 2n3n
+    kF = 1.35 
+    LambdaSFR = 0.0
+
+    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
+                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
+                          target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
+    if !isfile(fn_params)
+        println("Since $fn_params is not found, the default parameters will be used.")
+    else
+        read_chiEFT_parameter!(fn_params,params;io=io)
+        tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
+        params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
+    end    
+
+    #Next, prepare momentum/integral mesh, arrays, etc.
+ 
+    ## Prep WignerSymbols
+    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax)
+    ## prep. momentum mesh
+    xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
+    numst2,dict_numst,arr_numst = bstate(;io=io)    
+    V12mom = [ zeros(Float64,params.n_mesh,params.n_mesh) for i in eachindex(numst2)]
+    V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(numst2)]
+    ## prep. radial functions
+    rmass = Mp*Mn/(Mp+Mn)
+    br = sqrt(hc^2 /(rmass* params.hw))
+    Rnl = Rnl_all_ab(params,lmax,br,params.n_mesh,xr_fm)
+    ## prep. for valence space oparators (usually not used)
+    ntmp = ifelse(params.v_chi_order>0,n_mesh,3)
+    xrP_fm,wrP = Gauss_Legendre(0.0,params.Pmax_fm,ntmp); xrP = xrP_fm .* hc
+    RNL = Rnl_all_ab(params,lcmax,br,ntmp,xrP_fm)
+    ## prep. for partial-wave decompositon
+    lsjs = [[[J,J,0,J],[J,J,1,J],[J+1,J+1,1,J],[J-1,J-1,1,J],[J+1,J-1,1,J],[J-1,J+1,1,J]] for J = 0:jmax]
+    llpSJ_s = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[1,1,1,2]]
+    tllsj = zeros(Int64,5)
+    opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms ### why 11 or 8???
+    f_ss!(opfs[2]);f_c!(opfs[3])
+    ## prep. Gauss point for integrals
+    ts, ws = Gauss_Legendre(-1,1,96)
+    ## prep. for TBMEs        
+    Numpn= Dict{Vector{Int64},Int64}()
+    infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
+    println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
+    ## prep. integrals for 2n3n
+    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
+
+    rdict6j = Dict{Int64, Float64}[ ]
+    if optHFMBPT
+        rdict6j = adhoc_rewrite6jdict(params.emax,dict6j)
+    end
+   
+    ### specify low-energy constants (LECs)
+    LECs = read_LECs(params.pottype)
+    ## 9j&6j symbols for 2n (2n3n) interaction
+    X9,U6 = prepareX9U6(2*params.emax)   
+    chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
+                                xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
+                                Numpn,infos,izs_ab,nTBME,util_2n3n,rdict6j,LECs,X9,U6,
+                                V12mom,V12mom_2n3n,numst2,dict_numst,arr_numst)
+      
+    # make Opt stuff    
+    OPTobj = prepOPT(LECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
+    d9j = Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}[ ]
+    HOBs = Dict{Int64, Dict{Int64, Float64}}()
+    if optHFMBPT
+        d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
+    end
+    return chiEFTobj,OPTobj,d9j,HOBs
 end
 
-function mpi_hfmbpt(t,OPTobj,chiEFTobj,LECs,idxLECs,dLECs,nucs,rdict6j,HFdata,d9j,HOBs,to,io,
-                    ts,ws,xr,wr,V12mom,V12mom_2n3n,dict_numst,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj,
-                    numst2,xr_fm,n_mesh,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,arr_numst,dict6j,d6j_nabla,X9,U6;
-                    Operators=["Rp2"],rank_master=0,writesnt=false,debug=false)
-    comm = MPI.COMM_WORLD;myrank = MPI.Comm_rank(comm);npsize = MPI.Comm_size(comm)
-    chain = OPTobj.chain
-    if t == 1
-        if myrank == rank_master
-            for dst_idx = 1:npsize                
-                dst_rank = dst_idx-1
-                if dst_rank == rank_master;continue;end
-                X0 = @view chain[1,dst_idx,:]
-                MPI.Isend(X0,dst_rank,999,comm)
-            end
-        else
-            X0 = @view chain[1,myrank+1,:]
-            MPI.Recv!(X0,rank_master,999,comm)
-            OPTobj.params .= X0
+function calcualte_NNpot_in_momentumspace(chiEFTobj,to)
+    if chiEFTobj.params.calc_NN
+        OPEP(chiEFTobj,to)
+        LO(chiEFTobj,to) 
+        if chiEFTobj.params.chi_order >= 1
+            NLO(chiEFTobj,to) 
+            tpe(chiEFTobj,to) 
+        end                
+        if chiEFTobj.params.chi_order >= 3
+            N3LO(chiEFTobj,to)
         end
-        MPI.Barrier(comm)
-        for (k,target) in enumerate(OPTobj.targetLECs)
-            idx = idxLECs[target]
-            LECs[idx] = dLECs[target] = OPTobj.params[k]
+        if chiEFTobj.params.chi_order >= 4
+            N4LO(chiEFTobj,to)
         end
-
-        for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end
-        calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
-        add_V12mom!(V12mom,V12mom_2n3n)
-        V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
-        dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
-        if !debug
-            hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
-        end
-        eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
-        print_vec("it = "*@sprintf("%8i",1),OPTobj.params,io)
-        return nothing
     end
-    walker_i = myrank + 1
-    candidate = OPTobj.cand
-    S_at_t = @view chain[t-1,:,:]
-    if myrank == rank_master #master=>worker
-        for dst_idx = 1:npsize
-            dst_rank = dst_idx -1
-            if dst_rank == rank_master;continue;end
-            MPI.Isend(S_at_t,dst_rank,99,comm)
-        end
-    else #worker <= master
-        MPI.Recv!(S_at_t,rank_master,99,comm)
-    end    
-    MPI.Barrier(comm)
-    for nbatch = 0:1
-        subset = ifelse(nbatch==0,OPTobj.ens1,OPTobj.ens2)
-        S_complement = ifelse(nbatch==0,OPTobj.ens2,OPTobj.ens1)        
-        if myrank != rank_master 
-            if walker_i % 2 == nbatch
-                Xi = @view S_at_t[walker_i,:]
-                walker_j = sample(S_complement)
-                Xj = @view S_at_t[walker_j,:]               
-                zval = gz(OPTobj.a)
-                candidate .= Xj + zval .*  (Xi - Xj)
-                #print_vec("myrank $myrank walker i/j $walker_i $walker_j Xi $Xi Xj $Xj cand ",candidate)
-                OPTobj.params .= candidate
-                for (k,target) in enumerate(OPTobj.targetLECs)
-                    idx = idxLECs[target]
-                    LECs[idx] = dLECs[target] = candidate[k] 
-                end    
-                for i=1:length(numst2); V12mom_2n3n[i] .= 0.0; end
-                calc_vmom_3nf(chiEFTobj,dLECs,ts,ws,xr,V12mom_2n3n,dict_numst,to,F0s,F1s,F2s,F3s,QWs,wsyms,lsjs,llpSJ_s,tllsj)
-                add_V12mom!(V12mom,V12mom_2n3n)
-                V12ab = Vrel(chiEFTobj,V12mom_2n3n,numst2,xr_fm,wr,n_mesh,Rnl,to)
-                dicts_tbme = TMtrans(chiEFTobj,dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;writesnt=writesnt)        
-                if !debug
-                    hf_main_mem(chiEFTobj,nucs,dicts_tbme,rdict6j,HFdata,d9j,HOBs,to;Operators=Operators,io=io)
-                end
-                eval_HFMBPT(t,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
-                logratio = 1.0
-                if t > 1
-                    oeval = OPTobj.history[t-1]; neval = OPTobj.history[t]
-                    logratio = (OPTobj.dim -1) * log(zval) + neval[3] - oeval[3]
-                end
-                Accept = ifelse(log(rand())<logratio,true,false)
-                if Accept 
-                    Xi .= candidate
-                    OPTobj.acchit += 1
-                else
-                    neval .= oeval
-                    for (k,target) in enumerate(OPTobj.targetLECs)
-                        idx = idxLECs[target]
-                        LECs[idx] = dLECs[target] = Xi[k] 
-                    end   
-                end
-                OPTobj.params .= Xi
-                print_vec("it = "*@sprintf("%8i",t),Xi,io)
-                MPI.Isend(Xi,0,myrank,comm) # worker => master
-            end
-        else # master <= worker
-            for walkernum_src in subset
-                src_rank = walkernum_src -1 
-                tmp = @view chain[t,walkernum_src,:]
-                MPI.Recv!(tmp,src_rank,src_rank,comm)
-            end
-        end
-        MPI.Barrier(comm) 
-    end
-    MPI.Barrier(comm) 
     return nothing
 end
 
+function updateLECs_in_chiEFTobj!(chiEFTobj::ChiralEFTobject,targetkeys,targets)
+    for (k,target) in enumerate(targetkeys)
+        idx = chiEFTobj.LECs.idxs[target]
+        chiEFTobj.LECs.vals[idx] = chiEFTobj.LECs.dLECs[target] = targets[k] 
+    end
+    return nothing
+end
+
+function add2n3n(chiEFTobj,to,it=1)
+    calc_vmom_3nf(chiEFTobj,it,to)
+    add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)        
+    return nothing
+end
+
+
 function add_V12mom!(V12mom,V12mom_2n3n,a=1.0)
-    for i = 1:length(V12mom)
+    for i in eachindex(V12mom)
         V12mom_2n3n[i] .+= V12mom[i] * a
     end
     return nothing
 end
 
-function get_fn_LECs(pottype)
-    fn = ""
-    if pottype =="em500n3lo"
-        fn = "src/chiEFTint/LECs.jl"
-    elseif pottype == "emn500n3lo"
-        fn = "src/chiEFTint/LECs_EMN500N3LO.jl"
-    elseif pottype == "emn500n4lo"
-        fn = "src/chiEFTint/LECs_EMN500N4LO.jl"
-    else
-        println("warn!! potype=$pottype is not supported now!")
-        exit()
-    end
-    return fn
-end
-
-"""
-    SRG(xr,wr,V12mom,dict_numst,to)
-
-main function for Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
-"""
-function SRG(chiEFTobj,xr,wr,V12mom,dict_numst,to)
-    n_mesh = chiEFTobj.n_mesh
-    srg_lambda = chiEFTobj.srg_lambda
-    l1s = [0,1,2,3,4,5,6,1,1,2,3,4,5,6,0,1,2,3,4,5]
-    l2s = [0,1,2,3,4,5,6,1,1,2,3,4,5,6,2,3,4,5,6,7]
-    Ss  = [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    Js  = [0,1,2,3,4,5,6,0,1,2,3,4,5,6,1,2,3,4,5,6]
-
-    ndim = n_mesh*2
-    n_ode = div(ndim*(ndim+1),2)
-    nthre = nthreads()
-    Vs = [ zeros(Float64,ndim,ndim) for i = 1:nthre]
-    Ts = [zeros(Float64,ndim,ndim) for i = 1:nthre]
-    Hs = [zeros(Float64,ndim,ndim) for i = 1:nthre]
-    Hts = [zeros(Float64,ndim,ndim) for i = 1:nthre]
-    etas = [zeros(Float64,ndim,ndim) for i = 1:nthre]
-    Rs = [zeros(Float64,ndim,ndim) for i = 1:nthre]
-    tkeys = [ zeros(Int64,5) for i=1:nthre]
-    
-    sSRG = (1.0/srg_lambda)^4 # s in literature
-    ds = 1.e-4
-    srange = 0.0:ds:sSRG
-    numit = length(srange)
-    nch = length(l1s)
-    for nth =1:nch*3
-        threid = threadid()
-        tkey = tkeys[threid]
-        V = Vs[threid]; T = Ts[threid]; H = Hs[threid]
-        Ht= Hts[threid];eta = etas[threid]; R = Rs[threid]
-        iz = -1
-        if nth <= nch
-            nothing
-        elseif nth <= 2*nch
-            iz = 0
-        else
-            iz = 1
-        end
-        pnrank = iz + 2
-        tdict = dict_numst[pnrank]
-        rmass = Mp * Mn / (Mp+Mn) 
-        if iz == -1; rmass = 0.5 * Mp;end
-        if iz ==  1; rmass = 0.5 * Mn;end
-        face =  (2.0*rmass)^2 / hc4
-
-        ich = ifelse(nth%nch!=0,nth%nch,nch)
-        l1 = l1s[ich];l2 = l2s[ich];S = Ss[ich];J = Js[ich]
-        if abs(iz % 2) == 1 && (l1+S+abs(iz)) % 2 == 0; continue;end
-        tkey[1] = 2*iz; tkey[2]=l1; tkey[3]=l2; tkey[4]=S;tkey[5]=J
-        if l1 == l2
-            V12idx = tdict[tkey]; tv = V12mom[V12idx]
-            sV  = @view  V[1:n_mesh,1:n_mesh]          
-            sT  = @view  T[1:n_mesh,1:n_mesh]
-            sH  = @view  H[1:n_mesh,1:n_mesh]
-            sHt = @view Ht[1:n_mesh,1:n_mesh]
-            seta = @view eta[1:n_mesh,1:n_mesh]
-            tR = @view R[1:n_mesh,1:n_mesh]                
-            for (i,x) in enumerate(xr)
-                wri = wr[i]
-                for (j,y) in enumerate(xr)
-                    sH[i,j] = sV[i,j] = tv[i,j] * x * y * sqrt(wri*wr[j])
-                end
-                sT[i,i] = (x *hc)^2 / (2*rmass)
-                sH[i,i] += (x *hc)^2 / (2*rmass)
-            end
-            if norm(sH-sH',Inf) > 1.e-9; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
-            srg_tr(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
-            ## overwrite V12
-            for (i,x) in enumerate(xr)
-                for (j,y) in enumerate(xr) 
-                    tv[i,j] = (sV[i,j]-sT[i,j]) / ( x * y * sqrt( wr[i] * wr[j]))
-                end
-            end
-        elseif l1+2==l2
-            ## l1-l1, l2-l2, l1-l2, l2-l1 part
-            tkey[2]=l1; tkey[3]=l1; V12idx = tdict[tkey]; tv1 = V12mom[V12idx]
-            tkey[2]=l2; tkey[3]=l2; V12idx = tdict[tkey]; tv2 = V12mom[V12idx]
-            tkey[2]=l1; tkey[3]=l2; V12idx = tdict[tkey]; tv3 = V12mom[V12idx]
-            tkey[2]=l2; tkey[3]=l1; V12idx = tdict[tkey]; tv4 = V12mom[V12idx]
-            for (i,x) in enumerate(xr)
-                for (j,y) in enumerate(xr) 
-                    tfac = x * y * sqrt(wr[i] * wr[j])
-                    V[i,j] = tv1[i,j] * tfac 
-                    V[n_mesh+i,n_mesh+j] = tv2[i,j] * tfac 
-                    V[i,n_mesh+j] = tv3[i,j] * tfac 
-                    V[n_mesh+i,j] = tv4[i,j] * tfac 
-                end
-                T[i,i] = T[n_mesh+i,n_mesh+i] = (x *hc)^2 / (2*rmass)
-            end
-            H .= V;H .+= T
-            srg_tr(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
-            H .= V; H .-= T # Veff = H(s) - T # H is reused as Veff            
-            for (i,x) in enumerate(xr)
-                for (j,y) in enumerate(xr)
-                    deno =  x * y * sqrt(wr[i]*wr[j])
-                    tv1[i,j] = H[i,j] / deno # ( x * y * sqrt(wr[i]*wr[j]))
-                    tv2[i,j] = H[n_mesh+i,n_mesh+j] /  deno #(x*y *sqrt(wr[i]*wr[j]))
-                    tv3[i,j] = H[i,n_mesh+j] / deno #( x*y * sqrt(wr[i]*wr[j]))
-                    tv4[i,j] = H[n_mesh+i,j] / deno # ( x*y * sqrt(wr[i]*wr[j]))
-                end
-            end
-        end
-    end
-    return nothing
-end
-
-"""
-    commutator(A,B,R,fac)
-
-wrapper function to overwrite ```R``` by ```fac*(AB-BA)```
-"""
-function commutator(A,B,R,fac)
-    BLAS.gemm!('N', 'N',  fac, A, B, 0.0, R)
-    BLAS.gemm!('N', 'N', -fac, B, A, 1.0, R)
-    return nothing
-end
-
-"""
-    RKstep(T,Ho,eta,R,faceta,fRK,Ht)
-
-wrapper function to calc. a Runge-Kutta (RK) step
-"""
-function RKstep(T,Ho,eta,R,faceta,fRK,Ht)
-    BLAS.gemm!('N', 'N',  faceta, T, Ho, 0.0, eta)
-    BLAS.gemm!('N', 'N', -faceta, Ho, T, 1.0, eta) # =>eta
-    BLAS.gemm!('N', 'N',  1.0, eta, Ho, 0.0, R)
-    BLAS.gemm!('N', 'N', -1.0, Ho, eta, 1.0, R)    
-    BLAS.axpy!(fRK,R,Ht)    
-    return nothing
-end
-function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
-    mul!(eta,T,Ho,faceta,0.0)
-    mul!(eta,Ho,T,-faceta,1.0)
-    mul!(R,eta,Ho,1.0,0.0)
-    mul!(R,Ho,eta,-1.0,1.0)
-    BLAS.axpy!(fRK,R,Ht)    
-    return nothing
-end
-
-"""
-    srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to; r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
-
-to carry out SRG transformation
-"""
-function srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;
-                r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
-    Hs .= Ho
-    Ht .= Hs
-    for it = 1:numit
-        if it ==numit; ds = sSRG -(numit-1)*ds;end
-        Ho .= Hs        
-        RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
-
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
-        RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
-
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
-        RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
-
-        Ho .= Hs; BLAS.axpy!(ds,R,Ho)
-        RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
-
-        Hs .= Ht
-    end
-    return nothing
-end
 
 function genLaguerre(n,alpha,x)
     if n==0
@@ -479,7 +246,7 @@ end
 """
     Gauss_Legendre(xmin,xmax,n;eps=3.e-16) 
 
-to calculate mesh points and weights for Gauss-Legendre quadrature
+Calculating mesh points `x` and weights `w` for Gauss-Legendre quadrature. This returns `x, w`.
 """
 function Gauss_Legendre(xmin,xmax,n;eps=3.e-16) 
     m = div(n+1,2)
@@ -544,12 +311,13 @@ function QL(z,J::Int64,ts,ws,QLdict)
     return s
 end
 
-function make_sp_state(chiEFTobj,jab_max,Numpn;io=stdout)
+function make_sp_state(chiEFTobj,Numpn;io=stdout)
     emax = chiEFTobj.emax
-    kh = Dict( [0,0] => 0 ) ;delete!(kh,[0,0])
-    kn = Dict( [0,0] => 0 ) ;delete!(kn,[0,0])
-    kl = Dict( [0,0] => 0 ) ;delete!(kl,[0,0])
-    kj = Dict( [0,0] => 0 ) ;delete!(kj,[0,0])    
+    jab_max = 4*emax + 2
+    kh = Dict{Vector{Int64},Int64}()
+    kn = Dict{Vector{Int64},Int64}()
+    kl = Dict{Vector{Int64},Int64}()
+    kj = Dict{Vector{Int64},Int64}()
     maxsps = Int((emax+1) * (emax+2) / 2)
     println(io,"# of sp states $maxsps")    
     n = 0
@@ -616,7 +384,6 @@ function get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)
     return infos,izs_ab,nTBME
 end
 
-
 function def_sps_snt(emax,target_nlj)
     nljsnt = [ [0,0] ]; deleteat!(nljsnt,1)    
     tzs = [-1,1]
@@ -654,48 +421,21 @@ function freg(p,pp,n)
 end
 
 """
-    read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")
+    read_LECs(pottype)
 
-read LECs from "src/chiEFTint/LECs.jl" (default) and 
-store them as ```LECs```(Vector{Float}), ```idxLECs```(Vector{Int}), and ```dLECs```(Dict{str,Float}).
+read LECs for a specified potential type, `em500n3lo`,`em500n3lo`,`emn500n4lo`.
 """
-function read_LECs!(LECs,idxLECs,dLECs;initialize=false,inpf="src/chiEFTint/LECs.jl")  
-    if initialize
-        if !isfile(inpf);inpf="../"*inpf;end # line for test/
-        l_E_3F2 = l_E_3F4 = l_E_1F3 = l_e14 = l_e17 = 0.0
-        include(inpf)
-        if @isdefined(E_3F2); l_E_3F2 = E_3F2;end
-        if @isdefined(E_3F4); l_E_3F4 = E_3F4;end
-        if @isdefined(E_1F3); l_E_1F3 = E_1F3;end
-        if @isdefined(e14); l_e14 = e14;end
-        if @isdefined(e17); l_e17 = e17;end
-        leclist = [C0_1S0,C0_3S1,C_CSB,C_CIB,
-                   C2_3S1,C2_3P0,C2_1P1,C2_3P1,C2_1S0,C2_3SD1,C2_3P2,
-                   hD_1S0,D_1S0,D_1P1,D_3P0,D_3P1,D_3P2,hD_3S1,D_3S1,hD_3SD1,D_3SD1,D_3D1,D_1D2,D_3D2,D_3PF2,D_3D3,       
-                   l_E_3F2,l_E_1F3,l_E_3F4,
-                   c1_NNLO,c2_NNLO,c3_NNLO,c4_NNLO,ct1_NNLO,ct3_NNLO,ct4_NNLO,cD,cE,
-                   d12,d3,d5,d145,l_e14,l_e17,
-                   c_vs_1,c_vs_2,c_vs_3,c_vs_4,c_vs_5]
-        lecname = ["C0_1S0","C0_3S1","C_CSB","C_CIB",
-                   "C2_3S1","C2_3P0","C2_1P1","C2_3P1","C2_1S0","C2_3SD1","C2_3P2",
-                   "hD_1S0","D_1S0","D_1P1","D_3P0","D_3P1","D_3P2","hD_3S1","D_3S1","hD_3SD1","D_3SD1","D_3D1","D_1D2","D_3D2","D_3PF2","D_3D3",       
-                   "E_3F2","E_1F3","E_3F4",
-                   "c1_NNLO","c2_NNLO","c3_NNLO","c4_NNLO","ct1_NNLO","ct3_NNLO","ct4_NNLO","cD","cE",
-                   "d12","d3","d5","d145","e14","e17",
-                   "c_vs_1","c_vs_2","c_vs_3","c_vs_4","c_vs_5"]              
-        for (i,lec) in enumerate(leclist)
-            tkey = lecname[i]
-            dLECs[tkey] = lec
-            idxLECs[tkey] = i
-            push!(LECs,lec)
-        end
+function read_LECs(pottype)  
+    if pottype =="em500n3lo"
+        return dict_em500n3lo()
+    elseif pottype == "emn500n3lo"
+        return dict_emn500n3lo()
+    elseif pottype == "emn500n4lo"
+        return dict_emn500n4lo()
     else
-        for tkey in keys(idxLECs)
-            idx = idxLECs[tkey]
-            dLECs[tkey] = LECs[idx]
-        end
+        @error "unknown potype $pottype"
+        exit()
     end
-    return nothing
 end
 
 """
@@ -703,8 +443,8 @@ end
 
 calc. nn-potential for momentum mesh points
 """
-function calc_Vmom!(chiEFTobj,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)
-    n_mesh = chiEFTobj.n_mesh
+function calc_Vmom!(chiEFTparams::chiEFTparams,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)
+    n_mesh = chiEFTparams.n_mesh
     itt = itts[pnrank]; MN = Ms[pnrank]; dwn = 1.0/MN
     V12idx = get(tdict,[itt,lp,l,S,J],-1)
     if V12idx == -1;return nothing;end
@@ -725,7 +465,7 @@ end
 """
     Rnl_all_ab(lmax,br,n_mesh,xr_fm)
 
-Returns array for radiul functions (prop to generalized Laguerre polynomials) HO w.f. in momentum space.
+Returns array for radial functions (prop to generalized Laguerre polynomials) HO w.f. in momentum space.
 Rnlk(l,n,k)=sqrt(br) * R(n,L,Z) *Z with Z=br*k (k=momentum in fm^-1)
 """
 function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
@@ -918,16 +658,16 @@ function howf(num,brange,n,l,r,ra,rb,ret_rnl,meshp,memo)
 end
 
 
-function Vrel(chiEFTobj,V12mom,numst2,xr_fm,wr,n_mesh,Rnl,to)    
-    Nnmax= chiEFTobj.Nnmax
-    nstmax = length(numst2)
+function Vrel(chiEFTobj,to) 
+    V12mom = chiEFTobj.V12mom; numst2 = chiEFTobj.numst2; Rnl = chiEFTobj.Rnl
+    xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
+    Nnmax= chiEFTobj.params.Nnmax; nstmax = length(numst2)
     V12ab = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:nstmax]
     Vcoulomb = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:nstmax]
-    if chiEFTobj.coulomb
-        calc_coulomb(chiEFTobj,xr_fm,wr,Vcoulomb,numst2,nstmax,Rnl)
+    if chiEFTobj.params.coulomb
+        calc_coulomb(chiEFTobj.params,xr_fm,wr,Vcoulomb,numst2,nstmax,Rnl)
     end
     x = zeros(Float64,Nnmax+1,n_mesh)
-    tl = [0,0,0]
     for num = 1:nstmax
         Vtmp = V12mom[num]
         Vab = V12ab[num]
@@ -944,7 +684,6 @@ function Vrel(chiEFTobj,V12mom,numst2,xr_fm,wr,n_mesh,Rnl,to)
                     pkx1=tR[k1]
                     sum += pkx1*vk1k2*xr_fm[k1]*wr[k1]
                 end
-                #x[n1+1,k2]=sum*wr[k2]*xr_fm[k2]
                 tx[k2]=sum*wr[k2]*xr_fm[k2]
             end
         end

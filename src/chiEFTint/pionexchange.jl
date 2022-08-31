@@ -1,10 +1,14 @@
 """
     OPEP(ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs;pigamma=true)
 
-calc. One-pion exchange potential
+calc. One-pion exchange potential in the momentum-space
 """
-function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QLdict;pigamma=true)
-    n_mesh = chiEFTobj.n_mesh
+function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
+    ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr; V12mom = chiEFTobj.V12mom
+    dict_numst = chiEFTobj.dict_numst; 
+    lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj
+    opfs = chiEFTobj.opfs; QLdict = chiEFTobj.util_2n3n.QWs.QLdict
+    n_mesh = chiEFTobj.params.n_mesh
     hc3 = hc^3
     tVs = zeros(Float64,6)
     opfs = zeros(Float64,8)
@@ -17,7 +21,6 @@ function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QL
         coeff = -(MN*gA/(2*Fpi))^2
         itt = itts[pnrank]
         tllsj[1] = itt
-        TF = true
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             f_idx = 6
@@ -53,6 +56,18 @@ function OPEP(chiEFTobj,ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs,QL
                     end
                 end
             end
+            ### check
+            if debugmode 
+                @inbounds for idx = 1:f_idx
+                    @views tllsj[2:5] .= lsj[idx]
+                    tl,tlp,tS,tJ = lsj[idx] 
+                    if pnrank%2 == 1 && (tl+tS+1)%2 != 1;continue;end
+                    V12idx = get(tdict,tllsj,-1)
+                    if V12idx == -1;continue;end                        
+                    V = V12mom[V12idx]
+                    #println("pnrank $pnrank J $J V12idx $V12idx");println(V)
+                end
+            end 
         end
     end
     return nothing
@@ -143,7 +158,7 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamm
     return nothing 
 end
 
-### function-forms for pw
+### function-forms for partial waves
 f1(x,y,c,cdum) = c
 fx(x,y,c,cdum) = c * x
 fy(x,y,c,cdum) = c * y
@@ -159,7 +174,6 @@ f_x3y(x,y,c,cdum) = c * x^3 * y
 f_x3y3(x,y,c,cdum) = c * x^3 * y^3
 f_xy3(x,y,c,cdum) = c * x * y^3
 f_31(x,y,c,cdum) = c * (x^3 * y + x * y^3)
-
 fp_P2(p,ell,pp,ellp,P) = P^2
 fp_ddP(p,ell,pp,ellp,P) = P * (delta(ell,1)*delta(ellp,0)*p + delta(ell,0)*delta(ellp,1)*pp)
 
@@ -215,7 +229,7 @@ mutable struct tpe_ch
     Vsl::Vector{Float64}
 end
 """
-    tpe(LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)
+    tpe(chiEFTobj,to::TimerOutput)
 
 calc. two-pion exchange terms up to N3LO(EM) or N4LO(EMN)
 
@@ -226,7 +240,11 @@ The ``1/M_N`` correction terms appear at NNLO in EM and at N4LO in EMN.
 - EM: R. Machleidt and D.R. Entem [Physics Reports 503 (2011) 1–7](https://doi.org/10.1016/j.physrep.2011.02.001)
 - EMKN: D. R. Entem, N. Kaiser, R. Machleidt, and Y. Nosyk, [Phys. Rev. C 91, 014002 (2015)](https://doi.org/10.1103/PhysRevC.91.014002).
 """
-function tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)    
+function tpe(chiEFTobj,to) #tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)    
+    LECs = chiEFTobj.LECs.dLECs
+    ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr
+    dict_numst = chiEFTobj.dict_numst
+    lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj; opfs = chiEFTobj.opfs
     nthre = nthreads()
     c1_NNLO = LECs["c1_NNLO"];c2_NNLO = LECs["c2_NNLO"];c3_NNLO = LECs["c3_NNLO"];c4_NNLO = LECs["c4_NNLO"]
     d12 = LECs["d12"];d3 = LECs["d3"]; d5 = LECs["d5"]; d145 = LECs["d145"];e14 = LECs["e14"];e17 = LECs["e17"]
@@ -271,8 +289,8 @@ function tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opf
         itt = itts[pnrank]
         tllsj[1] = itt
         tllsj_para = [ deepcopy(tllsj) for i=1:nthre]
-        LamSFR_nd = chiEFTobj.LambdaSFR * dwn
-        LoopObjects = precalc_2loop_integrals(chiEFTobj,LamSFR_nd,nd_mpi,Fpi2,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,r_e14,r_e17,ts,ws)
+        LamSFR_nd = chiEFTobj.params.LambdaSFR * dwn
+        LoopObjects = precalc_2loop_integrals(chiEFTobj,LamSFR_nd,nd_mpi,Fpi2,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,r_e14,r_e17)
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             f_idx = 6
@@ -280,8 +298,8 @@ function tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opf
             set_pjs!(J,pjs,ts)
             for i=1:nthre; pjs_para[i] .= pjs;end
             tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
-                             J,pnrank,ts,ws,fff,dwn,nd_mpi,xr,pjs_para,gis_para,opfs_para,
-                             f_idx,tVs_para,lsj,tllsj_para,tdict,V12mom,tmpsum,to)
+                            J,pnrank,fff,dwn,nd_mpi,pjs_para,gis_para,opfs_para,
+                            f_idx,tVs_para,lsj,tllsj_para,tdict,tmpsum,to)
         end
     end
     return nothing
@@ -736,15 +754,19 @@ end
 Calculating TPE contribution in a given momentum mesh point.
 """
 function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
-                 J,pnrank,ts,ws,fff,dwn,nd_mpi,xr,pjs_para,gis_para,opfs_para,
-                 f_idx,tVs_para,lsj,tllsj_para,tdict,V12mom,tmpsum,to;calc_TPE_sep=true)
+                 J,pnrank,fff,dwn,nd_mpi,pjs_para,gis_para,opfs_para,
+                 f_idx,tVs_para,lsj,tllsj_para,tdict,tmpsum,to;calc_TPE_sep=true)
+    params = chiEFTobj.params
+    LamSFR_nd = dwn * params.LambdaSFR
+    ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr
+    V12mom = chiEFTobj.V12mom
+    chi_order = params.chi_order
     c1 = tmpLECs["c1"]; c2 = tmpLECs["c2"]; c3 = tmpLECs["c3"]; c4 = tmpLECs["c4"]  
     r_d12 = tmpLECs["r_d12"]; r_d3 = tmpLECs["r_d3"]; r_d5 = tmpLECs["r_d5"]
     r_d145 = tmpLECs["r_d145"]; r_e14 = tmpLECs["r_e14"]; r_e17 = tmpLECs["r_e17"]
     nd_mpi2 = nd_mpi^2
     hc3 = hc^3
     n_mesh = length(xr)
-    LamSFR_nd = dwn * chiEFTobj.LambdaSFR
     usingSFR = ifelse(LamSFR_nd!=0.0,true,false)
 
     @inbounds @threads for V_i= 1:n_mesh
@@ -772,31 +794,31 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                 Lq,Aq = calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR_nd)
        
                 ## Tensor term: Vt
-                tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[1])
                 ## Tensor term: Wt
-                tmp_s = Wt_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[2])
                 ## sigma-sigma term: Vs
-                tmp_s = Vs_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[3])
                 ## sigma-sigma term: Ws
-                tmp_s = Ws_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[4])
                 ## Central term: Vc
-                tmp_s = Vc_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[5])
                 ## Central term: Wc
-                tmp_s = Wc_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[6])
                 ## LS term: Vls
-                tmp_s = Vls_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
+                tmp_s = Vls_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
                 axpy!(tmp_s*int_w,tpj,target[7])
                 ## LS term: Wls
-                tmp_s = Wls_term(chiEFTobj.chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
+                tmp_s = Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
                 axpy!(tmp_s*int_w,tpj,target[8])
                 ## sigma-L term: Vsl
-                tmp_s = Vsl_term(chiEFTobj.chi_order,Lq,Fpi2;EMN=usingSFR)
+                tmp_s = Vsl_term(chi_order,Lq,Fpi2;EMN=usingSFR)
                 axpy!(tmp_s*int_w,tpj,target[9])        
                 if !calc_TPE_sep            
                     n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
@@ -823,134 +845,8 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
             calc_IJ_V(J,pnrank,gis[9],f_SL,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="sl")                
         end
     end
-
-    # for V_i= 1:n_mesh
-    #     x = xr[V_i]; xdwn = x*dwn; xdwn2 = xdwn^2       
-    #     ex = sqrt(1.0+xdwn2)  
-    #      for V_j = 1:n_mesh
-    #         y = xr[V_j]; ydwn = y*dwn; ydwn2=ydwn^2
-    #         f_sq!(f_T,xdwn,ydwn);f_ls!(f_LS,xdwn,ydwn);f_sl!(f_SL,xdwn,ydwn)
-    #         ey = sqrt(1.0+ydwn2)
-    #         k2=0.5*(xdwn2 + ydwn2)
-    #         ree = 1.0/sqrt(ex*ey)
-    #         fc = fff * hc3 * freg(x,y,2) * ree
-
-    #         gis = gis_para[1]
-    #         for i=1:length(gis); gis[i] .= 0.0; end #gis [1:7][1:9] 
-
-    #         @inbounds @threads for n = 1:length(ts)
-    #         #for n = 1:length(ts)
-    #             t = ts[n]; int_w = ws[n]
-                
-    #             ###
-    #             tid = threadid()        
-    #             #gis = gis_para[tid]
-
-    #             #tllsj = tllsj_para[tid]; tllsj .= org_tllsj      
-    #             target = tmpsum[tid]
-    #             tVs = tVs_para[tid]
-    #             #tpj = @view pjs_para[tid][n,:]  # same??
-    #             tpj = @view pjs[n,:] #same??
-    #             ###
-
-    #             ###                                
-    #             q2 = xdwn2 + ydwn2 -2.0*xdwn*ydwn*t; q = sqrt(q2)
-    #             w2 = 4.0*nd_mpi2 + q2; w = sqrt(w2); tw2 = 2.0*nd_mpi2 + q2
-    #             Lq,Aq = calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR_nd)
-       
-    #             ## Tensor term: Vt
-    #             tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[1])
-    #             ## Tensor term: Wt
-    #             tmp_s = Wt_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[2])
-    #             ## sigma-sigma term: Vs
-    #             tmp_s = Vs_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[3])
-    #             ## sigma-sigma term: Ws
-    #             tmp_s = Ws_term(chiEFTobj.chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[4])
-    #             ## Central term: Vc
-    #             tmp_s = Vc_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[5])
-    #             ## Central term: Wc
-    #             tmp_s = Wc_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-    #             axpy!(tmp_s*int_w,tpj,target[6])
-    #             ## LS term: Vls
-    #             tmp_s = Vls_term(chiEFTobj.chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
-    #             axpy!(tmp_s*int_w,tpj,target[7])
-    #             ## LS term: Wls
-    #             tmp_s = Wls_term(chiEFTobj.chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
-    #             axpy!(tmp_s*int_w,tpj,target[8])
-    #             ## sigma-L term: Vsl
-    #             tmp_s = Vsl_term(chiEFTobj.chi_order,Lq,Fpi2;EMN=usingSFR)
-    #             axpy!(tmp_s*int_w,tpj,target[9])        
-    #             if !calc_TPE_sep            
-    #                 n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
-    #             end
-                   
-    #         end        
-
-    #         for ch =1:9
-    #             gi = gis[ch]
-    #             for tid = 1:nthreads()
-    #                 axpy!(1.0,tmpsum[tid][ch],gi)
-    #                 tmpsum[tid][ch] .= 0.0 
-    #             end
-    #         end
-    #         tllsj = tllsj_para[1]
-    #         #1:Vt, 2:Wt, 3:Vs, 4:Ws, 5:Vc, 6:Wc, 7:Vls, 8:Wls, 9:Vsl
-    #         calc_IJ_V(J,pnrank,gis[1],f_T,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #         calc_IJ_V(J,pnrank,gis[2],f_T,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true)
-    #         calc_IJ_V(J,pnrank,gis[3],f_SS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #         calc_IJ_V(J,pnrank,gis[4],f_SS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true)     
-    #         calc_IJ_V(J,pnrank,gis[5],f_C,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-    #         calc_IJ_V(J,pnrank,gis[6],f_C,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep =true)
-    #         calc_IJ_V(J,pnrank,gis[7],f_LS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="ls")    
-    #         calc_IJ_V(J,pnrank,gis[8],f_LS,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;isodep=true,addtype="ls")
-    #         calc_IJ_V(J,pnrank,gis[9],f_SL,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to;addtype="sl")    
-            
-            
-    #     end
-    # end
-
     return nothing
 end
-
-function tesss()
-    for n = 1:length(ts)       
-        t = ts[n]; int_w = ws[n]     
-        ###
-        tid = threadid()        
-        gis = gis_para[tid]
-        tllsj = tllsj_para[tid] 
-        tllsj .= org_tllsj      
-        target = tmpsum[tid]
-        f_T,f_SS,f_C,f_LS,f_SL = opfs_para[tid]
-        tpj = @view pjs_para[tid][n,:] 
-        ###
-        for V_i= 1:n_mesh
-            x = xr[V_i]   
-            for V_j = 1:n_mesh
-                y = xr[V_j];
-
-                tmp_s = Vt_term(chiEFTobj.chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
-                axpy!(tmp_s*int_w,tpj,target[1])
-           
-                for ch =1:9
-                    gi = gis[ch]       
-                    axpy!(1.0,target[ch],gi)
-                    target[ch] .= 0.0
-                end            
-                #1:Vt, 2:Wt, 3:Vs, 4:Ws, 5:Vc, 6:Wc, 7:Vls, 8:Wls, 9:Vsl
-                calc_IJ_V(J,pnrank,gis[1],f_T,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,to)
-
-                for i=1:length(gis); gis[i] .= 0.0; end #gis [1:7][1:9]
-            end
-        end
-    end
-end
-
 
 function n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
     obj = LoopObjects.n4lo
@@ -1104,10 +1000,12 @@ V_{C,S}(q) = -\\frac{2q^6}{\\pi} \\int^{\\tilde{\\Lambda}}_{nm_\\pi} d\\mu
 V_T(q) = \\frac{2q^4}{\\pi}  \\int^{\\tilde{\\Lambda}}_{nm_\\pi} d\\mu 
 ```
 """
-function precalc_2loop_integrals(chiEFTobj,LamSFR_nd,nd_mpi,Fpi2,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,r_e14,r_e17,ts,ws)
+function precalc_2loop_integrals(chiEFTobj,LamSFR_nd,nd_mpi,Fpi2,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,r_e14,r_e17)
+    params = chiEFTobj.params
+    ts = chiEFTobj.ts; ws = chiEFTobj.ws
     mudomain = [2*nd_mpi,LamSFR_nd]; mudomain3 = [3*nd_mpi,LamSFR_nd]    
-    n3loobj = def_n3lo_2loopObj(chiEFTobj,nd_mpi,Fpi2,r_d12,r_d3,r_d5,r_d145,mudomain,ts,ws)
-    n4loobj = def_n4lo_23loopObj(chiEFTobj,nd_mpi,Fpi2,c1,c2,c3,c4,r_e14,r_e17,mudomain,mudomain3,ts,ws)
+    n3loobj = def_n3lo_2loopObj(params,nd_mpi,Fpi2,r_d12,r_d3,r_d5,r_d145,mudomain,ts,ws)
+    n4loobj = def_n4lo_23loopObj(params,nd_mpi,Fpi2,c1,c2,c3,c4,r_e14,r_e17,mudomain,mudomain3,ts,ws)
     return LoopObjects(n3loobj,n4loobj)
 end
 

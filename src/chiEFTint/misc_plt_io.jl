@@ -28,6 +28,7 @@ const fsalpha = 7.2973525693* 1.e-3 #fine structure const.
     chiEFTparams
 mutable struct to specify parameters for chiEFTint
 # Fields
+
 """
 mutable struct chiEFTparams
     n_mesh::Int64
@@ -37,16 +38,14 @@ mutable struct chiEFTparams
     chi_order::Int64 
     calc_NN::Bool
     calc_3N::Bool
+    coulomb::Bool
     hw::Float64
     srg::Bool
     srg_lambda::Float64
     tbme_fmt::String
     fn_tbme::String
     pottype::String
-    LambdaSFR::Float64
-    calc_monopole::Bool
-    calc_std::Bool 
-    coulomb::Bool
+    LambdaSFR::Float64   
     target_nlj::Vector{Vector{Int64}}
     v_chi_order::Int64
     n_mesh_P::Int64
@@ -64,7 +63,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     pmax_fm = 5.0
     emax = 4
     Nnmax= 20
-    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO
+    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4Lo
     calc_NN = true
     calc_3N = false #density-dependent 3NF
     hw = 20.0
@@ -78,8 +77,6 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     tx = "bare";if srg; tx ="srg"*string(srg_lambda);end;if calc_3N; tx="2n3n_"*tx;end
     tbme_fmt = "snt.bin"
     fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,hw))*"emax"*string(emax)*"."*tbme_fmt
-    calc_monopole = false
-    calc_std = false    
     coulomb = true
     pottype = "em500n3lo"
     target_nlj=Vector{Int64}[]
@@ -92,9 +89,8 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     ### Fermi momentum for 2n3n
     kF = 1.35   #kF = 0.3 * XF(Anum)
     LambdaSFR = 0.0
-    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,
+    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
-                          calc_monopole,calc_std,coulomb,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
         println("Since $fn_params is not found, the default parameters will be used.")
@@ -126,8 +122,6 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if @isdefined(tbme_fmt); params.tbme_fmt = tbme_fmt; end
     if @isdefined(fn_tbme); params.fn_tbme = fn_tbme; end
     if @isdefined(pottype); params.pottype = pottype; end
-    if @isdefined(calc_monopole); params.calc_monopole = calc_monopole; end
-    if @isdefined(calc_std); params.calc_std = calc_std; end
     if @isdefined(coulomb); params.coulomb = coulomb; end
     if @isdefined(target_nlj); params.target_nlj = target_nlj; end
     if @isdefined(v_chi_order); params.v_chi_order = v_chi_order; end

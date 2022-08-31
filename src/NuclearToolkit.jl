@@ -6,7 +6,7 @@ using Glob
 using LatinHypercubeSampling
 using LaTeXStrings
 using LinearAlgebra
-#using MPI
+using MPI
 using Printf
 using Random
 using StatsBase
@@ -16,20 +16,21 @@ using TimerOutputs
 using WignerSymbols
 
 ### ChiEFTint.jl  chiEFTint/
+include("chiEFTint/dict_LECs.jl")
 include("chiEFTint/misc_plt_io.jl")
 include("chiEFTint/angmom_algebra.jl")
 include("chiEFTint/contact.jl")
 include("chiEFTint/pionexchange.jl")
 include("chiEFTint/valence.jl")
 include("chiEFTint/eff3nf.jl")
-include("chiEFTint/bayesopt.jl")
+include("chiEFTint/calibration.jl")
 include("chiEFTint/main_chiEFTint.jl")
+include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
 export readsnt
-export jj_std
 export make_chiEFTint
 export hw_formula
-export test3NF
+#export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")

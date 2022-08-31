@@ -19,13 +19,13 @@ main function to carry out HF/HFMBPT calculation from snt file
 function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout)
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
-    chiEFTobj = init_chiEFTparams()
+    chiEFTparams = init_chiEFTparams()
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "PreCalc 6j" begin
         dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)
         dict6j = adhoc_rewrite6jdict(emax,dict6j) # trans dict[array] -> dict[int]
     end
-    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(emax,chiEFTobj,d6j_int,to)
+    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
@@ -33,7 +33,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
         binfo = basedat(nuc,sntf,hw,emax,ref)
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
         Z = nuc.Z; N=nuc.N; A=nuc.A
-        BetaCM = chiEFTobj.BetaCM       
+        BetaCM = chiEFTparams.BetaCM       
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
         HCM = InitOp(Chan1b,Chan2bD.Chan2b)
         TCM = InitOp(Chan1b,Chan2bD.Chan2b)
@@ -132,13 +132,14 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
 end
 
 """
-    hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
+    hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,HFdata,d9j,HOBs,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)    
-    emax = chiEFTobj.emax
-    hw = chiEFTobj.hw
-    sntf = chiEFTobj.fn_tbme    
+function hf_main_mem(chiEFTobj,nucs,dict_TM,d9j,HOBs,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)
+    dict6j = chiEFTobj.rdict6j
+    emax = chiEFTobj.params.emax
+    hw = chiEFTobj.params.hw
+    sntf = chiEFTobj.params.fn_tbme   
     nuc = def_nuc(nucs[1],ref,corenuc)
     Z = nuc.Z; N=nuc.N; A=nuc.A 
     binfo = basedat(nuc,sntf,hw,emax,ref)
@@ -206,10 +207,11 @@ function make_dicts_formem(nuc,dicts1b,dict_TM,sps)
                 V2b = Vjj + Vpp*hw/A
                 nkey = get_nkey_from_abcdarr(key)
                 t = get(target_dict,nkey,false)
+                vcm = 0.0
                 if t==false
-                    target_dict[nkey] = [[totJ,V2b,Vjj,Vpp*hw]]
+                    target_dict[nkey] = [[totJ,V2b,Vjj,Vpp*hw,vcm]]
                 else
-                    push!(target_dict[nkey],[totJ,V2b,Vjj,Vpp*hw])
+                    push!(target_dict[nkey],[totJ,V2b,Vjj,Vpp*hw,vcm])
                 end
             end
         end

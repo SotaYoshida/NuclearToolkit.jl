@@ -13,7 +13,7 @@ julia>]add NuclearToolkit
 
 Too see how to run the code, it is strongly recommended to clone the repository.
 
-A sample script provided to perform
+sample script `sample_script.jl` in the repository performs
 - calculating NN potential by Chiral EFT
 - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
 - shell-model calculations with the effective interaction derived by VS-IMSRG

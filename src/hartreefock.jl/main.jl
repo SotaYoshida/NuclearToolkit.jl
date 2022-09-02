@@ -19,11 +19,10 @@ main function to carry out HF/HFMBPT calculation from snt file
 function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout)
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
-    chiEFTparams = init_chiEFTparams()
+    chiEFTparams = init_chiEFTparams(;io=io)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "PreCalc 6j" begin
-        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)
-        dict6j = adhoc_rewrite6jdict(emax,dict6j) # trans dict[array] -> dict[int]
+        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)        
     end
     @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to)
     @timeit to "read" begin        
@@ -135,8 +134,8 @@ end
     hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj,nucs,dict_TM,d9j,HOBs,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)
-    dict6j = chiEFTobj.rdict6j
+function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)
+    dict6j = chiEFTobj.dict6j
     emax = chiEFTobj.params.emax
     hw = chiEFTobj.params.hw
     sntf = chiEFTobj.params.fn_tbme   

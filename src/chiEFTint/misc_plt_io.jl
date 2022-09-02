@@ -5,8 +5,8 @@ delta(a,b) = ifelse(a==b,1.0,0.0)
 hat(a) = sqrt(2.0*a+1.0)
 
 const jmax = 6
-const lmax = jmax+1
-const lcmax = jmax+1
+const lmax = jmax +1
+const lcmax = jmax + 1
 const Mp = 938.272
 const Mn = 939.5653
 const Mm = (Mp+Mn)/2
@@ -63,7 +63,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     pmax_fm = 5.0
     emax = 4
     Nnmax= 20
-    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4Lo
+    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4LO
     calc_NN = true
     calc_3N = false #density-dependent 3NF
     hw = 20.0
@@ -87,20 +87,21 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     ## Lawson's beta for HCM
     BetaCM = 0.0
     ### Fermi momentum for 2n3n
-    kF = 1.35   #kF = 0.3 * XF(Anum)
+    kF = 1.35  
+    ## cutoff for spectral function regularization (SFR)
     LambdaSFR = 0.0
+
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
-        println("Since $fn_params is not found, the default parameters will be used.")
-        return params
+        println("Since $fn_params is not found, the default parameters will be used.")        
     else
         read_chiEFT_parameter!(fn_params,params;io=io)
         tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
         params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
-        return params
     end
+    return params
 end
 
 """
@@ -132,7 +133,11 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
     if @isdefined(BetaCM); params.BetaCM = BetaCM; end
-    println(io,"parameters in $fn will be used.")
+    println(io,"--- chiEFTparameters used ---")
+    for fieldname in fieldnames(typeof(params))                 
+        println(io,"$fieldname = ",getfield(params,fieldname))
+    end
+    println(io,"-----------------------------")
     return nothing
 end
 

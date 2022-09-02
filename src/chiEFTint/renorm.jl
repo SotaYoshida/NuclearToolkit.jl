@@ -1,7 +1,7 @@
 
 
 """
-    SRG(xr,wr,V12mom,dict_numst,to)
+    SRG(xr,wr,V12mom,dict_pwch,to)
 
 main function for Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
 """
@@ -10,7 +10,7 @@ function SRG(chiEFTobj,to)
     n_mesh = chiEFTobj.params.n_mesh
     srg_lambda = chiEFTobj.params.srg_lambda
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr
-    V12mom = chiEFTobj.V12mom; dict_numst = chiEFTobj.dict_numst
+    V12mom = chiEFTobj.V12mom; dict_pwch = chiEFTobj.dict_pwch
     l1s = [0,1,2,3,4,5,6,1,1,2,3,4,5,6,0,1,2,3,4,5]
     l2s = [0,1,2,3,4,5,6,1,1,2,3,4,5,6,2,3,4,5,6,7]
     Ss  = [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1]
@@ -46,7 +46,7 @@ function SRG(chiEFTobj,to)
             iz = 1
         end
         pnrank = iz + 2
-        tdict = dict_numst[pnrank]
+        tdict = dict_pwch[pnrank]
         rmass = Mp * Mn / (Mp+Mn) 
         if iz == -1; rmass = 0.5 * Mp;end
         if iz ==  1; rmass = 0.5 * Mn;end

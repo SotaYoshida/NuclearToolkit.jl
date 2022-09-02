@@ -17,8 +17,7 @@ function wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
     return s
 end
 
-
-function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,dict6j)
+function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int)
     oja = ja; ojb = jb; oJ = tJ; ojc=jc;ojd=jd; oJp = tJp
     j1 = ja; j2 = jb; J = tJ; j3=jc;j4=jd; Jp = tJp
     flip_JJp = (tJ>tJp)
@@ -32,20 +31,20 @@ function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,dict6j)
         j1 = jb; j2 = ja; j3 = jd; j4 = jc
     end 
     nkey = get_nkey_from_key6j(j1,j2,j3,j4,Jp)
-    r = get(dict6j[J+1],nkey,0.0)
+    r = get(d6j_int[J+1],nkey,0.0)
     if r ==0.0; r = wigner6j(Float64,oja,ojb,oJ,ojc,ojd,oJp);end
     return r
 end
 
-function wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,dict6j)
+function wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,d6j_int)
     s= 0.0
     xmin = max(abs(j1-j9),abs(j2-j6),abs(j4-j8))
     xmax = min(abs(j1+j9),abs(j2+j6),abs(j4+j8))
     @inbounds for x =xmin:xmax
         t  = (-1)^(2*x) * (2*x+1)
-        t *= get_dict6jint_for9j(j1,j4,j7,j8,j9,x,dict6j)
-        t *= get_dict6jint_for9j(j2,j5,j8,j4,x,j6,dict6j)
-        t *= get_dict6jint_for9j(j3,j6,j9,x,j1,j2,dict6j)
+        t *= get_dict6jint_for9j(j1,j4,j7,j8,j9,x,d6j_int)
+        t *= get_dict6jint_for9j(j2,j5,j8,j4,x,j6,d6j_int)
+        t *= get_dict6jint_for9j(j3,j6,j9,x,j1,j2,d6j_int)
         s += t 
     end
     return s
@@ -71,7 +70,7 @@ function s_wigner9j(j1,j3,j4,j6,j7,j8,j9)
 end
 
 """
-    TMtrans(dLECs,xr,wr,xrP,wrP,Rnl,RNL,nTBME,infos,izs_ab,Numpn,V12ab,arr_numst,dict6j,d6j_nabla,X9,U6,to;calc_relcm=false,writesnt=true)
+    TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
 
 Function to carry out Talmi-Mochinsky transformation
 """
@@ -81,10 +80,9 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
     xrP = chiEFTobj.xrP; wrP = chiEFTobj.wrP; Rnl = chiEFTobj.Rnl; RNL = chiEFTobj.RNL
     nTBME = chiEFTobj.nTBME; infos = chiEFTobj.infos; izs_ab = chiEFTobj.izs_ab
-    arr_numst = chiEFTobj.arr_numst;
-    dict6j = chiEFTobj.dict6j; d6j_nabla = chiEFTobj.d6j_nabla; X9 = chiEFTobj.X9; U6 = chiEFTobj.U6
-    emax = chiEFTobj.params.emax
-    Nrmax = 2*emax
+    dict6j = chiEFTobj.dict6j; d6j_nabla = chiEFTobj.d6j_nabla
+    X9 = chiEFTobj.X9; U6 = chiEFTobj.U6
+    emax = chiEFTobj.params.emax; Nrmax = 2*emax
     nume = zeros(Int64,Nrmax+1,Nrmax+1)
     numknn = [ [ [ zeros(Int64,div(K1,2)+1,div(KK-K1,2)+1) for K1=0:KK] for Lam=0:KK] for KK=0:Nrmax]
     Ndim = [ zeros(Int64,i) for i=1:Nrmax+1]
@@ -167,7 +165,7 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
             Ndim[KK+1][Lam+1]=num
         end
     end
-    nljdict = Dict(0=>0); delete!(nljdict,0)
+    nljdict = Dict{Int64,Int64}()
     if writesnt 
         target_nlj = params.target_nlj
         tbme_fmt = params.tbme_fmt
@@ -198,7 +196,6 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
         izs = izs_ab[ich]
         vv = zeros(Float64,ndim,ndim)
         @timeit to "vtrans" @inbounds @threads for i = 1:ndim
-        #@timeit to "vtrans" @inbounds for i = 1:ndim
             t2v=t2vs[threadid()]
             t5v=t5vs[threadid()]
             iza,ia,izb,ib = izs[i]
@@ -210,9 +207,7 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
                     vvs = zeros(Float64,5)
                     NLOvs(params,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
                           X9,U6,t5v,Jtot,iza,ia,izb,ib,izc,ic,izd,id,to)
-                    for i=1:5
-                        v12 += vvs[i]
-                    end
+                    for i=1:5; v12 += vvs[i]; end
                 end
                 vv[i, j] = v12; vv[j, i] = v12                
             end
@@ -220,7 +215,7 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
         if writesnt 
             write_tbme(params,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=nofst)
         else
-            set_tbme(params,tbmes[pnrank],ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j,to;ofst=nofst)
+            set_tbme(chiEFTobj,tbmes[pnrank],ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=nofst)
         end
     end
     if writesnt 
@@ -231,8 +226,10 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
     end
 end
 
-function set_tbme(chiEFTobj,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j,to;ofst=0)
-    target_nlj = chiEFTobj.target_nlj
+function set_tbme(chiEFTobj,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=0)
+    dict6j = chiEFTobj.dict6j
+    d6j_nabla = chiEFTobj.d6j_nabla
+    target_nlj = chiEFTobj.params.target_nlj
     @inbounds for i = 1:ndim
         iza,ia,izb,ib = izs[i]
         na,la,ja = nljsnt[ia]
@@ -367,14 +364,11 @@ function kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
     norm = 1.0; ret = 1.0
     if nljtz1 == nljtz2; norm *= 1.0/sqrt(2.0);end
     if nljtz3 == nljtz4; norm *= 1.0/sqrt(2.0);end
-    key6j[1] = j1; key6j[2] = j2; key6j[3] = j4; key6j[4] = j3; key6j[5] =1
-    t = get(dict6j[J+1],key6j,false)
-    t6j = 0.0; 
-    if t!=false;t6j = dict6j[J+1][key6j]; end     
-    key6j[1] = j1; key6j[2] = j2; key6j[3] = j3; key6j[4] = j4; key6j[5] =1
-    t = get(dict6j[J+1],key6j,false)
-    t6j_2 = 0.0; if t!=false; t6j_2 = dict6j[J+1][key6j]; end 
-    
+    nkey = get_nkey_from_key6j(j1,j2,j4,j3,1); t = get(dict6j[J+1],nkey,false)
+    t6j = 0.0; if t!=false;t6j = dict6j[J+1][nkey]; end
+    nkey = get_nkey_from_key6j(j1,j2,j3,j4,1); t = get(dict6j[J+1],nkey,false)
+    t6j_2 = 0.0; if t!=false; t6j_2 = dict6j[J+1][nkey];end 
+
     nabla1324 = red_nabla_j(nlj1,nlj3,d6j_nabla,key6j) * red_nabla_j(nlj2,nlj4,d6j_nabla,key6j)
     if tz1==tz2==tz3==tz4
         nabla1423 = red_nabla_j(nlj1, nlj4,d6j_nabla,key6j) * red_nabla_j(nlj2,nlj3,d6j_nabla,key6j)
@@ -383,7 +377,7 @@ function kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
            ( tz1==1 && tz2 ==-1 && tz3 == 1 && tz4 ==-1)
         ret = (-1)^((j2+j3)//2+J) * t6j * nabla1324
     else
-        println("error in kinetic_tb")
+        @error "error in kinetic_tb"
         exit()
     end
     return norm*ret
@@ -463,10 +457,6 @@ function CGm0(l1,l2,l)
     * mydoublefactorial(2*g-2*l1-1) / factorial(big(g-l1))
     * mydoublefactorial(2*g-2*l2-1) / factorial(big(g-l2))
     * mydoublefactorial(2*g-2*l-1) /  doublefactorial(2*g+1) )
-    # r *= sqrt( (2*l+1) * factorial(g)/factorial(g-l)
-    #            * mydoublefactorial(2*g-2*l1-1) / factorial(g-l1)
-    #            * mydoublefactorial(2*g-2*l2-1) / factorial(g-l2)
-    #            * mydoublefactorial(2*g-2*l-1) /  doublefactorial(2*g+1) )
     return r
 end
 function Ghob(e1, l1, ea, la, eb, lb,dtri,dcgm0,keycg;to=nothing) 
@@ -553,8 +543,7 @@ function gmosh2(nl, ll, nr, lr, n1, l1, n2, l2, lm, d::Float64,dWs,tkey9j,dict9j
             end
         end
     end
-    r = r * phase
-    return r
+    return r * phase
 end
 
 function flip_needed(tkey9j)
@@ -687,7 +676,7 @@ end
 function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
                 nljsnt,V12ab,nume,numknn,Ndim,Transbk,t2v,t5v,to)
     emax = chiEFTobj.params.emax
-    X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_numst = chiEFTobj.arr_numst
+    X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_pwch = chiEFTobj.arr_pwch
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
     nc,lc,jdc = nljsnt[ic]; nd,ld,jdd = nljsnt[id]
@@ -706,7 +695,7 @@ function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
     for S=0:1
         tX9 = X9[S+1]
         U6_s = U6_j[S+1]
-        tarr_numst = arr_numst[pnrank][S+1]
+        tarr_pwch = arr_pwch[pnrank][S+1]
         lmax1=min(Jtot+S,la+lb)
         lmin1=max(abs(Jtot-S),abs(la-lb))
         if lmin1 > lmax1;continue;end
@@ -784,7 +773,7 @@ function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
                                     if izz==0;izfac=1;end
                                     rv12=0.0
                                     if izfac!=0
-                                        num= tarr_numst[Jrel+1][lr1-abs(Jrel-S)+1][lr2-abs(Jrel-S)+1]
+                                        num= tarr_pwch[Jrel+1][lr1-abs(Jrel-S)+1][lr2-abs(Jrel-S)+1]
                                         rv12=V12ab[num][nr1+1,nr2+1]
                                     end
                                     sumv += zu1*zu2*izfac*rv12
@@ -897,7 +886,7 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(chiEFTobj,dict6j,to;io=stdout)
+function PreCalcHOB(chiEFTobj,d6j_int,to;io=stdout)
     emax = chiEFTobj.emax
     Nnmax = chiEFTobj.Nnmax
     Nmax = max(2*emax,Nnmax)
@@ -1032,7 +1021,7 @@ function PreCalcHOB(chiEFTobj,dict6j,to;io=stdout)
                                         #if (e_1 > e_2) && (2*N+Lam > 2*n+lam); continue;end
                                         if (l1+l2+lam+Lam)%2 > 0;continue;end
                                         if !tri_check(l1,l2,L);continue;end
-                                        prep9j_HOB(N,Lam,n,lam,n1,l1,n2,l2,L,dict6j,tkey9j,targetdict)
+                                        prep9j_HOB(N,Lam,n,lam,n1,l1,n2,l2,L,d6j_int,tkey9j,targetdict)
                                     end
                                 end
                             end
@@ -1062,7 +1051,7 @@ function PreCalcHOB(chiEFTobj,dict6j,to;io=stdout)
     return dict9j,HOBs
 end
 
-function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,dict6j,tkey9j,dict9j_HOB)
+function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,d6j_int,tkey9j,dict9j_HOB)
     ee = 2*nl + ll
     er = 2*nr + lr
     e1 = 2*n1 + l1
@@ -1094,7 +1083,7 @@ function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,dict6j,tkey9j,dict9j_HOB)
                         t3 = get(dict9j_HOB[intkey9j_12][intkey9j_lr],intkey9j_abcd,false)
                         if t3 != false; continue;end
                         # t9j = wigner9j(la,lb,l1,lc,ld,l2,ll,lr,lm) 
-                        t9j = wigner9j_from_dict6j(la,lb,l1,lc,ld,l2,ll,lr,lm,dict6j)
+                        t9j = wigner9j_from_dict6j(la,lb,l1,lc,ld,l2,ll,lr,lm,d6j_int)
                         if flip; t9j *= (-1)^(la+lb+l1+lc+ld+l2+ll+lr+lm);end
                         dict9j_HOB[intkey9j_12][intkey9j_lr][intkey9j_abcd] = t9j
                     end
@@ -1422,13 +1411,14 @@ j_1/2&  j_2/2&     1 \\\\
 \\end{Bmatrix}
 ```
 are needed to get `dict6j[J][key]` with `key = [ja,jb,jd,jc,Jp]`.
-Using array as key is in general slow, so the key is transformed into integer in the IMSRG part (But, this sometimes reduces readability...)
+Using array as key is in general slow, so the key is integer for dict6j & d6jint (I know this reduces readability, though)
 """
-function PreCalc6j(emax)
+function PreCalc6j(emax,only_halfinteger=false)
     Jmax = 2*emax+1 # = jmax *2    
-    d6j = [ Dict{Vector{Int64},Float64}() for i=0:Jmax]
-    for totJ = 0:Jmax
-        tdict = d6j[totJ+1]        
+    d6j = [ Dict{Int64,Float64}() for i=0:Jmax]
+    d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
+    @threads for totJ = 0:Jmax
+        tdict = d6j[totJ+1]
         for ja = 1:2:Jmax
             for jb = 1:2:Jmax
                 if tri_check(ja,jb,totJ*2)==false;continue;end
@@ -1438,15 +1428,38 @@ function PreCalc6j(emax)
                         for jc = 1:2:Jmax
                             if tri_check(jd,totJ*2,jc)==false;continue;end
                             if tri_check(ja,Jp*2,jc)==false;continue;end
-                            tdict[[ja,jb,jd,jc,Jp]] = wigner6j(Float64,ja//2,jb//2,totJ,jd//2,jc//2,Jp)
+                            t6j = wigner6j(Float64,ja//2,jb//2,totJ,jd//2,jc//2,Jp)
+                            nkey = get_nkey_from_key6j(ja,jb,jd,jc,Jp)
+                            tdict[nkey] = t6j
                         end
                     end
                 end                
             end
         end
-    end
+        if !only_halfinteger
+            tdict = d6j_int[totJ+1]        
+            for j1 = 0:jmax
+                for j2 = j1:jmax
+                    if !tri_check(j1,j2,totJ);continue;end
+                    for Jp = totJ:Jmax
+                        for j3 = 0:jmax
+                            if !tri_check(j2,j3,Jp);continue;end
+                            for j4 = 0:jmax
+                                if !tri_check(j3,j4,totJ);continue;end                        
+                                if !tri_check(j1,j4,Jp);continue;end
+                                t6j = wigner6j(Float64,j1,j2,totJ,j3,j4,Jp)
+                                nkey = get_nkey_from_key6j(j1,j2,j3,j4,Jp)
+                                tdict[nkey] = t6j
+                            end
+                        end
+                    end
+                end    
+            end
+        end
+    end  
+
     d6j_nabla = Dict{Vector{Int64},Float64}() 
-    Jp2 = 1; totJ=1
+    totJ =1
     for ja = 1:2:Jmax
         for jb = 1:2:Jmax
             if tri_check(ja,jb,2)==false;continue;end
@@ -1460,28 +1473,6 @@ function PreCalc6j(emax)
             end    
         end
     end
-    d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
-    hit = 0
-    @threads for J = 0:Jmax 
-        target_dict = d6j_int[J+1]
-        for j1 = 0:jmax
-            for j2 = j1:jmax
-                if !tri_check(j1,j2,J);continue;end
-                for Jp = J:Jmax
-                    for j3 = 0:jmax
-                        if !tri_check(j2,j3,Jp);continue;end
-                        for j4 = 0:jmax
-                            if !tri_check(j3,j4,J);continue;end                        
-                            if !tri_check(j1,j4,Jp);continue;end
-                            t6j = wigner6j(Float64,j1,j2,J,j3,j4,Jp)
-                            nkey = get_nkey_from_key6j(j1,j2,j3,j4,Jp)
-                            target_dict[nkey] = t6j
-                            hit +=1
-                        end
-                    end
-                end
-            end    
-        end
-    end
+
     return d6j,d6j_nabla,d6j_int
 end

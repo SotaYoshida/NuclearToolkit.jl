@@ -24,10 +24,11 @@ function get_ZNref(ref,Z,N,corenuc)
     return Zr,Nr
 end
 """
-    def_nuc(Z,N,ref,corenuc)
+    def_nuc(nuc::Vector{Int},ref,corenuc)
 constructor of `nuclei` strict from given `Z`,`N`,`ref`,`corenuc`
 """
-function def_nuc(Z,N,ref,corenuc)
+function def_nuc(nuc::Vector{Int},ref,corenuc)
+    Z,N = nuc
     el = nuclist[Z]
     A = Z+N
     cnuc = el * string(A)

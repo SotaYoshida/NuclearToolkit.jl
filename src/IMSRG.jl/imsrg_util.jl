@@ -602,27 +602,6 @@ function need_check(tbc_bra_cc, tbc_ket_cc, li,ji,tzi, lj,jj,tzj, lk,jk,tzk, ll,
 end
 
 
-"""
-    adhoc_rewrite6jdict(emax,dict6j,ofst_unit=1000)
-
-adhoc function to replace dict. for 6j-symbols:{ji,jj,J,jk,jl,J'}
-key = [ji,jj,jk,jl,J'] -> new_key::Int64
-new_dict is Vector for total J
-"""
-function adhoc_rewrite6jdict(emax,dict6j,ofst_unit=1000)
-    Jmax = 2*emax+1
-    new_dict6j = [ Dict{Int64,Float64}() for tJ=0:Jmax]
-    for totJ = 0:Jmax
-        tdict  = dict6j[totJ+1]
-        target = new_dict6j[totJ+1]        
-        for tkey in keys(tdict)
-            tval = tdict[tkey]
-            nkey = get_nkey_from_key6j(tkey,ofst_unit)
-            target[nkey] = tval
-        end
-    end
-    return new_dict6j
-end 
 function get_nkey_from_key6j(tkey,ofst_unit=1000)
     nkey = tkey[1] + tkey[2] * ofst_unit + tkey[3] * ofst_unit^2 + tkey[4] * ofst_unit^3 +  tkey[5] * ofst_unit^4
     return nkey

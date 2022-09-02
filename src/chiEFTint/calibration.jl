@@ -2,7 +2,6 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
     @assert optimizer != "" "optimizer should be BayesOpt/LHS/MCMC"
     if !MPIcomm        
         for it = 1:itnum
-            ## If you want to optimize (or try samplings) change itnum, insert a function to update/optimize/sample the LECs here     
             add2n3n(chiEFTobj,to,it)
             @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
@@ -312,15 +311,12 @@ function propose_LHS!(it,OPTobj,BOproposal)
     return nothing
 end 
 
-function propose_MH!(it,OPTobj,sigmaMH=0.1)
+function propose_MH!(it,OPTobj)
     params = OPTobj.params
     ollh = OPTobj.history[it-1][3]
     nllh = OPTobj.history[it][3]
     lograte = nllh - ollh
     logr = log(rand())
-    println("it $it params $params <= ",OPTobj.chain[:,it-1])
-    println("llh old $ollh new $nllh")
-    println("logr $logr")
     if logr <= lograte
         OPTobj.chain[:,it] .= params
         OPTobj.acchit += 1
@@ -329,7 +325,6 @@ function propose_MH!(it,OPTobj,sigmaMH=0.1)
         OPTobj.chain[:,it] .= OPTobj.chain[:,it-1]
         OPTobj.history[it] .= OPTobj.history[it-1]
     end
-    println("sigmas ", OPTobj.sigmas)
     for n = 1:length(params)
         params[n] += OPTobj.sigmas[n] * randn()
     end

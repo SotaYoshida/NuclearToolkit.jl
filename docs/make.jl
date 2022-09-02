@@ -1,6 +1,6 @@
-using NuclearToolkit
+#using NuclearToolkit
 using Documenter
-#include("../src/NuclearToolkit.jl")
+include("../src/NuclearToolkit.jl")
 #push!(LOAD_PATH,"../src/")
 
 DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
@@ -16,11 +16,10 @@ makedocs(;
         ),
     pages=[
         "Home" => "index.md",
+        "HowToUse" => "howtouse.md",
+        "FileFormat" => "fileformat.md",
         "Optional parameters" => "parameters.md",
-        "ChiEFTint" => "ChiEFTint.md",
-        "HartreeFock" => "HartreeFock.md",
-        "IMSRG" => "IMSRG.md",
-        "ShellModel" => "ShellModel.md"
+        "References" => ["ChiEFTint" => "ChiEFTint.md","HartreeFock" => "HartreeFock.md","IMSRG" => "IMSRG.md","ShellModel" => "ShellModel.md"]
     ],
 )
 

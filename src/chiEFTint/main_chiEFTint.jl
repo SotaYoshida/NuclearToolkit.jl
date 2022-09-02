@@ -1,26 +1,29 @@
 """
-    make_chiEFTint(;is_show=false,optHFMBPT=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,io=stdout)
+    make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[])
 
-main function in chiEFTint.
+The interface function in chiEFTint.
 This generates NN-potential in momentum space and then transforms it in HO basis.
-This function is exported and can be simply called make_chiEFTint() in your script. 
+The function is exported and can be simply called make_chiEFTint() in your script. 
 
 # Optional arguments: Note that these are mainly for too specific purposes, so you do not specify these.
 - `is_show::Bool` to show `TimerOutputs`
-- `optHFMBPT::Bool` to optimize LECs using HFMBPT
 - `itnum::Int` number of iteration for LECs calibration with HFMBPT
 - `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
+- `nucs`
 - `optimizer::String` method for LECs calibration. "MCMC","LHC","BayesOpt" are available
 - `MPIcomm::Bool`, to carry out LECs sampling with HF-MBPT and affine inveriant MCMC
-- `Operators::Vector{String}` specifies operators you need to use for LECs calibration
+- `Operators::Vector{String}` specifies operators you need to use in LECs calibrations
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=String[],optimizer="",MPIcomm=false,io=stdout,corenuc="",ref="nucl",Operators=[])
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[])
     to = TimerOutput()
+    io=stdout
     optHFMBPT=false
-    if (optimizer!="" && nucs != String[]) || MPIcomm
+    if (optimizer!="" && nucs != []) || MPIcomm
         optHFMBPT=true; writesnt=false
     end
-    if MPIcomm; 
+    if MPIcomm
+        @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
+        @assert nucs!=[] "nucs must not be empty if you set MPIcomm=true"
         if !isdir("mpilog");run(`mkdir mpilog`);end
         MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -45,12 +48,62 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=String[],optim
     return true
 end
 
+
+"""
+    ChiralEFTobject
+
+# Fields
+- `params::chiEFTparams`
+- `xr_fm::Vector{Float64}` momentum mesh points in fm``^{-1}`` (0 to `pmax_fm`)
+- `xr::Vector{Float64}` momentum mesh points in MeV (`xr_fm` times ``\\hbar c``)
+- `wr::Vector{Float64}` weights vector for Gauss-Legendre quadrature
+- `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
+```math
+\\begin{Bmatrix} 
+j_a/2&  j_b/2&   J \\\\
+j_c/2&  j_d/2&   J_p
+\\end{Bmatrix}
+```
+where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
+- `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
+```math
+\\begin{Bmatrix} 
+j_a/2&  j_b/2&     1 \\\\
+  l_2&    l_1&   1/2
+\\end{Bmatrix}
+```
+- `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
+- `Rnl::Array{Float64,3}` arrays for radial functions
+- `xrP_fm::Vector{Float64}` "valence" counter part of `xr_fm` (usually not used)
+- `xrP::Vector{Float64}` "valence" counter part of `xr` (usually not used)
+- `wrP::Vector{Float64}` "valence" counter part of `wr` (usually not used)
+- `RNL::Array{Float64,3}` "valence" counter part of `Rnl` (usually not used)
+- `lsjs::Vector{Vector{Vector{Int64}}}`
+- `llpSJ_s::Vector{Vector{Int64}}`
+- `tllsj::Vector{Int64}`
+- `opfs::Vector{Vector{Float64}}`
+- `ts::Vector{Float64}` mesh points for angular integrals in pion-exchange terms
+- `ws::Vector{Float64}` weights vectors for angular integrals in pion-exchange terms
+- `Numpn::Dict{Vector{Int64},Int64}`
+- `infos::Vector{Vector{Int64}}`
+- `izs_ab::Vector{Vector{Vector{Int64}}}`
+- `nTBME::Int64` # of two-body matrix elements (TBMEs)
+- `util_2n3n::util_2n3n`
+- `LECs::LECs`
+- `X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}` 9j for Vtrans
+- `U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}` 6j for Vtrans
+- `V12mom::Vector{Matrix{Float64}}` matrix elements of NN int in momentum space for each two-body channnel
+- `V12mom_2n3n::Vector{Matrix{Float64}}` matrix elements of 2n3n int in momentum space for each two-body channnel
+- `pw_channels::Vector{Vector{Int64}}` list of partial wave two-body channels like {[pnrank,L,L',S,J]}
+- `dict_pwch::Vector{Dict{Vector{Int64}, Int64}}`
+- `arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}`
+"""
 struct ChiralEFTobject
     params::chiEFTparams
     xr_fm::Vector{Float64}
     xr::Vector{Float64}
     wr::Vector{Float64}
-    dict6j::Vector{Dict{Vector{Int64}, Float64}}    
+    dict6j::Vector{Dict{Int64, Float64}}
     d6j_nabla::Dict{Vector{Int64}, Float64}  
     d6j_int::Vector{Dict{Int64, Float64}}
     Rnl::Array{Float64,3}
@@ -69,77 +122,35 @@ struct ChiralEFTobject
     izs_ab::Vector{Vector{Vector{Int64}}}
     nTBME::Int64
     util_2n3n::util_2n3n
-    rdict6j::Vector{Dict{Int64,Float64}}
     LECs::LECs
     X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}
     U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}
     V12mom::Vector{Matrix{Float64}}
     V12mom_2n3n::Vector{Matrix{Float64}}
-    numst2::Vector{Vector{Int64}}
-    dict_numst::Vector{Dict{Vector{Int64}, Int64}} 
-    arr_numst::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
+    pw_channels::Vector{Vector{Int64}}
+    dict_pwch::Vector{Dict{Vector{Int64}, Int64}} 
+    arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
 end
 """
 
 It returns 
-- `chiEFTobj::ChiralEFTobject` parameters and arrays to generate NN (+2n3n) potentials
+- `chiEFTobj::ChiralEFTobject` parameters and arrays to generate NN (+2n3n) potentials. See also struct `ChiralEFoObject`.
 - `OPTobj` (mutable) struct for LECs calibrations. It can be `LHSobject`/`BOobject`/`MCMCobject`/`MPIMCMCobject` struct.
 - `d9j::Vector{Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}}` array of Wigner-9j symbols used for Pandya transformation in HF-MBPT/IMSRG calculations.
 - `HOBs::Dict{Int64, Dict{Int64, Float64}}` dictionary for harmonic oscillator brackets.
-
-#
 """
-function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1)
-    # default parameters
-    n_mesh = 50
-    pmax_fm = 5.0
-    emax = 4
-    Nnmax= 20
-    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4Lo
-    calc_NN = true
-    calc_3N = false #density-dependent 3NF
-    hw = 20.0
-    if use_hw_formula != 0; hw = hw_formula(Anum,use_hw_formula); end
-    ## SRG evolution (srg_lambda is in fm^{-1}
-    srg = true
-    srg_lambda = 2.0    
-    ## file name and format for TBME 
-    tx = "bare";if srg; tx ="srg"*string(srg_lambda);end;if calc_3N; tx="2n3n_"*tx;end
-    tbme_fmt = "snt.bin"
-    fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,hw))*"emax"*string(emax)*"."*tbme_fmt
-    coulomb = true
-    pottype = "em500n3lo"
-    target_nlj=Vector{Int64}[]
-    ##for valence space operators (usually not used)
-    v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
-    n_mesh_P = 10
-    Pmax_fm = 3.0
-    ## Lawson's beta for HCM
-    BetaCM = 0.0
-    ## Fermi momentum for 2n3n
-    kF = 1.35 
-    LambdaSFR = 0.0
-
-    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
-                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
-                          target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
-    if !isfile(fn_params)
-        println("Since $fn_params is not found, the default parameters will be used.")
-    else
-        read_chiEFT_parameter!(fn_params,params;io=io)
-        tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
-        params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
-    end    
+function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to)
+    # specify chiEFT parameters
+    params = init_chiEFTparams(;io=io)
 
     #Next, prepare momentum/integral mesh, arrays, etc.
- 
-    ## Prep WignerSymbols
-    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax)
+     ## Prep WignerSymbols
+    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax,!optHFMBPT)
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
-    numst2,dict_numst,arr_numst = bstate(;io=io)    
-    V12mom = [ zeros(Float64,params.n_mesh,params.n_mesh) for i in eachindex(numst2)]
-    V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(numst2)]
+    pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)    
+    V12mom = [ zeros(Float64,params.n_mesh,params.n_mesh) for i in eachindex(pw_channels)]
+    V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(pw_channels)]
     ## prep. radial functions
     rmass = Mp*Mn/(Mp+Mn)
     br = sqrt(hc^2 /(rmass* params.hw))
@@ -161,21 +172,15 @@ function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="
     infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
-
-    rdict6j = Dict{Int64, Float64}[ ]
-    if optHFMBPT
-        rdict6j = adhoc_rewrite6jdict(params.emax,dict6j)
-    end
-   
+    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)   
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
     X9,U6 = prepareX9U6(2*params.emax)   
     chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
                                 xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
-                                Numpn,infos,izs_ab,nTBME,util_2n3n,rdict6j,LECs,X9,U6,
-                                V12mom,V12mom_2n3n,numst2,dict_numst,arr_numst)
+                                Numpn,infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
+                                V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
       
     # make Opt stuff    
     OPTobj = prepOPT(LECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
@@ -311,6 +316,11 @@ function QL(z,J::Int64,ts,ws,QLdict)
     return s
 end
 
+"""
+    make_sp_state(chiEFTobj,Numpn;io=stdout)
+
+Defining the number of single particle states from emax and two-body channels.
+"""
 function make_sp_state(chiEFTobj,Numpn;io=stdout)
     emax = chiEFTobj.emax
     jab_max = 4*emax + 2
@@ -338,11 +348,20 @@ function make_sp_state(chiEFTobj,Numpn;io=stdout)
             end
         end
     end 
-    infos,izs_ab,nTBME = get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)
+    infos,izs_ab,nTBME = get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
     return infos,izs_ab,nTBME
 end
 
-function get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)
+"""
+    get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)
+
+returns `infos`, `izs_ab`, `nTBME`
+- `infos::Vector{Vector{Int64}}` information of two-body channeles: { [``T_z``,parity,J,dim] } 
+- `izs_ab::Vector{Vecrtor{Int64}}` two-body kets: { [iza,ia,izb,ib] } where `iz*` stuff is isospin (-1 or 1) and `i*` stuff is label of sps.
+For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
+- `nTBME::Int` # of TBMEs
+"""
+function get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
     infos = [ [0,0,0,0] ];deleteat!(infos,1)
     izs_ab = [ [[0,0,0,0]] ];deleteat!(izs_ab,1)
     ichan = 0
@@ -487,13 +506,17 @@ function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
     return Rnl
 end
 
-function bstate(;io=stdout)
+"""
+    prepare_2b_pw_states(;io=stdout)
+
+preparing two-body channels in terms of <Lp,S,J| |L,S,J>.
+For example, [pnrank,L,Lp,S,J] = [0, 0, 2, 1, 1] corresponds to proton-neutron 3S1-3D1 channel.
+"""
+function prepare_2b_pw_states(;io=stdout)
     #iz,lz1,lz2,isz,jz
-    numst2 = [ [0,0,0,0,0] ];deleteat!(numst2,1)
-    dict_numst = [ Dict([0,0]=>1) for i=1:3]
-    for i=1:3; delete!(dict_numst[i],[0,0]); end
-    arr_numst = [[[[ zeros(Int64,j+iss-abs(j-iss)+1) for ll1=abs(j-iss):j+iss ] for j=0:jmax ] for iss=0:1 ] for pnrank=1:3]
-    
+    pw_channels = [ [0,0,0,0,0] ];deleteat!(pw_channels,1)
+    dict_pwch = [Dict{Vector{Int64},Int64}() for pnrank=1:3] 
+    arr_pwch = [[[[ zeros(Int64,j+iss-abs(j-iss)+1) for ll1=abs(j-iss):j+iss ] for j=0:jmax ] for iss=0:1 ] for pnrank=1:3]    
     num=0
     ## pp iz = -2
     itt = 1
@@ -505,9 +528,9 @@ function bstate(;io=stdout)
                     if itt != Int( (1+(-1)^(ll1+iss))/2);continue;end
                     if (-1)^(ll1+iss+itt) != -1;continue;end
                     num=num+1
-                    push!(numst2,[-2,ll1,ll2,iss,j])
-                    dict_numst[1][[-2,ll1,ll2,iss,j]] = num
-                    arr_numst[1][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
+                    push!(pw_channels,[-2,ll1,ll2,iss,j])
+                    dict_pwch[1][[-2,ll1,ll2,iss,j]] = num
+                    arr_pwch[1][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
                 end
             end
         end
@@ -522,9 +545,9 @@ function bstate(;io=stdout)
                     if itt != Int( (1+(-1)^(ll1+iss))/2);continue;end
                     if (-1)^(ll1+iss+itt) != -1;continue;end
                     num=num+1
-                    push!(numst2,[2,ll1,ll2,iss,j])
-                    dict_numst[pnrank][[2,ll1,ll2,iss,j]] = num
-                    arr_numst[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
+                    push!(pw_channels,[2,ll1,ll2,iss,j])
+                    dict_pwch[pnrank][[2,ll1,ll2,iss,j]] = num
+                    arr_pwch[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
                 end
             end
         end
@@ -542,19 +565,19 @@ function bstate(;io=stdout)
                         if itt != Int((1+(-1)^(ll1+iss))/2) ;continue;end
                         if (-1)^(ll1+iss+itt) != -1;continue;end
                         num=num+1
-                        push!(numst2,[0,ll1,ll2,iss,j])
-                        dict_numst[pnrank][[0,ll1,ll2,iss,j]] = num
-                        arr_numst[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
+                        push!(pw_channels,[0,ll1,ll2,iss,j])
+                        dict_pwch[pnrank][[0,ll1,ll2,iss,j]] = num
+                        arr_pwch[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
                     end
                 end
             end
         end
     end
     println(io,"# of two-body states $num")
-    return numst2,dict_numst,arr_numst
+    return pw_channels,dict_pwch,arr_pwch
 end
 
-function calc_coulomb(chiEFTobj,xs,ws,Vcoulomb,numst2,nstmax,Rnl;meshp=100)
+function calc_coulomb(chiEFTobj,xs,ws,Vcoulomb,pw_channels,num2bch,Rnl;meshp=100)
     hw = chiEFTobj.hw
     Nnmax = chiEFTobj.Nnmax
     rmass = 0.5 * Mp
@@ -568,9 +591,9 @@ function calc_coulomb(chiEFTobj,xs,ws,Vcoulomb,numst2,nstmax,Rnl;meshp=100)
     vcl = zeros(Float64,meshp)
     fmcoul(vcl,r)
     memo1=[0]; memo2=[0]
-    for num=1:nstmax
+    for num=1:num2bch
         vcoul = Vcoulomb[num]
-        iz12,l1,l2,isz,jj = numst2[num]
+        iz12,l1,l2,isz,jj = pw_channels[num]
         if iz12 !=-2; continue;end
         if l1 !=l2; continue;end
         if jj > jmax;continue;end
@@ -659,20 +682,20 @@ end
 
 
 function Vrel(chiEFTobj,to) 
-    V12mom = chiEFTobj.V12mom; numst2 = chiEFTobj.numst2; Rnl = chiEFTobj.Rnl
+    V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels; Rnl = chiEFTobj.Rnl
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
-    Nnmax= chiEFTobj.params.Nnmax; nstmax = length(numst2)
-    V12ab = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:nstmax]
-    Vcoulomb = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:nstmax]
+    Nnmax= chiEFTobj.params.Nnmax; num2bch = length(pw_channels)
+    V12ab = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
+    Vcoulomb = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
     if chiEFTobj.params.coulomb
-        calc_coulomb(chiEFTobj.params,xr_fm,wr,Vcoulomb,numst2,nstmax,Rnl)
+        calc_coulomb(chiEFTobj.params,xr_fm,wr,Vcoulomb,pw_channels,num2bch,Rnl)
     end
     x = zeros(Float64,Nnmax+1,n_mesh)
-    for num = 1:nstmax
+    for num = 1:num2bch
         Vtmp = V12mom[num]
         Vab = V12ab[num]
         vcoul = Vcoulomb[num]
-        iz,l1,l2,isz,jz = numst2[num]
+        iz,l1,l2,isz,jz = pw_channels[num]
         @inbounds for n1 = 0:Nnmax
             tR = @views Rnl[n1+1,l1+1,:]
             tx = @views x[n1+1,:]
@@ -720,5 +743,3 @@ function hw_formula(A,fnum)
     end
     return hw
 end
-
-

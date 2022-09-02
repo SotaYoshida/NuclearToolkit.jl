@@ -1,11 +1,11 @@
 """
-    OPEP(ts,ws,xr,V12mom,dict_numst,to,lsjs,llpSJ_s,tllsj,opfs;pigamma=true)
+    OPEP(ts,ws,xr,V12mom,dict_pwch,to,lsjs,llpSJ_s,tllsj,opfs;pigamma=true)
 
 calc. One-pion exchange potential in the momentum-space
 """
 function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr; V12mom = chiEFTobj.V12mom
-    dict_numst = chiEFTobj.dict_numst; 
+    dict_pwch = chiEFTobj.dict_pwch; 
     lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj
     opfs = chiEFTobj.opfs; QLdict = chiEFTobj.util_2n3n.QWs.QLdict
     n_mesh = chiEFTobj.params.n_mesh
@@ -15,7 +15,7 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
     mpi0 = mpis[2]; mpi02 = mpi0^2
     mpipm = mpis[1]; mpipm2 = mpipm^2
     for pnrank =1:3
-        tdict = dict_numst[pnrank]
+        tdict = dict_pwch[pnrank]
         MN = Ms[pnrank];dwn = 1.0/MN;sq_dwn=dwn^2
         fff = pi / ((2*pi)^3 * MN^2)
         coeff = -(MN*gA/(2*Fpi))^2
@@ -56,18 +56,6 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
                     end
                 end
             end
-            ### check
-            if debugmode 
-                @inbounds for idx = 1:f_idx
-                    @views tllsj[2:5] .= lsj[idx]
-                    tl,tlp,tS,tJ = lsj[idx] 
-                    if pnrank%2 == 1 && (tl+tS+1)%2 != 1;continue;end
-                    V12idx = get(tdict,tllsj,-1)
-                    if V12idx == -1;continue;end                        
-                    V = V12mom[V12idx]
-                    #println("pnrank $pnrank J $J V12idx $V12idx");println(V)
-                end
-            end 
         end
     end
     return nothing
@@ -240,10 +228,10 @@ The ``1/M_N`` correction terms appear at NNLO in EM and at N4LO in EMN.
 - EM: R. Machleidt and D.R. Entem [Physics Reports 503 (2011) 1–7](https://doi.org/10.1016/j.physrep.2011.02.001)
 - EMKN: D. R. Entem, N. Kaiser, R. Machleidt, and Y. Nosyk, [Phys. Rev. C 91, 014002 (2015)](https://doi.org/10.1103/PhysRevC.91.014002).
 """
-function tpe(chiEFTobj,to) #tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llpSJ_s,lsjs,tllsj,opfs)    
+function tpe(chiEFTobj,to) #tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_pwch,to,llpSJ_s,lsjs,tllsj,opfs)    
     LECs = chiEFTobj.LECs.dLECs
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr
-    dict_numst = chiEFTobj.dict_numst
+    dict_pwch = chiEFTobj.dict_pwch
     lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj; opfs = chiEFTobj.opfs
     nthre = nthreads()
     c1_NNLO = LECs["c1_NNLO"];c2_NNLO = LECs["c2_NNLO"];c3_NNLO = LECs["c3_NNLO"];c4_NNLO = LECs["c4_NNLO"]
@@ -261,7 +249,7 @@ function tpe(chiEFTobj,to) #tpe(chiEFTobj,LECs,ts,ws,xr,V12mom,dict_numst,to,llp
     tVs_para = [ zeros(Float64,6) for i=1:nthre]   
 
     for pnrank =1:3
-        tdict = dict_numst[pnrank]
+        tdict = dict_pwch[pnrank]
         MN = Ms[pnrank];dwn = 1.0/MN
         fff = pi / ((2*pi)^3 * MN^2)
         nd_mpi = mmpi/MN        

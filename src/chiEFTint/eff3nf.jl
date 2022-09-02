@@ -75,9 +75,9 @@ end
 
 function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     if !chiEFTobj.params.calc_3N; return nothing; end
-    if it > 1; for i in eachindex(chiEFTobj.numst2); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
+    if it > 1; for i in eachindex(chiEFTobj.pw_channels); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr
-    V12mom = chiEFTobj.V12mom; dict_numst = chiEFTobj.dict_numst
+    V12mom = chiEFTobj.V12mom; dict_pwch = chiEFTobj.dict_pwch
     util_2n3n = chiEFTobj.util_2n3n; lsjs = chiEFTobj.lsjs
     tmp_llsj = chiEFTobj.tllsj                    
     kF = chiEFTobj.params.kF
@@ -94,11 +94,11 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     r_cD = dLECs["cD"] * hc * abs(gA) / (8.0*(Fpi/hc)^4 *LamChi)
     r_cE= -6.0/4.0 * dLECs["cE"] * rho / ( (Fpi/hc)^4 *LamChi) * hc
     # Contact term
-    V_E(chiEFTobj.params,xr,r_cE*bbf,V12mom,dict_numst,to)
+    V_E(chiEFTobj.params,xr,r_cE*bbf,V12mom,dict_pwch,to)
     ## pion exchange: V_C(TPE), V_D(OPE)    
     tllsj = [copy(tmp_llsj) for i =1:nthreads()]
     for pnrank =1:3
-        tdict = dict_numst[pnrank]
+        tdict = dict_pwch[pnrank]
         #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
         itt = itts[pnrank]
         @views tllsj[1:nthreads()][1] .= itt
@@ -121,16 +121,16 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     return nothing
 end
 
-function V_E(chiEFTobj,xr,cE,V12mom,dict_numst,to)
+function V_E(chiEFTobj,xr,cE,V12mom,dict_pwch,to)
     nreg = 3
     pfunc = f1
     for pnrank = 1:3
         l=0;lp=0;S=0;J=0 ##1S0
-        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_numst[pnrank],xr,cE,cE,
+        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,
                    l,lp,S,J,pfunc,nreg,to;is_3nf=true)
         l=0;lp=0;S=1;J=1 ##3S1
         if pnrank%2==1;continue;end
-        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_numst[pnrank],xr,cE,cE,
+        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,
                    l,lp,S,J,pfunc,nreg,to;is_3nf=true)
     end
     return nothing

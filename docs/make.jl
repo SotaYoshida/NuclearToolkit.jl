@@ -1,6 +1,6 @@
-#using NuclearToolkit
 using Documenter
-include("../src/NuclearToolkit.jl")
+using NuclearToolkit
+#include("../src/NuclearToolkit.jl")
 #push!(LOAD_PATH,"../src/")
 
 DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)

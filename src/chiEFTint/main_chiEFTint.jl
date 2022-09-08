@@ -156,7 +156,7 @@ function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to)
     br = sqrt(hc^2 /(rmass* params.hw))
     Rnl = Rnl_all_ab(params,lmax,br,params.n_mesh,xr_fm)
     ## prep. for valence space oparators (usually not used)
-    ntmp = ifelse(params.v_chi_order>0,n_mesh,3)
+    ntmp = ifelse(params.v_chi_order>0,params.n_mesh,3)
     xrP_fm,wrP = Gauss_Legendre(0.0,params.Pmax_fm,ntmp); xrP = xrP_fm .* hc
     RNL = Rnl_all_ab(params,lcmax,br,ntmp,xrP_fm)
     ## prep. for partial-wave decompositon

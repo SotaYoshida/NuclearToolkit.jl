@@ -63,13 +63,11 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     pmax_fm = 5.0
     emax = 4
     Nnmax= 20
-    chi_order = 3 #0:LO 1:NLO 2:NNLO 3:N3LO 4:N4LO
+    chi_order = 3
     calc_NN = true
-    calc_3N = false #density-dependent 3NF
+    calc_3N = false 
     hw = 20.0
-    if use_hw_formula != 0
-        hw = hw_formula(Anum,use_hw_formula)
-    end
+    if use_hw_formula != 0; hw = hw_formula(Anum,use_hw_formula); end
     ## SRG evolution (srg_lambda is in fm^{-1}
     srg = true
     srg_lambda = 2.0    
@@ -133,6 +131,10 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
     if @isdefined(BetaCM); params.BetaCM = BetaCM; end
+    if params.pottype =="emn500n4lo"; @assert params.chi_order <=4 "chi_order must be <= 4 for pottype=emn500n4lo" ;end
+    if params.pottype =="emn500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=emn500n3lo" ;end
+    if params.pottype =="em500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=em500n3lo" ;end
+
     println(io,"--- chiEFTparameters used ---")
     for fieldname in fieldnames(typeof(params))                 
         println(io,"$fieldname = ",getfield(params,fieldname))

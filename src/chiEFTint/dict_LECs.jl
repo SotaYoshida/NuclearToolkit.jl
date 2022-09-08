@@ -75,6 +75,9 @@ function dict_em500n3lo()
     dLECs["d3"] = -3.27
     dLECs["d5"] = 0.45
     dLECs["d145"] = -5.65
+    ## N4LO (unused)
+    dLECs["e14"] = 0.0
+    dLECs["e17"] = 0.0
     ### NLOvs  (usually not used)
     dLECs["c_vs_1"] =  0.19162
     dLECs["c_vs_2"] = -0.28374

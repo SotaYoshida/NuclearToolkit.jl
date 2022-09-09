@@ -10,6 +10,10 @@ Julia package for nuclear structure calculations covering:
 - generating Chiral EFT interactions
 - many-body calculations (HFMBPT, IMSRG/VS-IMSRG, valence shell-model, etc.)
 
+
+Note: Of course, 'for structural calculations' simply means that the author (SY) is not familiar with reaction theories.
+Contributions and suggestions from reaction theory and experimental researchers are very welcome. Thanks.
+
 ## Installation
 
 Assuming that you have already installed Julia (v>=1.7.0),

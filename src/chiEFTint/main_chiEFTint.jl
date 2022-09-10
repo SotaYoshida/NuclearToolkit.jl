@@ -14,7 +14,7 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `MPIcomm::Bool`, to carry out LECs sampling with HF-MBPT and affine inveriant MCMC
 - `Operators::Vector{String}` specifies operators you need to use in LECs calibrations
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[])
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl")
     to = TimerOutput()
     io=stdout
     optHFMBPT=false
@@ -32,7 +32,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
         io = open("logfile.dat","w")
     end
     
-    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to)
+    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
@@ -85,8 +85,8 @@ j_a/2&  j_b/2&     1 \\\\
 - `ts::Vector{Float64}` mesh points for angular integrals in pion-exchange terms
 - `ws::Vector{Float64}` weights vectors for angular integrals in pion-exchange terms
 - `Numpn::Dict{Vector{Int64},Int64}`
-- `infos::Vector{Vector{Int64}}`
-- `izs_ab::Vector{Vector{Vector{Int64}}}`
+- `infos::Vector{Vector{Int64}}` information of two-body channeles: { [``T_z``,parity,J,dim] } 
+- `izs_ab::Vector{Vector{Vector{Int64}}}` two-body kets: { [iza,ia,izb,ib] } where `iz*` stuff is isospin (-1 or 1) and `i*` stuff is label of sps. For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
 - `nTBME::Int64` # of two-body matrix elements (TBMEs)
 - `util_2n3n::util_2n3n`
 - `LECs::LECs`
@@ -139,9 +139,9 @@ It returns
 - `d9j::Vector{Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}}` array of Wigner-9j symbols used for Pandya transformation in HF-MBPT/IMSRG calculations.
 - `HOBs::Dict{Int64, Dict{Int64, Float64}}` dictionary for harmonic oscillator brackets.
 """
-function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to)
+function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
     # specify chiEFT parameters
-    params = init_chiEFTparams(;io=io)
+    params = init_chiEFTparams(;io=io,fn_params=fn_params)
 
     #Next, prepare momentum/integral mesh, arrays, etc.
      ## Prep WignerSymbols
@@ -338,7 +338,7 @@ function make_sp_state(chiEFTobj,Numpn;io=stdout)
             for IS=-1:2:1
                 jd=2*L+IS
                 if jd < 0; continue;end
-                n=n+1
+                n += 1
                 kh[[-1,n]]=3;  kh[[1,n]]=3
                 kn[[-1,n]]=Nn; kn[[1,n]]=Nn
                 kl[[-1,n]]=L;  kl[[1,n]]=L
@@ -430,7 +430,7 @@ function def_sps_snt(emax,target_nlj)
     return nljsnt,dict
 end
 
-function freg(p,pp,n)
+function freg(p,pp,n;Lambchi=500.0)
     if n==0;return 1.0;end
     if n==-1 # for 3D3 pw in older EM interaction
         return 0.5 *( exp( - (p/Lambchi)^4 - (pp/Lambchi)^4 )
@@ -460,10 +460,10 @@ end
 """
     calc_Vmom!(pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)    
 
-calc. nn-potential for momentum mesh points
+calc. NN-potential for momentum mesh points
 """
-function calc_Vmom!(chiEFTparams::chiEFTparams,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)
-    n_mesh = chiEFTparams.n_mesh
+function calc_Vmom!(params::chiEFTparams,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)
+    n_mesh = params.n_mesh
     itt = itts[pnrank]; MN = Ms[pnrank]; dwn = 1.0/MN
     V12idx = get(tdict,[itt,lp,l,S,J],-1)
     if V12idx == -1;return nothing;end
@@ -485,7 +485,7 @@ end
     Rnl_all_ab(lmax,br,n_mesh,xr_fm)
 
 Returns array for radial functions (prop to generalized Laguerre polynomials) HO w.f. in momentum space.
-Rnlk(l,n,k)=sqrt(br) * R(n,L,Z) *Z with Z=br*k (k=momentum in fm^-1)
+`Rnlk(l,n,k)=sqrt(br) * R(n,L,Z) *Z` with `Z=br*k` (k is momentum in fm``{}^{-1}``)
 """
 function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
     Nnmax = chiEFTobj.Nnmax

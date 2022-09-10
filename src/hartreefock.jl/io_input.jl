@@ -117,22 +117,28 @@ end
 Function to read snt file. Note that it is slightly different from `readsnt()` in ShellModel.jl.
 """
 function readsnt(sntf,binfo,to) 
-    Anum=binfo.nuc.Aref;hw=binfo.hw
+    Anum=binfo.nuc.Aref;hw=binfo.hw;emax_calc = binfo.emax;emax_calc = binfo.emax
     f = open(sntf,"r");tlines = readlines(f);close(f)
     lines = rm_comment(tlines)
     line = lines[1]
     lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
-    if lp !=ln; println("lp&ln must be the same!");exit();end
+    @assert lp ==ln "lp&ln must be the same!"
     p_sps = SingleParticleState[ ]; n_sps = SingleParticleState[ ]
     @inbounds for i = 1:lp
         ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
-        push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        if (2*n+l <= emax_calc)
+            push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        end
     end
-    @inbounds for i = 1:ln
+    @inbounds for i = 1:lp
         ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
-        push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        if (2*n+l <= emax_calc)
+            push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        end
     end
-    sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)
+    lpn_calc = get_lpln_from_emax(emax_calc)
+    idxofst = ifelse(lp > lpn_calc,lp-lpn_calc,0)
+    sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
     dict_snt2ms = dicts1b.snt2ms
 
     nsp,zero = map(x->parse(Int,x),split(lines[1+ln+lp+1])[1:2])
@@ -143,12 +149,13 @@ function readsnt(sntf,binfo,to)
     @inbounds for ith = 1:ntbme
         tkey = zeros(Int64,4)
         tl = tls[ith]
-        ci,cj,ck,cl,cJ,cVjj,cVpp = split(tl)
-        tkey[1] = dict_snt2ms[parse(Int64,ci)]
-        tkey[2] = dict_snt2ms[parse(Int64,cj)]
-        tkey[3] = dict_snt2ms[parse(Int64,ck)]
-        tkey[4] = dict_snt2ms[parse(Int64,cl)]
+        ci,cj,ck,cl,cJ,cVjj,cVpp = split(tl)        
         totJ = parse(Float64,cJ); Vjj = parse(Float64,cVjj); Vpp = parse(Float64,cVpp)
+        tkey[1] = parse(Int64,ci)
+        tkey[2] = parse(Int64,cj)
+        tkey[3] = parse(Int64,ck)
+        tkey[4] = parse(Int64,cl)
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -192,16 +199,21 @@ returns:
 - `dict_snt2ms`: from sntidx to msidx 
 - `dict_ms2snt`: from msidx to sntidx
 """
-function make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)
+function make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
+    lpn_calc = get_lpln_from_emax(emax_calc)
     dict_snt2ms = Dict{Int64,Int64}()
     dict_ms2snt = Dict{Int64,Int64}()
     sps = SingleParticleState[ ]
-    hit = 0
-    @inbounds for i = 1:lp
-        push!(sps,deepcopy(p_sps[i])); hit +=1; dict_snt2ms[i] = hit
-        dict_ms2snt[hit] = i
-        push!(sps,deepcopy(n_sps[i])); hit +=1; dict_snt2ms[i+lp] = hit
-        dict_ms2snt[hit] = i+lp
+    msidx = 0
+    @inbounds for i = 1:lpn_calc
+        msidx +=1
+        push!(sps,deepcopy(p_sps[i]))
+        dict_snt2ms[i] = msidx
+        dict_ms2snt[msidx] = i
+        msidx +=1
+        push!(sps,deepcopy(n_sps[i]))
+        dict_snt2ms[i+lpn_calc] = msidx
+        dict_ms2snt[msidx] = i+lpn_calc
     end
     return sps,Dict1b(dict_snt2ms,dict_ms2snt)
 end
@@ -219,12 +231,21 @@ function make_sps_from_pnsps(p_sps,n_sps,Chan1b)
     sps = SingleParticleState[ ]
     hit = 0
     @inbounds for i = 1:lp
-        push!(sps,p_sps[i]); hit +=1; dict_snt2ms[i] = hit
-        dict_ms2snt[hit] = i
-        push!(sps,n_sps[i]); hit +=1; dict_snt2ms[i+lp] = hit
-        dict_ms2snt[hit] = i+lp
+        push!(sps,p_sps[i]); hit +=1; dict_snt2ms[i] = hit;   dict_ms2snt[hit] = i
+        push!(sps,n_sps[i]); hit +=1; dict_snt2ms[i+lp] = hit;dict_ms2snt[hit] = i+lp
     end
     return sps
+end
+
+function get_lpln_from_emax(emax)
+    lpn = 0
+    for e = 0:emax
+        for n = 0:div(e,2)
+            l = e-2*n
+            lpn += ifelse(l==0,1,2)
+        end
+    end
+    return lpn
 end
 
 """ 
@@ -232,36 +253,41 @@ end
 Function to read snt.bin file.
 """
 function readsnt_bin(sntf,binfo,to) 
-    Anum=binfo.nuc.Aref;hw=binfo.hw
+    Anum=binfo.nuc.Aref;hw=binfo.hw;emax_calc = binfo.emax
     f = open(sntf,"r")
     lp = read(f,Int); ln = read(f,Int)
     if lp != ln; pringln("lp&ln must be the same! err in readsnt_bin");exit();end
     cp = read(f,Int); cn = read(f,Int)
     p_sps = SingleParticleState[ ]; n_sps = SingleParticleState[ ]
+    lpn_calc = get_lpln_from_emax(emax_calc)
+    idxofst = ifelse(lp > lpn_calc,lp-lpn_calc,0)
     @inbounds for i = 1:lp
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
-        push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        if 2*n + l <= emax_calc;
+            push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        end
     end
     @inbounds for i = 1:ln
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
-        push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        if 2*n + l <= emax_calc;
+            push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+        end
     end
-    sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)
+    sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
     dict_snt2ms = dicts1b.snt2ms
+
     nsp = read(f,Int); zero = read(f,Int); thw = read(f,Float64)
     spes = [ [read(f,Int),read(f,Int),read(f,Float64)] for i=1:nsp]
     ntbme = read(f,Int); massop = read(f,Int); thw = read(f,Float64)
     dicts=[ Dict{Int64,Vector{Vector{Float64}}}() for pnrank=1:3]
+
     for n = 1:ntbme
         tkey = zeros(Int64,4)
-        org_ijkl = [read(f,Int16) for k=1:4]
-        tkey .= org_ijkl
-        for k=1:4        
-            tkey[k] = dict_snt2ms[tkey[k]]
-        end
+        org_ijkl = [read(f,Int16) for k=1:4];tkey .= org_ijkl                
         totJ = read(f,Int16); Vjj = read(f,Float64); Vpp = read(f,Float64)
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -279,8 +305,7 @@ function readsnt_bin(sntf,binfo,to)
                 tkey[1] = c; tkey[2] = d; tkey[3] = a; tkey[4] = b
             end
         end
-        tdict = dicts[nth]
-        
+        tdict = dicts[nth]        
         Vjj *= phase
         Vpp *= phase
         V2b = Vjj + Vpp*hw/Anum
@@ -295,6 +320,31 @@ function readsnt_bin(sntf,binfo,to)
     end
     close(f)
     return sps,dicts1b,dicts
+end
+
+function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms)
+    tf = true
+    for k=1:4
+        org_sntidx = tkey[k]
+        try 
+            if org_sntidx > lp # neutron sntidx
+                sntidx = org_sntidx - idxofst
+                tkey[k] = dict_snt2ms[sntidx]
+            else #proton sntidx
+                if org_sntidx <= lpn_calc
+                    tkey[k] = dict_snt2ms[tkey[k]]
+                else
+                    tf = false
+                end
+            end
+        catch 
+            tf = false
+            tmp = tkey[k] 
+            nidx = tkey[k] % (lp+1)
+            @assert nidx >= lpn_calc "something wrong tmp $tmp nidx $nidx"
+        end
+    end
+    return tf
 end
 
 function get_nkey_from_abcdarr(tkey;ofst=1000)
@@ -356,7 +406,7 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
         tdict = dictTBMEs[pnrank]
         tmdict = dictMonopole[pnrank]
         for intkey in keys(tdictl)    
-            tkey = zeros(Int64,4)    
+            tkey = zeros(Int64,4)                
             get_abcdarr_from_intkey!(intkey,tkey)
             ja = sps[tkey[1]].j; jb = sps[tkey[2]].j
             jc = sps[tkey[3]].j; jd = sps[tkey[4]].j
@@ -559,11 +609,16 @@ function def_chan2b(binfo,dicts,sps,Chan1b)
                             tkey[3]=a; tkey[4]=b
                         end
                         intkey = get_nkey_from_abcdarr(tkey)
-                        for JV in tdict[intkey]
-                            tJ = JV[1]
-                            v = JV[3] + JV[4] /Anum  + JV[5] * Anum
-                            if Int(tJ) != J;continue;end                            
-                            vmat[i,j] = vmat[j,i] = v
+                        try 
+                            for JV in tdict[intkey]
+                                tJ = JV[1]
+                                v = JV[3] + JV[4] /Anum  + JV[5] * Anum
+                                if Int(tJ) != J;continue;end                            
+                                vmat[i,j] = vmat[j,i] = v
+                            end
+                        catch
+                            #println("tidx $tidx tkey $tkey")
+                            nothing
                         end
                     end
                 end

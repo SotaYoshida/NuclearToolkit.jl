@@ -5,7 +5,7 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `nucs::Vector{String}` target nuclei
 - `sntf` path to input interaction file
 - `hw` hbar omega
-- `emax` emax for HF/IMSRG
+- `emax_calc` emax for HF/IMSRG
 
 # Optional Arguments
 - `verbose=false` to see detailed stdout for HF
@@ -16,24 +16,25 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout)
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout,return_HFobj=false)
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     chiEFTparams = init_chiEFTparams(;io=io)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "PreCalc 6j" begin
-        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax)        
+        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax_calc)   
     end
-    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to)
+    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to;emax_calc=emax_calc)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
         nuc = def_nuc(nucs[1],ref,corenuc)
-        binfo = basedat(nuc,sntf,hw,emax,ref)
+        binfo = basedat(nuc,sntf,hw,emax_calc,ref)
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
         Z = nuc.Z; N=nuc.N; A=nuc.A
-        BetaCM = chiEFTparams.BetaCM       
+        BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
+
         HCM = InitOp(Chan1b,Chan2bD.Chan2b)
         TCM = InitOp(Chan1b,Chan2bD.Chan2b)
         VCM = InitOp(Chan1b,Chan2bD.Chan2b)
@@ -44,7 +45,6 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
             aOp!(VCM,fac_HCM)            
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
             CalculateTCM!(TCM,binfo,Chan1b,Chan2bD.Chan2b,sps)
-            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
             update_dicts_withHCM!(HCM,Chan2bD,dicts)
         end 
         MatOp = Matrix{Float64}[]
@@ -56,25 +56,22 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A   
-        binfo = basedat(nuc,sntf,hw,emax,ref)
+        binfo = basedat(nuc,sntf,hw,emax_calc,ref)
         print(io,"target: $tnuc Ref. => Z=$Z N=$N ")
         if BetaCM !=0.0 && Aold != A
             difA_RCM(VCM,Aold,A)
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
             difA_TCM(TCM,Aold,A)
-            #aOp1_p_bOp2!(TCM,HCM,1.0/A,1.0)
             update_dicts_withHCM!(HCM,Chan2bD,dicts)
         end 
-
         recalc_v!(A,dicts)
-        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)       
+        Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)    
         if i > 1
             update_1b!(binfo,sps,Hamil)
             update_2b!(binfo,sps,Hamil,dictsnt.dictTBMEs,Chan2bD,dicts)
         end
         addHCM1b!(Hamil,HCM,A)
         addHCM1b!(Hamil,TCM)
-
         @timeit to "HF" begin 
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
@@ -87,6 +84,7 @@ function hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=fals
             end
         end
         Aold = A
+        if return_HFobj; return HFobj;end
     end
     if is_show; show(io,to, allocations = true,compact = false);println(""); end
     return true
@@ -98,6 +96,26 @@ function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
     end
     return nothing
 end
+
+
+
+function check_2bnorm(H,Chan2bD)
+    Chan2b = Chan2bD.Chan2b
+    nchan = length(Chan2b)
+    tnormsum = 0.0
+    for ch = 1:nchan
+        tnorm = norm(H.twobody[ch],2)
+        tnormsum += tnorm
+        #if tnorm > 1.e-6
+        ##    println("ch $ch tnorm $tnorm")
+        #end
+    end
+    println("tnormsum $tnormsum")
+    println("p1b ",norm(H.onebody[1],2))
+    println("n1b ",norm(H.onebody[2],2))
+end
+
+
 
 function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
     Chan2b = Chan2bD.Chan2b
@@ -848,7 +866,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     b = 2*idx_b
                     if !(b in Chan1b_n[a]);continue;end
                     rho_ab = rho_n[idx_a,idx_b] 
-                    tkey[1] = i;tkey[3] = j;  tkey[2] = a; tkey[4] = b
+                    tkey[1] = i;tkey[3] = j; tkey[2] = a; tkey[4] = b
                     vmono = dict_pn[tkey]
                     Vt_pn[idx_i,idx_j] += rho_ab * vmono
                     #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end

@@ -7,7 +7,7 @@ function wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
     s= 0.0
     xmin = max(abs(j1-j9),abs(j2-j6),abs(j4-j8))
     xmax = min(abs(j1+j9),abs(j2+j6),abs(j4+j8))
-    @inbounds for x =xmin:xmax
+    for x =xmin:xmax
         t  = (-1)^(2*x) * (2*x+1)
         t *= wigner6j(Float64,j1,j4,j7,j8,j9,x)
         t *= wigner6j(Float64,j2,j5,j8,j4,x,j6)
@@ -40,7 +40,7 @@ function wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,d6j_int)
     s= 0.0
     xmin = max(abs(j1-j9),abs(j2-j6),abs(j4-j8))
     xmax = min(abs(j1+j9),abs(j2+j6),abs(j4+j8))
-    @inbounds for x =xmin:xmax
+    for x =xmin:xmax
         t  = (-1)^(2*x) * (2*x+1)
         t *= get_dict6jint_for9j(j1,j4,j7,j8,j9,x,d6j_int)
         t *= get_dict6jint_for9j(j2,j5,j8,j4,x,j6,d6j_int)
@@ -886,9 +886,9 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(chiEFTobj,d6j_int,to;io=stdout)
-    emax = chiEFTobj.emax
-    Nnmax = chiEFTobj.Nnmax
+function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
+    emax = maximum([emax_calc,params.emax])
+    Nnmax = params.Nnmax
     Nmax = max(2*emax,Nnmax)
     if emax >= 10; Nmax = Nnmax + 10;end
     Jmax = jmax2 = 2*emax + 1
@@ -1082,7 +1082,6 @@ function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,d6j_int,tkey9j,dict9j_HOB
                         if t2 == false; dict9j_HOB[intkey9j_12][intkey9j_lr] = Dict{Int64,Float64}();end
                         t3 = get(dict9j_HOB[intkey9j_12][intkey9j_lr],intkey9j_abcd,false)
                         if t3 != false; continue;end
-                        # t9j = wigner9j(la,lb,l1,lc,ld,l2,ll,lr,lm) 
                         t9j = wigner9j_from_dict6j(la,lb,l1,lc,ld,l2,ll,lr,lm,d6j_int)
                         if flip; t9j *= (-1)^(la+lb+l1+lc+ld+l2+ll+lr+lm);end
                         dict9j_HOB[intkey9j_12][intkey9j_lr][intkey9j_abcd] = t9j
@@ -1414,7 +1413,7 @@ are needed to get `dict6j[J][key]` with `key = [ja,jb,jd,jc,Jp]`.
 Using array as key is in general slow, so the key is integer for dict6j & d6jint (I know this reduces readability, though)
 """
 function PreCalc6j(emax,only_halfinteger=false)
-    Jmax = 2*emax+1 # = jmax *2    
+    Jmax = maximum([4,2*emax+1]) 
     d6j = [ Dict{Int64,Float64}() for i=0:Jmax]
     d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
     @threads for totJ = 0:Jmax
@@ -1459,7 +1458,7 @@ function PreCalc6j(emax,only_halfinteger=false)
     end  
 
     d6j_nabla = Dict{Vector{Int64},Float64}() 
-    totJ =1
+    totJ = 1
     for ja = 1:2:Jmax
         for jb = 1:2:Jmax
             if tri_check(ja,jb,2)==false;continue;end
@@ -1473,6 +1472,5 @@ function PreCalc6j(emax,only_halfinteger=false)
             end    
         end
     end
-
     return d6j,d6j_nabla,d6j_int
 end

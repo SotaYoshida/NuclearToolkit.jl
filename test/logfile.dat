@@ -1,0 +1,26 @@
+--- chiEFTparameters used ---
+n_mesh = 10
+pmax_fm = 5.0
+emax = 2
+Nnmax = 20
+chi_order = 4
+calc_NN = true
+calc_3N = false
+coulomb = true
+hw = 20.0
+srg = false
+srg_lambda = 2.0
+tbme_fmt = snt.bin
+fn_tbme = tbme_em500n3lo_srg2.0hw20emax4.snt.bin
+pottype = emn500n4lo
+LambdaSFR = 700.0
+target_nlj = Vector{Int64}[]
+v_chi_order = 0
+n_mesh_P = 10
+Pmax_fm = 3.0
+kF = 1.35
+BetaCM = 0.0
+-----------------------------
+# of two-body states 78
+# of sp states 6
+# of channels 2bstate 31 #TBME = 890

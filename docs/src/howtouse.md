@@ -4,8 +4,8 @@ In this page, we explain the main interfaces of NuclearToolkit.jl and sample cod
 
 ## Generate Chiral EFT potentials
 
-The [ChiEFTint](../ChiEFTint) subblock provides the codes to generate nucleon-nucleon (NN) potentials from Chiral effective field theory. You can specify the options through `optional_parameters.jl`, if it exists in the working directory.
-A sample of `optional_parameters.jl` is available on the [repository](https://github.com/SotaYoshida/NuclearToolkit.jl), and see the [Optional parameters](../parameters) page for more details.
+The [ChiEFTint](@ChiEFTint) subblock provides the codes to generate nucleon-nucleon (NN) potentials from Chiral effective field theory. You can specify the options through `optional_parameters.jl`, if it exists in the working directory.
+A sample of `optional_parameters.jl` is available on the [repository](https://github.com/SotaYoshida/NuclearToolkit.jl), and see the [Optional parameters](@Optional parameters) page for more details.
 
 The main API is `make_chiEFTint()` and the sample code is given below.
 ```julia

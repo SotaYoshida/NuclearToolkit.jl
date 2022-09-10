@@ -28,7 +28,27 @@ const fsalpha = 7.2973525693* 1.e-3 #fine structure const.
     chiEFTparams
 mutable struct to specify parameters for chiEFTint
 # Fields
-
+- `n_mesh::Int64` # of momentum mesh points
+- `pmax_fm::Float64` max momentum in fm``{}^{-1}``
+- `emax::Int64` maximum emax (2n+l) for single particle states
+- `Nnmax::Int64` Nnmax quanta
+- `chi_order::Int64` order of Chiral EFT (0:LO, 1:NLO, 2:NNLO, 3:NNLO, 4:N4LO)
+- `calc_NN::Bool` calculate NN potential or not
+- `calc_3N::Bool` calculate density-dependent 3NF (called 2n3n in this package) or not
+- `coulomb::Bool` calculate coulomb term or not
+- `hw::Float64` oscillator parameter in MeV
+- `srg::Bool` carrying out SRG or not
+- `srg_lambda::Float64` resolution scale for free space SRG in fm``{}^{-1}``
+- `tbme_fmt::String` tbme format (snt, snt.bin)
+- `fn_tbme::String` filename of output tbme
+- `pottype::String` potential type (em500n3lo, emn500n3lo, emn500n4lo)
+- `LambdaSFR::Float64` cutoff for spectral function regularization (SFR)
+- `target_nlj::Vector{Vector{Int64}}` option to truncate {nlj} in an output snt
+- `v_chi_order::Int64` order of valence chiral interaction (usually not used, i.e. 0)
+- `n_mesh_P::Int64` # of momentum mesh for valence interaction  
+- `Pmax_fm::Float64` momentum mesh for valence interaction
+- `kF::Float64` Fermi momentum for 2n3n 
+- `BetaCM::Float64` Lawson's beta for Hcm
 """
 mutable struct chiEFTparams
     n_mesh::Int64
@@ -68,27 +88,20 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     calc_3N = false 
     hw = 20.0
     if use_hw_formula != 0; hw = hw_formula(Anum,use_hw_formula); end
-    ## SRG evolution (srg_lambda is in fm^{-1}
     srg = true
     srg_lambda = 2.0    
-    ## file name and format for TBME 
     tx = "bare";if srg; tx ="srg"*string(srg_lambda);end;if calc_3N; tx="2n3n_"*tx;end
     tbme_fmt = "snt.bin"
     fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,hw))*"emax"*string(emax)*"."*tbme_fmt
     coulomb = true
     pottype = "em500n3lo"
     target_nlj=Vector{Int64}[]
-    ##for valence space operators
-    v_chi_order = 0 # 0: free-space only 1: vsNLO,  3: vsN3LO (not implemnted)
+    v_chi_order = 0 
     n_mesh_P = 10
-    Pmax_fm = 3.0
-    ## Lawson's beta for HCM
-    BetaCM = 0.0
-    ### Fermi momentum for 2n3n
-    kF = 1.35  
-    ## cutoff for spectral function regularization (SFR)
+    Pmax_fm = 3.0   
+    BetaCM = 0.0 
+    kF = 1.35
     LambdaSFR = 0.0
-
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)

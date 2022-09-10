@@ -22,7 +22,7 @@ using Test
     @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
 
     ## IMSRG
-    sntf = "tbme_emn500n3lo_barehw20emax2.snt.bin"
+    sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
     @test hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace)
 
     ## shell model calculation

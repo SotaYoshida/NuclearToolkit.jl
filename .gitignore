@@ -27,3 +27,6 @@ docs/.DS_Store
 *.snt.bin
 /snts
 /flowOmega
+logfile.dat
+*/logfile.dat
+

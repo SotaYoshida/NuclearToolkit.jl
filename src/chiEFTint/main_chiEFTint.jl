@@ -15,23 +15,12 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `Operators::Vector{String}` specifies operators you need to use in LECs calibrations
 """
 function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl")
-    to = TimerOutput()
-    io=stdout
+    to = TimerOutput()    
     optHFMBPT=false
     if (optimizer!="" && nucs != []) || MPIcomm
         optHFMBPT=true; writesnt=false
     end
-    if MPIcomm
-        @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
-        @assert nucs!=[] "nucs must not be empty if you set MPIcomm=true"
-        if !isdir("mpilog");run(`mkdir mpilog`);end
-        MPI.Init()
-        myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-        io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
-    else
-        io = open("logfile.dat","w")
-    end
-    
+    io = select_io(MPIcomm,optimizer,nucs)    
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
@@ -47,7 +36,6 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     if is_show; show(to, allocations = true,compact = false);println("");end
     return true
 end
-
 
 """
     ChiralEFTobject

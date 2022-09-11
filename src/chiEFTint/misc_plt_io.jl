@@ -265,6 +265,22 @@ function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6
     return nothing
 end
 
+function select_io(MPIcomm,optimizer,nucs;use_stdout=false)  
+    io = stdout
+    if MPIcomm
+        @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
+        @assert nucs!=[] "nucs must not be empty if you set MPIcomm=true"
+        if !isdir("mpilog");run(`mkdir mpilog`);end
+        MPI.Init()
+        myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+        io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
+    else
+        io = open("logfile.dat","w")
+    end
+    if use_stdout; io = stdout; end
+    return io
+end
+
 function write_spes(chiEFTobj,io,nljsnt,lp,nTBME,nljdict;bin=false)
     hw = chiEFTobj.hw
     target_nlj = chiEFTobj.target_nlj

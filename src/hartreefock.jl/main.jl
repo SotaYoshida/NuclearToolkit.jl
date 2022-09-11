@@ -16,9 +16,10 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",io=stdout,return_HFobj=false)
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_HFobj=false)
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
+    io = open("logfile.dat","w")
     chiEFTparams = init_chiEFTparams(;io=io)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "PreCalc 6j" begin
@@ -87,6 +88,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         if return_HFobj; return HFobj;end
     end
     if is_show; show(io,to, allocations = true,compact = false);println(""); end
+    close(io)
     return true
 end
 

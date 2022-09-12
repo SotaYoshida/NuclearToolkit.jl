@@ -3,7 +3,7 @@
 In NuclearToolkit.jl, input/output interactions are in the so-called snt format (or its binary form).
 The snt format is one used in widely-used shell-model code [KSHELL](https://sites.google.com/alumni.tsukuba.ac.jp/kshell-nuclear/).
 If you specify the option `tbme_fmt="snt.bin"` for Chiral EFT interactions, the output becomes binary form. 
-The integers are in `Int16` for `a,b,c,d,J` (single particle index and total-J of TBME) and `Int64` for others, and the floating point numbers are in `Float64`.
+The integers are in `Int16` for `a,b,c,d,J` (single particle index and total-J of two-body matrix elements, TBMEs) and `Int64` for others, and the floating point numbers for TBMEs are in `Float32` (by default).
 
 Here is an example of w.snt. The comments are not written in the outputs of NuclearToolkit.
 ```

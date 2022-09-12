@@ -147,12 +147,13 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if params.pottype =="emn500n4lo"; @assert params.chi_order <=4 "chi_order must be <= 4 for pottype=emn500n4lo" ;end
     if params.pottype =="emn500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=emn500n3lo" ;end
     if params.pottype =="em500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=em500n3lo" ;end
-
-    println(io,"--- chiEFTparameters used ---")
-    for fieldname in fieldnames(typeof(params))                 
-        println(io,"$fieldname = ",getfield(params,fieldname))
+    if io != nothing
+        println(io,"--- chiEFTparameters used ---")
+        for fieldname in fieldnames(typeof(params))                 
+            println(io,"$fieldname = ",getfield(params,fieldname))
+        end
+        println(io,"-----------------------------")
     end
-    println(io,"-----------------------------")
     return nothing
 end
 
@@ -269,7 +270,7 @@ function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6
     return nothing
 end
 
-function select_io(MPIcomm,optimizer,nucs;use_stdout=false)  
+function select_io(MPIcomm,optimizer,nucs;use_stdout=false,fn="")
     io = stdout
     if MPIcomm
         @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
@@ -278,6 +279,8 @@ function select_io(MPIcomm,optimizer,nucs;use_stdout=false)
         MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
         io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
+    elseif fn !=""
+        io = open(fn,"w")
     else
         io = open("logfile.dat","w")
     end

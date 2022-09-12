@@ -20,7 +20,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     if (optimizer!="" && nucs != []) || MPIcomm
         optHFMBPT=true; writesnt=false
     end
-    io = select_io(MPIcomm,optimizer,nucs)    
+    io = select_io(MPIcomm,optimizer,nucs)
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)

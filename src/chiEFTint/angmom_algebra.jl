@@ -887,7 +887,7 @@ The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
 function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
-    emax = maximum([emax_calc,params.emax])
+    emax = ifelse(emax_calc!=0,emax_calc,params.emax)
     Nnmax = params.Nnmax
     Nmax = max(2*emax,Nnmax)
     if emax >= 10; Nmax = Nnmax + 10;end

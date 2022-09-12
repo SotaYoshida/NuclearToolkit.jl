@@ -257,7 +257,11 @@ function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6
                 elseif tbme_fmt == "snt.bin"
                     write(io,Int16(fa));write(io,Int16(fb))
                     write(io,Int16(fc));write(io,Int16(fd));write(io, Int16(Jtot))
-                    write(io,tv); write(io,vpp)
+                    write(io,Float32(tv)); write(io,Float32(vpp))
+                elseif tbme_fmt == "snt.bin64"
+                    write(io,Int16(fa));write(io,Int16(fb))
+                    write(io,Int16(fc));write(io,Int16(fd));write(io, Int16(Jtot))
+                    write(io,tv); write(io,vpp)        
                 end
             end
         end

@@ -155,7 +155,7 @@ function readsnt(sntf,binfo,to)
         tkey[2] = parse(Int64,cj)
         tkey[3] = parse(Int64,ck)
         tkey[4] = parse(Int64,cl)
-        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -252,7 +252,7 @@ end
     readsnt(sntf,binfo,to)
 Function to read snt.bin file.
 """
-function readsnt_bin(sntf,binfo,to) 
+function readsnt_bin(sntf,binfo,to;use_Float64=false) 
     Anum=binfo.nuc.Aref;hw=binfo.hw;emax_calc = binfo.emax
     f = open(sntf,"r")
     lp = read(f,Int); ln = read(f,Int)
@@ -284,10 +284,15 @@ function readsnt_bin(sntf,binfo,to)
     dicts=[ Dict{Int64,Vector{Vector{Float64}}}() for pnrank=1:3]
 
     for n = 1:ntbme
-        tkey = zeros(Int64,4)
+    tkey = zeros(Int64,4)        
         org_ijkl = [read(f,Int16) for k=1:4];tkey .= org_ijkl                
-        totJ = read(f,Int16); Vjj = read(f,Float64); Vpp = read(f,Float64)
-        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
+        totJ = read(f,Int16)
+        if use_Float64
+            Vjj = read(f,Float64); Vpp = read(f,Float64)
+        else
+            Vjj = Float64(read(f,Float32)); Vpp = Float64(read(f,Float32))        
+        end
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -312,36 +317,34 @@ function readsnt_bin(sntf,binfo,to)
         nkey = get_nkey_from_abcdarr(tkey)
         t = get(tdict,nkey,false)
         Vcm= 0.0
+        tJ = totJ * 1.0
         if t == false
-            tdict[nkey] = [ [totJ,V2b,Vjj,Vpp*hw,Vcm] ]
+            tdict[nkey] = [ [tJ,V2b,Vjj,Vpp*hw,Vcm] ]
         else
-            push!(tdict[nkey],[totJ,V2b,Vjj,Vpp*hw,Vcm])
-        end    
+            push!(tdict[nkey],[tJ,V2b,Vjj,Vpp*hw,Vcm])
+        end
     end
     close(f)
     return sps,dicts1b,dicts
 end
 
-function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms)
+function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to)
     tf = true
-    for k=1:4
+    for k in eachindex(tkey)
         org_sntidx = tkey[k]
-        try 
-            if org_sntidx > lp # neutron sntidx
-                sntidx = org_sntidx - idxofst
-                tkey[k] = dict_snt2ms[sntidx]
-            else #proton sntidx
-                if org_sntidx <= lpn_calc
-                    tkey[k] = dict_snt2ms[tkey[k]]
-                else
-                    tf = false
-                end
+        if org_sntidx > lp # neutron sntidx
+            sntidx = org_sntidx - idxofst
+            dicget = get(dict_snt2ms,sntidx,0)
+            if dicget == 0
+                return false
             end
-        catch 
-            tf = false
-            tmp = tkey[k] 
-            nidx = tkey[k] % (lp+1)
-            @assert nidx >= lpn_calc "something wrong tmp $tmp nidx $nidx"
+            tkey[k] = dicget
+        else #proton sntidx
+            if org_sntidx <= lpn_calc
+                tkey[k] = dict_snt2ms[tkey[k]]
+            else
+                return false
+            end
         end
     end
     return tf

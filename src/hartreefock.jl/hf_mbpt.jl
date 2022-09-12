@@ -17,7 +17,7 @@ E^{(2)} = \\frac{1}{4}\\sum_{abij} \\frac{\\bar{H}^{[2]}_{abij} \\bar{H}^{[2]}_{
 \\frac{{}^J\\bar{H}^{[2]}_{\\tilde{a}\\tilde{b}\\tilde{i}\\tilde{j}} {}^J\\bar{H}^{[2]}_{\\tilde{i}\\tilde{j}\\tilde{a}\\tilde{b}}}{\\epsilon^{ab}_{ij}}
 ```
 """
-function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
+function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,io=stdout)
     p_sps = modelspace.p_sps
     n_sps = modelspace.n_sps
     sps = modelspace.sps
@@ -75,14 +75,14 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
         end
     end
     if verbose
-        println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
+        println(io,"EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
                 " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
     end
     return EMP2
 end
 
 """
-    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to)
+    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=stdout)
 
 Calculate 2nd order correction to HF energy
 ```math
@@ -118,7 +118,7 @@ E^{(3)}=
 Ref. Many-Body Methods in Chemistry and Physics by Isaiah Shavitt and Rodney J. Bartlett (2009, Cambridge Molecular Science).
 More details can be found in e.g. Dr. thesis by A.Tichai (2017, TU Darmstadt).
 """
-function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;verbose=false)
+function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;verbose=false,io=io)
     p_sps = modelspace.p_sps
     n_sps = modelspace.n_sps
     sps = modelspace.sps
@@ -129,7 +129,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
         return 0.0
     end
     e1b = Float64[ ] 
-    for i = 1:length(e1b_p)
+    for i in eachindex(e1b_p)
         push!(e1b,e1b_p[i]); push!(e1b,e1b_n[i])
     end
     EMP3 = EMP3_pp = EMP3_ph = EMP3_hh = 0.0
@@ -183,7 +183,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     keychs = [ zeros(Int64,3) for i=1:nthre]
     keyabs = [ zeros(Int64,2) for i=1:nthre]
     Ethreads = zeros(Float64,nthre)      
-    @threads for idxa = 1:length(allps)
+    @threads for idxa in eachindex(allps)
         a = allps[idxa]
         threid = threadid()
         key6j = keys6j[threid]
@@ -244,7 +244,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     EMP3_ph = sum(Ethreads)
     EMP3 = EMP3_pp + EMP3_hh + EMP3_ph 
     if verbose
-        println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
+        println(io,"pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
                 " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))
     end 
     return EMP3

@@ -31,7 +31,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
         nuc = def_nuc(nucs[1],ref,corenuc)
         binfo = basedat(nuc,sntf,hw,emax_calc,ref)
-        sps,dicts1b,dicts = tfunc(sntf,binfo,to)
+        @time sps,dicts1b,dicts = tfunc(sntf,binfo,to)
         Z = nuc.Z; N=nuc.N; A=nuc.A
         BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
@@ -81,7 +81,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         else
             if "Rp2" in Operators
                 Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
+                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
             end
         end
         Aold = A
@@ -185,7 +185,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;
         HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io)
         if "Rp2" in Operators
             Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-            eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to)
+            eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
         end
     end
     return true
@@ -649,8 +649,8 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     modelspace = ModelSpace(p_sps,n_sps,sps,occ_p,occ_n,holes,particles,spaces)
     ## Calc. Gamma (2bchanel matrix element)    
     calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
-    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=true)
-    EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to)
+    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=true,io=io)
+    EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=io)
     exists = get(amedata,binfo.nuc.cnuc,false)   
     Eexp = 0.0
     if exists==false
@@ -659,7 +659,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     else
         Eexp = - binfo.nuc.A * amedata[binfo.nuc.cnuc][1]/1000.0
         println(io,"E_HF ", @sprintf("%12.4f",E0),
-        "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))    
+        "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))  
     end
     println("")
     tmp = tHFdata.data
@@ -681,7 +681,7 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 
 """
 function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=100,verbose=false,HFtol=1.e-9,inttype="snt",io=stdout,E0cm=0.0)
+                      itnum=100,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)

@@ -685,7 +685,7 @@ end
 
 evaluate charge radii with HFMBPT
 """
-function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,MatOp,to)
+function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,MatOp,to;io=stdout)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -711,7 +711,7 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
         end
         ctxt = " HF+PT => " * RPT
     end
-    println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
+    println(io,"   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
     getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to) 
     return nothing
 end

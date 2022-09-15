@@ -157,6 +157,14 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     return nothing
 end
 
+function show_TimerOutput_results(to;io=stdout,tf=true,alloc=true,compact=false)
+    if tf
+        show(io,to, allocations = true,compact = false)
+        println("")
+    end
+    return nothing
+end
+
 function delta_arr(a,b)
     hit = 0
     for i=1:length(a)
@@ -174,6 +182,85 @@ end
 function owtkey!(tkey,n,l,j,tz)
     tkey[1]=n; tkey[2]=l; tkey[3]=j; tkey[4]=tz
     return nothing
+end
+
+""" 
+    readsnt(sntf,Anum;eachA=false,pnfac=1.0) 
+
+to read a sntfile. This is slightly different from readsnt() in ShellModel.jl
+"""
+function readsnt(sntf,Anum;eachA=false,pnfac=1.0) 
+    f = open(sntf,"r");tlines = readlines(f);close(f)
+    lines = rm_comment(tlines)
+    line = lines[1]
+    lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
+    p_sps = Vector{Int64}[ ]
+    n_sps = Vector{Int64}[ ]
+    dictsps = Dict{Vector{Int64},Int64}()
+    nls = []
+    nlhit=0
+    for i = 1:lp
+        ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
+        push!(p_sps,[n,l,j,tz])
+        if ([n,l,tz] in nls)==false
+            nlhit +=1
+            push!(nls,[n,l,tz])
+        end
+        dictsps[[n,l,j,tz]] = i
+    end
+    for i = 1:ln
+        ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
+        if ([n,l,tz] in nls)==false
+            nlhit +=1
+            push!(nls,[n,l,tz])
+        end
+        push!(n_sps,[n,l,j,tz])
+        dictsps[[n,l,j,tz]] = i + lp
+    end
+    sps = vcat(p_sps,n_sps)    
+    nsp,zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
+    SPEs = [ [0.0 for i=1:lp],[0.0 for i=1:ln]]
+    for i = 1:nsp
+        idx=0; j=i
+        if i<=lp;idx=1;else;idx=2;j-=lp;end
+        SPEs[idx][j] =parse(Float64,rm_nan(split(lines[1+ln+lp+1+i]," "))[3])
+    end
+    ntbme = 0; massop = 0; Aref = 0; p=0
+    tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1]," "))
+    if length(tmp) == 3
+        ntbme,massop,hw = tmp
+        ntbme = parse(Int,ntbme)
+        massop=parse(Int,massop)
+        hw = parse(Float64,hw)
+    else
+        ntbme,massop,Aref,p = tmp
+        ntbme = parse(Int,ntbme);massop=parse(Int,massop)
+        Aref=parse(Int,Aref); p=parse(Float64,p)
+    end
+    dictTBMEs=[ Dict{Vector{Int64},Float64}() for pnrank=1:3]
+    for ith = 1:ntbme
+        i,j,k,l,totJ,TBME= rm_nan(split(lines[1+ln+lp+1+nsp+1+ith], " "))
+        i = parse(Int,i);j = parse(Int,j);k = parse(Int,k);l = parse(Int,l);
+        totJ = parse(Int,totJ)
+        nth = 0
+        if i<=lp && j<=lp
+            nth = 1
+        elseif i>lp && j > lp
+            nth = 3
+        elseif i<=lp && j>lp
+            nth = 2
+        else
+            println("i $i j $j k $k l $l totJ $totJ TBME $TBME")
+            println("err");exit()
+        end
+        TBME = parse(Float64,TBME)
+        if eachA && massop == 1
+            TBME *= (Anum/Aref)^p 
+        end        
+        ## snt file must be "ordered"; a<=b & c=d & a<=c
+        dictTBMEs[nth][[i,j,k,l,totJ]] = TBME *ifelse(nth==2,pnfac,1.0)
+    end
+    return sps,dictsps,dictTBMEs
 end
 
 """

@@ -1,7 +1,7 @@
 """
     wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
 
-calculate Wigner 9j symbols, all j should be given as integer (0,1,...) or halfinteger (3/2, 3//2,...)
+calculate Wigner's 9j symbols, all j should be given as integer (0,1,...) or halfinteger (3/2, 3//2,...)
 """
 function wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
     s= 0.0
@@ -70,11 +70,11 @@ function s_wigner9j(j1,j3,j4,j6,j7,j8,j9)
 end
 
 """
-    TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
+    TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
 
-Function to carry out Talmi-Mochinsky transformation
+Function to carry out Talmi-Mochinsky transformation to get NN interaction in HO space.
 """
-function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
+function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
     params = chiEFTobj.params
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
@@ -82,18 +82,13 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
     nTBME = chiEFTobj.nTBME; infos = chiEFTobj.infos; izs_ab = chiEFTobj.izs_ab
     dict6j = chiEFTobj.dict6j; d6j_nabla = chiEFTobj.d6j_nabla
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6
-    emax = chiEFTobj.params.emax; Nrmax = 2*emax
-    nume = zeros(Int64,Nrmax+1,Nrmax+1)
-    numknn = [ [ [ zeros(Int64,div(K1,2)+1,div(KK-K1,2)+1) for K1=0:KK] for Lam=0:KK] for KK=0:Nrmax]
-    Ndim = [ zeros(Int64,i) for i=1:Nrmax+1]
-    Transbk= Float64[]
-    
+    emax = chiEFTobj.params.emax; Nrmax = 2*emax    
     sp_P5_9j = [ wigner9j(1,1,0,1//2,1//2,0,1//2,1//2,0) wigner9j(1,1,0,1//2,1//2,1,1//2,1//2,1);
                  wigner9j(1,1,2,1//2,1//2,0,1//2,1//2,0) wigner9j(1,1,2,1//2,1//2,1,1//2,1//2,1)]
     cg1s = [clebschgordan(Float64,1,0,1,0,0,0),clebschgordan(Float64,1,0,1,0,2,0)]
     nofst = 0
-    nljsnt = [ [0,0] ]; deleteat!(nljsnt,1)
-    for temax = 0:emax  #2n +l = temax
+    nljsnt = Vector{Int64}[] 
+    for temax = 0:emax 
         for l = temax%2:2:temax
             n = div(temax-l,2)
             jmin = 2*l-1
@@ -104,67 +99,6 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
             end
         end
     end 
-    
-    f_mb,g_mb,w_mb = def_fgw()    
-    num=0
-    for KK=0:Nrmax
-        for Lam=0:KK
-            nume[KK+1,Lam+1]=num #nume(KK,Lam)=num
-            for K1=0:KK
-                K2=KK-K1
-                if K2 < K1; continue;end
-                for N1=0:div(K1,2) 
-                    L1=K1-2*N1
-                    for N2=0:div(K2,2)
-                        L2=K2-2*N2
-                        for K3=0:KK
-                            K4=KK-K3
-                            if K4 < K3;continue;end
-                            for N3=0:div(K3,2)#N3=0,K3/2
-                                L3=K3-2*N3
-                                for N4=0:div(K4,2)
-                                    L4=K4-2*N4
-                                    if abs(L1-L2) > Lam || (L1+L2) < Lam;continue;end
-                                    if 2*N1+L1+2*N2+L2 != KK;continue;end
-                                    if abs(L3-L4) > Lam || (L3+L4) < Lam;continue;end
-                                    if 2*N3+L3+2*N4+L4 != KK;continue;end
-                                    num=num+1
-                                    if KK <= Nrmax                                        
-                                        fmosh = gmosh(N1,L1,N2,L2,N3,L3,N4,L4,Lam,1.0,f_mb,g_mb,w_mb)
-                                        push!(Transbk,fmosh)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    #println("dim. of HO brackets = $num")
-    for KK=0:Nrmax
-        tarr = numknn[KK+1]        
-        for Lam=0:KK
-            num = 0
-            tar2 = tarr[Lam+1]
-            for K1=0:KK
-                K2=KK-K1
-                tar3 = tar2[K1+1]
-                if K2 < K1; continue;end
-                for N1=0:div(K1,2) # do N2=0,K2/2
-                    L1=K1-2*N1
-                    for N2=0:div(K2,2)
-                        L2=K2-2*N2
-                        if abs(L1-L2) >Lam || L1+L2 < Lam;continue;end
-                        if 2*N1+L1+2*N2+L2 != KK; continue;end
-                        num=num+1
-                        tar3[N1+1,N2+1]=num
-                    end
-                end
-            end
-            Ndim[KK+1][Lam+1]=num
-        end
-    end
     nljdict = Dict{Int64,Int64}()
     if writesnt 
         target_nlj = params.target_nlj
@@ -188,21 +122,19 @@ function TMtrans(chiEFTobj,to;calc_relcm=false,writesnt=true)
     tbmes = [ Dict{Vector{Int64},Vector{Vector{Float64}}}() for pnrank=1:3]
     tkeys = [zeros(Int64,4) for i=1:4]
     key6j = zeros(Int64,5)
-    t2vs=[zeros(Int64,2) for i=1:nthreads()]
     t5vs=[zeros(Int64,5) for i=1:nthreads()]            
     @inbounds for ich in eachindex(infos) #1:length(infos)
         izz,ip,Jtot,ndim=infos[ich]
         pnrank = Int(div(izz,2))+2
         izs = izs_ab[ich]
         vv = zeros(Float64,ndim,ndim)
-        @timeit to "vtrans" @inbounds @threads for i = 1:ndim
-            t2v=t2vs[threadid()]
+        #@timeit to "vtrans" @inbounds @threads for i = 1:ndim
+        @timeit to "vtrans" for i = 1:ndim
             t5v=t5vs[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
                 izc,ic,izd,id= izs[j]
-                v12 = vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                             nljsnt,V12ab,nume,numknn,Ndim,Transbk,t2v,t5v,to)
+                v12 = vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
                 if chiEFTobj.params.v_chi_order >= 1
                     vvs = zeros(Float64,5)
                     NLOvs(params,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
@@ -289,8 +221,7 @@ function set_tbme(chiEFTobj,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to
 end
 
 function red_nabla_l(n1,l1,n2,l2)
-    #""" b*<n1,l1|| nabla ||n2,l2> in l-reduced m.e.
-    #N.B.  l1, l2 are not żd """
+    # b*<n1,l1|| nabla ||n2,l2> in l-reduced m.e.
     if n1 == n2 && l1 == l2+1
         return -sqrt((l2 + 1.0)*(n2 + l2 + 1.5))
     elseif n1 == n2-1 && l1 == l2+1
@@ -305,7 +236,7 @@ function red_nabla_l(n1,l1,n2,l2)
 end
 
 function red_nabla_j(nlj1, nlj2) 
-    # b*<j|| nabla ||j2>  N.B.  l1, l2 are not doubled """
+    # b*<j|| nabla ||j2> l1, l2 are not doubled 
     n1, l1, j1 = nlj1
     n2, l2, j2 = nlj2
     ret = (-1)^((3+2*l1+j2)//2) * sqrt(1.0*(j1+1)*(j2+1)) *
@@ -313,7 +244,7 @@ function red_nabla_j(nlj1, nlj2)
     return ret
 end
 function red_nabla_j(nlj1,nlj2,d6j,key6j) 
-    # b*<j|| nabla ||j2>  N.B.  l1, l2 are not doubled """
+    # b*<j|| nabla ||j2> l1, l2 are not doubled
     # j1//2  j2//2      1;  l2     l1   1//2
     n1, l1, j1 = nlj1
     n2, l2, j2 = nlj2
@@ -330,10 +261,9 @@ end
 """
     kinetic_ob(nlj1, nlj2)
 
-calc. kinetic one-body contribution
+calc. kinetic one-body contribution <j1 |T/hw| j2> 
 """
 function kinetic_ob(nlj1, nlj2)
-    #""" <j1 | T/hw | j2> """
     n1, l1, j1 = nlj1
     n2, l2, j2 = nlj2
     ret = 0.0
@@ -351,10 +281,9 @@ end
 """
     kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
 
-calc. kinetic two-body contribution using preallocated 6j Dict
+calc. kinetic two-body contribution <j1j2|| -p1*p2/hw ||j3j4>_J using preallocated 6j Dict, <j1j2|| -p1*p2/hw ||j3j4>_J
 """
 function kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
-    #""" <j1j2|| -p1*p2/hw ||j3j4>_J """
     n1, l1, j1, tz1 = nljtz1;  n2, l2, j2, tz2 = nljtz2
     n3, l3, j3, tz3 = nljtz3;  n4, l4, j4, tz4 = nljtz4
     nlj1 = @view nljtz1[1:3] 
@@ -378,7 +307,6 @@ function kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
         ret = (-1)^((j2+j3)//2+J) * t6j * nabla1324
     else
         @error "error in kinetic_tb"
-        exit()
     end
     return norm*ret
 end
@@ -391,7 +319,7 @@ end
 """
     HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
 
-To calc. harmonic oscillator brackets, ``<E_L,e_l:Lam|e_1l_1,e_2l_2:Lam>_d``.
+To calc. harmonic oscillator brackets (HOBs), ``<E_L,e_l:Lam|e_1l_1,e_2l_2:Lam>_d``.
 The phase ``(-1)^(N+n+n1+n2)`` is needed to reproduce Tab.1 of [1].
 
 ## Reference:
@@ -399,7 +327,7 @@ The phase ``(-1)^(N+n+n1+n2)`` is needed to reproduce Tab.1 of [1].
 
 [2] G.P.Kamuntavicius et al., Nucl.Phys. A695 (2001) 191-201
 """
-function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
+function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1,with_phase=true)
     e1 = 2*n1+l1
     e2 = 2*n2+l2
     e  = 2*n+l
@@ -423,7 +351,7 @@ function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
                         if t2 == 0.0;continue;end
                         t2 *= Ghob(e1,l1,ea,la,eb,lb) * Ghob(e2,l2,ec,lc,ed,ld)
                         if t2 == 0.0;continue;end
-                        t2 *= Ghob(E,L,ea,la,ec,lc) *  Ghob(e,l,eb,lb,ed,ld)
+                        t2 *= Ghob(E,L,ea,la,ec,lc) * Ghob(e,l,eb,lb,ed,ld)
                         if t2 == 0.0;continue;end
                         sum += t2
                     end
@@ -431,7 +359,7 @@ function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
             end
         end
     end
-    return Float64(t1*sum)*phase
+    return ifelse(with_phase,Float64(t1*sum) *phase,Float64(t1*sum))
 end
 
 function mydoublefactorial(n::Integer)
@@ -496,8 +424,6 @@ function tri_check(ja,jb,jc)
 end
 
 function gmosh2(nl, ll, nr, lr, n1, l1, n2, l2, lm, d::Float64,dWs,tkey9j,dict9j_HOB,to)
-    # dWS: dWS2n or dWS3n struct
-    # NN => mainly d=1,3N => d=1/3 
     targetdict = dict9j_HOB[lm+1]
     r = 0.0
     ee = 2*nl + ll
@@ -613,8 +539,6 @@ function gmosh(n,l,nc,lc,n1,l1,n2,l2,lr,d,f_mb,g_mb,w_mb)
                 bc += -f_mb[div(k2+lc-k1,2)+1]-f_mb[div(lc+k1-k2,2)+1] 
                 bc += -f_mb[div(k2+l2-j2,2)+1]-f_mb[div(l2+j2-k2,2)+1]
                 bc += -f_mb[div(j2+k2-l2,2)]
-                #println("bc $bc")
-
                 cfac=p*exp(bc)
                 sxy=0.0
                 ixf=min(k1+k1,k1+k2-lc)-1
@@ -673,18 +597,15 @@ function def_fgw(;maxjj=200)
     return f_mb,g_mb,w_mb
 end
 
-function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
-                nljsnt,V12ab,nume,numknn,Ndim,Transbk,t2v,t5v,to)
-    emax = chiEFTobj.params.emax
+function vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_pwch = chiEFTobj.arr_pwch
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
     nc,lc,jdc = nljsnt[ic]; nd,ld,jdd = nljsnt[id]
     lrmax = jmax + 1
-    Nrmax = 2*emax   
-    mab=2*na+la+2*nb+lb; mcd=2*nc+lc+2*nd+ld
+    Eab=2*na+la+2*nb+lb; Ecd=2*nc+lc+2*nd+ld
     TF = false
-    if izz != iza+izb || izz != izc+izd; TF;end
+    if izz != iza+izb || izz != izc+izd; TF=true;end
     if Jtot > div(jda+jdb,2) || Jtot < abs(div(jda-jdb,2)); TF=true;end
     if Jtot > div(jdc+jdd,2) || Jtot < abs(div(jdc-jdd,2)); TF=true;end
     if (-1)^(la+lb) != ip || (-1)^(lc+ld) != ip; TF=true;end
@@ -696,64 +617,36 @@ function vtrans(chiEFTobj,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,
         tX9 = X9[S+1]
         U6_s = U6_j[S+1]
         tarr_pwch = arr_pwch[pnrank][S+1]
-        lmax1=min(Jtot+S,la+lb)
-        lmin1=max(abs(Jtot-S),abs(la-lb))
-        if lmin1 > lmax1;continue;end
-        lmax2=min(Jtot+S,lc+ld)
-        lmin2=max(abs(Jtot-S),abs(lc-ld))
-        if lmin2 > lmax2;continue;end
+        lmax1=min(Jtot+S,la+lb); lmin1=max(abs(Jtot-S),abs(la-lb)); if lmin1 > lmax1;continue;end
+        lmax2=min(Jtot+S,lc+ld); lmin2=max(abs(Jtot-S),abs(lc-ld)); if lmin2 > lmax2;continue;end
         @inbounds for Lam=lmin1:lmax1
             Ja = jda-2*la; Jb = jdb-2*lb
-            t5v[1] = la;t5v[2] = Ja;t5v[3] = lb;
-            t5v[4] = Jb;t5v[5] = Lam
-            ttX9 = tX9[Jtot+1]            
+            t5v[1] = la;t5v[2] = Ja;t5v[3] = lb;t5v[4] = Jb;t5v[5] = Lam
+            ttX9 = tX9[Jtot+1]
             x1= get(ttX9,t5v,0.0) * (-1)^Lam
             U6_lam1 = U6_s[Lam+1]
             @inbounds for Lamp=lmin2:lmax2
                 Jc = jdc-2*lc; Jd = jdd-2*ld
-                t5v[1] = lc;t5v[2] = Jc;t5v[3] = ld
-                t5v[4] = Jd;t5v[5] = Lamp
+                t5v[1] = lc;t5v[2] = Jc;t5v[3] = ld;t5v[4] = Jd;t5v[5] = Lamp
                 x2=get(ttX9,t5v,0.0) * (-1)^Lamp
-                kncu=div(mab,2)
                 U6_lam2 = U6_s[Lamp+1]                
-                @inbounds for Ncm=0:kncu
-                    klcmax=min((mab-2*Ncm),(mcd-2*Ncm))
-                    if klcmax < 0;continue;end
-                    @inbounds for Lcm=0:klcmax
-                        klrmi1=abs(Lcm-Lam)
-                        klrma1=min(lrmax,Lcm+Lam)
+                @inbounds for Ncm=0:div(Eab,2)
+                    Lcm_max =min((Eab-2*Ncm),(Ecd-2*Ncm))
+                    if Lcm_max < 0;continue;end
+                    @inbounds for Lcm=0:Lcm_max
                         U6_Lcm1 = U6_lam1[Lcm+1]
                         U6_Lcm2 = U6_lam2[Lcm+1]
-                        @inbounds for lr1=klrmi1:klrma1
-                            nx1=mab-2*Ncm-(lr1+Lcm)
-                            nr1=div(nx1,2)
-                            if nr1 < 0 || nx1!=2*nr1;continue;end
-                            y1 = 0.0
-                            if 2*nr1+lr1+2*Ncm+Lcm <= Nrmax && mab <= Nrmax
-                                KK = 2*nr1+lr1 + 2*Ncm+Lcm 
-                                s_numknn = numknn[KK+1][Lam+1]
-                                ndim = Ndim[KK+1][Lam+1]
-                                y1=trbknum(nr1,lr1,Ncm,Lcm,
-                                           na,la,nb,lb,Lam,
-                                           nume,s_numknn,ndim,Transbk,t2v)
-                            end                            
+                        @inbounds for lr1=abs(Lcm-Lam):min(lrmax,Lcm+Lam)
+                            nx1=Eab-2*Ncm-(lr1+Lcm); nr1=div(nx1,2); if nr1 < 0 || nx1!=2*nr1;continue;end
+                            y1 = get_HOB(HOBs,nr1,lr1,Ncm,Lcm,na,la,nb,lb,Lam) 
                             if abs(y1) < 1.e-10;continue;end
                             U6_lr1 = U6_Lcm1[lr1+1]
-                            klrmi2=abs(Lcm-Lamp); klrma2=Lcm+Lamp
-                            @inbounds for lr2=klrmi2:klrma2
+                            @inbounds for lr2=abs(Lcm-Lamp):Lcm+Lamp
                                 if lr1%2 != lr2%2;continue;end
                                 if lr2 > lrmax;continue;end
-                                nx2=mcd-2*Ncm-(lr2+Lcm); nr2=div(nx2,2)
+                                nx2=Ecd-2*Ncm-(lr2+Lcm); nr2=div(nx2,2)
                                 if nr2 < 0 || (nx2!=2*nr2);continue;end
-                                y2 = 0.0
-                                if 2*nr2+lr2+2*Ncm+Lcm <= Nrmax && mcd <= Nrmax
-                                    KK = 2*nr2+lr2 + 2*Ncm+Lcm 
-                                    s_numknn = numknn[KK+1][Lamp+1]
-                                    ndim = Ndim[KK+1][Lamp+1]
-                                    y2=trbknum(nr2,lr2,Ncm,Lcm,
-                                               nc,lc,nd,ld,Lamp,
-                                               nume,s_numknn,ndim,Transbk,t2v)
-                                end
+                                y2 = get_HOB(HOBs,nr2,lr2,Ncm,Lcm,nc,lc,nd,ld,Lamp) 
                                 if abs(y2) < 1.e-10;continue;end
                                 mj1=abs(lr1-S); mj2=abs(lr2-S); mj3=abs(Jtot-Lcm)
                                 kjmin=max(mj1,mj2,mj3)
@@ -803,8 +696,7 @@ for 6j => `jj`->`S`->`lam`->`lc`->`lr`, for 9j => `S`->`J`->`key`= [`la`,`nja`,`
 """
 function prepareX9U6(Nrmax;to=nothing)
     jrange = max(Nrmax+1,2*jmax+2)
-    X9 = [ [ Dict( [0,0] => 0.0) for J=0:jrange ] for S=0:1]
-    for S=0:1;for J=0:jrange; delete!(X9[S+1][J+1], [0,0]);end;end
+    X9 = [ [ Dict{Vector{Int64},Float64}() for J=0:jrange ] for S=0:1]
     jrmax = jmax
     lrmax = jrmax+1
     hit6 = 0; hit9=0
@@ -856,7 +748,6 @@ function prepareX9U6(Nrmax;to=nothing)
     end
     return X9,U6
 end   
-
 
 function overwritekeyHOB!(key,N,Lam,n,lam,n1,l1,n2,l2,L)
     key[1] =N; key[2] =Lam; key[3] =n;
@@ -967,7 +858,6 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
         hit = 0 
         dict9j_HOB = [ Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}() for L = 0:e2max]
         arr9j = [ zeros(Int64,9) for i=1:nthreads()]
-        tkey6js = [ zeros(Int64,6) for i=1:nthreads()]
         for N=0:e2max
             for n = 0:e2max-N
                 Lam_max = e2max-2*N-2*n
@@ -1001,7 +891,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                 end
             end
         end
-        @timeit to "prep9jHOB" @threads for L = 0:e2max #abs(Lam-lam):Lam+lam
+        #@timeit to "prep9jHOB" @threads 
+        @timeit to "prep9jHOB" for L = 0:e2max 
             targetdict = dict9j_HOB[L+1]
             tkey9j = arr9j[threadid()]
             for N=0:e2max-L
@@ -1016,9 +907,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                                     l1max = e2-2*n1-2*n2
                                     for l1 = 0:l1max
                                         l2 = e2-2*n1-2*n2-l1
-                                        e_1 = 2*n1 + l1; e_2 = 2*n2 + l2
                                         if l1 > l2;continue;end
-                                        #if (e_1 > e_2) && (2*N+Lam > 2*n+lam); continue;end
                                         if (l1+l2+lam+Lam)%2 > 0;continue;end
                                         if !tri_check(l1,l2,L);continue;end
                                         prep9j_HOB(N,Lam,n,lam,n1,l1,n2,l2,L,d6j_int,tkey9j,targetdict)
@@ -1031,7 +920,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
         tkeys = [ zeros(Int64,4) for i=1:nthreads()]
-        @threads for i = 1:hit
+        #@threads 
+        for i = 1:hit
             nkey1,nkey2 = HOBkeys[i]
             tkey = tkeys[threadid()]
             tkey9j = arr9j[threadid()]
@@ -1043,7 +933,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             tHOB = gmosh2(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,tkey9j,dict9j_HOB,to)
             HOBs[nkey1][nkey2] = tHOB
         end  
-    end
+    end    
     println(io,"@emax $emax ","hitCG $hitCG dWS <", @sprintf("%7.2f",Base.summarysize(dWS)/1024/1024)," MB ",
             "  9j($num9j) <", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
             "  HOB ($hit) <",@sprintf("%7.2f",Base.summarysize(HOBs)/1024/1024), " MB")
@@ -1093,32 +983,37 @@ function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,d6j_int,tkey9j,dict9j_HOB
     return nothing
 end
 
-function trbknum(Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam,nume,s_numknn,ndim,Transbk,t2v)
-    ret = 0.0    
-    L1=0;L2=0; L3=0;L4=0; N1=0; N2=0;N3=0; N4=0
-    phase=0.0
-    Kr=2*Nr+Lr
-    Kc=2*Nc+Lc
-    Ka=2*Na+La
-    Kb=2*Nb+Lb
+"""
+    get_HOB(HOBs,Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
+
+get HOB value for a given {N,L} from HOBs.
+The phase can be calculated via the symmetry property of HOB:
+```math
+<<e_1 \\ell_1,e_2\\ell_2| EL,e\\ell>>_{\\Lambda,d}
+= (-1)^{\\Lambda-L} <<e_2\\ell_2,e_1 \\ell_1| EL,e\\ell>>_{\\Lambda,1/d}
+= (-1)^{\\Lambda-L}(-1)^{\\Lambda-\\ell_2} <<e_2\\ell_2,e_1\\ell_1| e\\ell,EL>>_{\\Lambda,d}
+```
+"""
+function get_HOB(HOBs,Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
+    Kr=2*Nr+Lr; Kc=2*Nc+Lc; Ka=2*Na+La; Kb=2*Nb+Lb
     if (Kr+Kc != Ka+Kb) || abs(Lr-Lc) > Lam || Lr+Lc < Lam || abs(La-Lb) > Lam || La+Lb < Lam
-        return ret
+        return 0.0
     end
+    phase = 1.0
+    L1=L2=L3=L4=N1=N2=N3=N4=0
     if Kr <= Kc && Ka <= Kb
         N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Na; L3=La; N4=Nb; L4=Lb; phase=1.0
     elseif Kr > Kc && Ka <= Kb
-        N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Na; L3=La; N4=Nb; L4=Lb; phase=(-1.0)^(La+Lam)
+        N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Na; L3=La; N4=Nb; L4=Lb; phase=(-1.0)^(Lam-La)
     elseif Kr <= Kc && Ka > Kb
-        N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lc+Lam)
+        N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lam-Lr)
     elseif Kr > Kc && Ka > Kb
-        N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lr+La)
+        N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lc+La)
     end
-    K1=2*N1+L1; K3=2*N3+L3; KK=Kr+Kc
-    numknn_1 = s_numknn[K1+1][N1+1,N2+1] 
-    numknn_2 = s_numknn[K3+1][N3+1,N4+1]
-    num=nume[KK+1,Lam+1]+ndim*(numknn_1-1) +numknn_2
-    ret = Transbk[num]*phase
-    return ret
+    nkey1 = get_nkey_from_key6j(N1,N2,L1,L2,0)
+    nkey2 = get_nkey_from_key6j(Lam,N3,N4,L3,0)
+    tHOB = HOBs[nkey1][nkey2] * phase * (-1)^(Lr+Lb)
+    return tHOB
 end 
 
 const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
@@ -1162,88 +1057,6 @@ function prep_wsyms()
         end
     end
     return wsyms_j1_1or2(cg1s,cg2s,d6_121,d6_21,d6_222,d9_12)
-end
-
-""" 
-    readsnt(sntf,Anum;eachA=false,pnfac=1.0) 
-
-to read sntfile. This is slightly different from readsnt() in ShellModel.jl
-"""
-function readsnt(sntf,Anum;eachA=false,pnfac=1.0) 
-    f = open(sntf,"r");tlines = readlines(f);close(f)
-    lines = rm_comment(tlines)
-    line = lines[1]
-    lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
-    p_sps = [[0,0]];deleteat!(p_sps,1)
-    n_sps = [[0,0]];deleteat!(n_sps,1)
-    dictsps = Dict([0,0,0,0]=>0);delete!(dictsps,[0,0,0,0])
-    nls = []
-    nlhit=0
-    for i = 1:lp
-        ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
-        push!(p_sps,[n,l,j,tz])
-        if ([n,l,tz] in nls)==false
-            nlhit +=1
-            push!(nls,[n,l,tz])
-        end
-        dictsps[[n,l,j,tz]] = i
-    end
-    for i = 1:ln
-        ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
-        if ([n,l,tz] in nls)==false
-            nlhit +=1
-            push!(nls,[n,l,tz])
-        end
-        push!(n_sps,[n,l,j,tz])
-        dictsps[[n,l,j,tz]] = i + lp
-    end
-    sps = vcat(p_sps,n_sps)    
-    nsp,zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
-    SPEs = [ [0.0 for i=1:lp],[0.0 for i=1:ln]]
-    for i = 1:nsp
-        idx=0; j=i
-        if i<=lp;idx=1;else;idx=2;j-=lp;end
-        SPEs[idx][j] =parse(Float64,rm_nan(split(lines[1+ln+lp+1+i]," "))[3])
-    end
-    ntbme = 0; massop = 0; Aref = 0; p=0
-    tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1]," "))
-    if length(tmp) == 3
-        ntbme,massop,hw = tmp
-        ntbme = parse(Int,ntbme)
-        massop=parse(Int,massop)
-        hw = parse(Float64,hw)
-    else
-        ntbme,massop,Aref,p = tmp
-        ntbme = parse(Int,ntbme);massop=parse(Int,massop)
-        Aref=parse(Int,Aref); p=parse(Float64,p)
-    end
-    dictTBMEs=[ Dict([0,0,0,0,0]=>0.0) for pnrank=1:3]
-    for i=1:3
-        delete!(dictTBMEs[i],[0,0,0,0,0])
-    end
-    for ith = 1:ntbme
-        i,j,k,l,totJ,TBME= rm_nan(split(lines[1+ln+lp+1+nsp+1+ith], " "))
-        i = parse(Int,i);j = parse(Int,j);k = parse(Int,k);l = parse(Int,l);
-        totJ = parse(Int,totJ)
-        nth = 0
-        if i<=lp && j<=lp
-            nth = 1
-        elseif i>lp && j > lp
-            nth = 3
-        elseif i<=lp && j>lp
-            nth = 2
-        else
-            println("i $i j $j k $k l $l totJ $totJ TBME $TBME")
-            println("err");exit()
-        end
-        TBME = parse(Float64,TBME)
-        if eachA && massop == 1
-            TBME *= (Anum/Aref)^p 
-        end        
-        ## snt file must be "ordered"; a<=b & c=d & a<=c
-        dictTBMEs[nth][[i,j,k,l,totJ]] = TBME *ifelse(nth==2,pnfac,1.0)
-    end
-    return sps,dictsps,dictTBMEs
 end
 
 function jj_std(sps,dictsps,dictTBMEs;fname="")
@@ -1398,15 +1211,13 @@ end
 preallocate 6j used for HF
 ```math
 \\begin{Bmatrix} 
-j_a & j_b & J \\\\
-j_c & j_d & J'
+j_a & j_b & J \\\\ j_c & j_d & J'
 \\end{Bmatrix}
 ```
 ``ja,jb,jc,jd`` are half-integer extended for kinetic_tb
 ```math
 \\begin{Bmatrix} 
-j_1/2&  j_2/2&     1 \\\\
-  l_2&    l_1&   1/2
+j_1/2&  j_2/2&     1 \\\\  l_2&    l_1&   1/2
 \\end{Bmatrix}
 ```
 are needed to get `dict6j[J][key]` with `key = [ja,jb,jd,jc,Jp]`.

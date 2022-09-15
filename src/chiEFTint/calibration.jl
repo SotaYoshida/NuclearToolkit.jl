@@ -3,7 +3,7 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
     if !MPIcomm        
         for it = 1:itnum
             add2n3n(chiEFTobj,to,it)
-            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators)
             if optimizer=="BayesOpt"
@@ -23,7 +23,6 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
     end
     return nothing
 end
-
 
 mutable struct MCMCobject
     dim::Int64    
@@ -206,7 +205,7 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
         @assert num_cand > 2 "itnum must be >2"
         Data = [zeros(Float64,pDim) for i=1:num_cand] 
         gens = 200
-        @timeit to "LHS" plan, _ = LHCoptim(num_cand+1,pDim,gens)
+        @timeit to "LHCoptim" plan, _ = LHCoptim(num_cand+1,pDim,gens)
         tmp = scaleLHC(plan,pdomains)    
         cand = [ tmp[i,:] for i =1:num_cand+1]
         history = [zeros(Float64,3) for i=1:num_cand]
@@ -246,8 +245,7 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
             end
             return OPTobj
         end
-    end
-    if optimizer=="MCMC"
+    elseif optimizer=="MCMC"
         dim = length(params)
         nstep = num_cand
         thining = 1
@@ -285,11 +283,13 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
             end 
             return OPTobj
         else
-            sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]        
+            sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]
             OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)
             return OPTobj
         end
         #println("params_ref ",params_ref)
+    else
+        @error "optimizer $optimizer not supported"
     end
 end
 
@@ -537,7 +537,7 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
             updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,OPTobj.params)
             calc_vmom_3nf(chiEFTobj,it,to)
             add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)           
-            dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+            dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
             if !debug
                 hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
             end
@@ -572,7 +572,7 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
                         updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,candidate)
                         calc_vmom_3nf(chiEFTobj,it,to)
                         add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)                      
-                        dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+                        dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
                         if !debug
                             hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
                         end
@@ -621,14 +621,14 @@ function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},
 	@assert length(size(x0)) == 2
 	ndim = size(x0)[1]
     chain = zeros(Float64,ndim,numwalkers,nstep)    
-    llhs = zeros(Float64,1,numwalkers,nstep)
+    lLHS = zeros(Float64,1,numwalkers,nstep)
     for n =1:ndim
         tX = @view chain[n,:,1]
         tX .= x0[n,:]
     end
     for walker = 1:numwalkers
         Xi = @view chain[:,walker,1]
-        llhs[1,walker,1] = myllh(Xi)
+        lLHS[1,walker,1] = myllh(Xi)
     end    
     idx_S0 = collect(1:div(numwalkers,2))
     idx_S1 = collect(div(numwalkers,2)+1:numwalkers)
@@ -640,7 +640,7 @@ function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},
             for walker in idxs_target                
                 Xi = @view chain[:,walker,t-1]
                 nX = @view chain[:,walker,t]
-                llh = llhs[1,walker,t-1]
+                llh = lLHS[1,walker,t-1]
                 walker2 = sample(idxs_complement)
                 Xj = @view chain[:,walker2,t-ifelse(nbatch==1,1,0)]
                 z = (((a-1)*rand() + 1)^2) / a
@@ -648,18 +648,18 @@ function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},
                 nllh = myllh(nX)
                 logratio = (ndim-1)*log(z) + nllh - llh
                 if log(rand(rng)) < logratio
-                    llhs[1,walker,t] = nllh
+                    lLHS[1,walker,t] = nllh
                     acchit += 1
                 else
-                    llhs[1,walker,t] = llh
+                    lLHS[1,walker,t] = llh
                     nX .= Xi    
                 end
             end
         end
     end
     println("Acc. rate: ",@sprintf("%6.2f",100*acchit/((nstep-1)*numwalkers)))
-    chain,llhs = flatten_mcmcarray(chain,llhs)
-    return chain, llhs
+    chain,lLHS = flatten_mcmcarray(chain,lLHS)
+    return chain, lLHS
 end
 function flatten_mcmcarray(chain::Array, llhoodvals::Array,order=true)
 	numdims, numwalkers, numsteps = size(chain)

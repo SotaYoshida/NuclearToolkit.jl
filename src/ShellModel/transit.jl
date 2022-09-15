@@ -500,7 +500,7 @@ end
 
 function calc_bifs(Mps_l,Mns_l,Mtot_l,Mps_r,Mns_r,Mtot_r)
     # for right wav
-    blocks_r = [ [0,0] ]; deleteat!(blocks_r,1)
+    blocks_r = Vector{Int64}[ ] 
     for Mp in Mps_r
         for Mn in Mns_r
             if Mp + Mn == Mtot_r
@@ -508,7 +508,7 @@ function calc_bifs(Mps_l,Mns_l,Mtot_l,Mps_r,Mns_r,Mtot_r)
             end
         end
     end
-    blocks_l = [ [0,0] ]; deleteat!(blocks_l,1)
+    blocks_l = Vector{Int64}[ ]
     for Mp in Mps_l
         for Mn in Mns_l
             if Mp + Mn == Mtot_l
@@ -516,8 +516,8 @@ function calc_bifs(Mps_l,Mns_l,Mtot_l,Mps_r,Mns_r,Mtot_r)
             end
         end
     end
-    p_bifs = [ [0,0] ]; deleteat!(p_bifs,1)
-    n_bifs = [ [0,0] ]; deleteat!(n_bifs,1)
+    p_bifs = Vector{Int64}[ ] 
+    n_bifs = Vector{Int64}[ ] 
 
     for (ir,bl_r) in enumerate(blocks_r)
         Mpr,Mnr = bl_r
@@ -702,10 +702,7 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
         end
         end
     end
-    if is_show
-        show(to, allocations = true,compact = false)
-    end
-    println("")
+    show_TimerOutput_results(to;tf=is_show)
     return nothing
 end
 

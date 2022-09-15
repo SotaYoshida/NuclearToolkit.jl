@@ -240,9 +240,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
             writeRitzvecs(mdim,Mtot,en[1],totJs,Rvecs,oupf)
         end
     end
-    if is_show
-        show(to, allocations = true,compact = true);println("")
-    end
+    show_TimerOutput_results(to;tf=is_show)
     #println("sntf: $sntf")
     if length(target_J) == 0
         println("J $totJs")
@@ -346,8 +344,7 @@ end
 to define the single particle states specified by m_z
 """
 function def_mstates(p_sps,n_sps)
-    mstates_p = [[1]]; mstates_n = [[1]]; mz_p = Int64[]; mz_n = Int64[]
-    deleteat!(mstates_p,1); deleteat!(mstates_n,1)
+    mstates_p = Vector{Int64}[] ; mstates_n = Vector{Int64}[]; mz_p = Int64[]; mz_n = Int64[]
     for (pidx,tsps) in enumerate(p_sps)
         n,l,j,tz = tsps
         for mz = -j:2:j;push!(mstates_p,[n,l,j,tz,mz,pidx]);push!(mz_p,mz);end
@@ -1485,8 +1482,6 @@ function prep_J(tdims,p_sps,n_sps,
         end
     end
     #end
-    #show(to, allocations = true,compact = false)
-    #println("")
     return oPP,oNN,oPNu,oPNd
 end
 
@@ -1574,9 +1569,6 @@ function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
             end
         end
     end
-    #end
-    #show(to, allocations = true,compact = false)
-    #println("")
     return nothing
 end
 

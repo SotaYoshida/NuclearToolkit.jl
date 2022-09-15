@@ -29,5 +29,12 @@ using Test
         ## shell model calculation
         vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
         @test main_sm(vs_sntf,"Be8",n_eigen,targetJ)
-    end    
+    end
+
+    @testset "calibration" begin
+        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="MCMC")
+        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="LHS")
+        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="BayesOpt")
+        @test make_chiEFTint(;nucs=["He4"],itnum=6,optimizer="MCMC",MPIcomm=true)
+    end
 end

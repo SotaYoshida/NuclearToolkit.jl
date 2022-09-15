@@ -22,9 +22,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
     chiEFTparams = init_chiEFTparams(;io=nothing)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
-    @timeit to "PreCalc 6j" begin
-        dict6j,d6j_nabla,d6j_int = PreCalc6j(emax_calc)   
-    end
+    @timeit to "PreCalc 6j" dict6j,d6j_nabla,d6j_int = PreCalc6j(emax_calc)   
     @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to;emax_calc=emax_calc)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
@@ -55,10 +53,9 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     end
     Aold = A
     for (i,tnuc) in enumerate(nucs)
-        nuc = def_nuc(tnuc,ref,corenuc)
-        Z = nuc.Z; N=nuc.N; A=nuc.A   
+        nuc = def_nuc(tnuc,ref,corenuc); A=nuc.A   
         binfo = basedat(nuc,sntf,hw,emax_calc,ref)
-        print(io,"target: $tnuc Ref. => Z=$Z N=$N ")
+        print(io,"target: $tnuc Ref. => Z=$(nuc.Z) N=$(nuc.N) ")
         if BetaCM !=0.0 && Aold != A
             difA_RCM(VCM,Aold,A)
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
@@ -87,7 +84,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         Aold = A
         if return_HFobj; return HFobj;end
     end
-    if is_show; show(io,to, allocations = true,compact = false);println(""); end
+    show_TimerOutput_results(to;io=io,tf=is_show)
     return true
 end
 
@@ -98,23 +95,18 @@ function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
     return nothing
 end
 
-
-
-function check_2bnorm(H,Chan2bD)
-    Chan2b = Chan2bD.Chan2b
-    nchan = length(Chan2b)
-    tnormsum = 0.0
-    for ch = 1:nchan
-        tnorm = norm(H.twobody[ch],2)
-        tnormsum += tnorm
-        #if tnorm > 1.e-6
-        ##    println("ch $ch tnorm $tnorm")
-        #end
-    end
-    println("tnormsum $tnormsum")
-    println("p1b ",norm(H.onebody[1],2))
-    println("n1b ",norm(H.onebody[2],2))
-end
+# function check_2bnorm(H,Chan2bD)
+#     Chan2b = Chan2bD.Chan2b
+#     nchan = length(Chan2b)
+#     tnormsum = 0.0
+#     for ch = 1:nchan
+#         tnorm = norm(H.twobody[ch],2)
+#         tnormsum += tnorm
+#     end
+#     println("tnormsum $tnormsum")
+#     println("p1b ",norm(H.onebody[1],2))
+#     println("n1b ",norm(H.onebody[2],2))
+# end
 
 
 
@@ -162,8 +154,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;
     Z = nuc.Z; N=nuc.N; A=nuc.A 
     binfo = basedat(nuc,sntf,hw,emax,ref)
     sps,p_sps,n_sps = def_sps(emax)
-    lp = div(length(sps),2)
-    new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,lp)           
+    new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax)
     dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps)
     Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
     dictTBMEs = dictsnt.dictTBMEs
@@ -804,6 +795,7 @@ function HF_conv_check(EHFs;tol=1.e-8)
         return false
     end
 end
+
 function update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
     lp = size(h_p)[1]; ln = size(h_n)[1]
     h_p .= p1b; h_n .= n1b

@@ -213,7 +213,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
             nothing
         end
         #@timeit to "read sample wavs." begin
-        svecs = [ zeros(Float64,1) ];deleteat!(svecs,1)
+        svecs = Vector{Float64}[ ]
         wfinfos = [ ]       
         for fidx = 0:num_ECsample-1
             inpf = path_to_samplewav*target_nuc*"_tmp_$fidx"*"_j"*string(tJ)*".wav"
@@ -301,8 +301,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
             close(io)
         end
     end
-    show(to, allocations = true, compact = true)
-    println("\n\n")
+    show_TimerOutput_results(to)
     return nothing
 end
 
@@ -457,10 +456,7 @@ function solveEC(Hs,target_nuc,tJNs;
     if length(Hs) > 1 && exact_logf != "" 
         @timeit to "scatter plot" plot_EC_scatter(target_nuc,Hs,sumV,tJNs,Dims,exlines)
     end
-    if is_show
-        show(to, allocations = true, compact = false)
-    end
-    #println("")
+    show_TimerOutput_results(to)
     return nothing
 end
 
@@ -573,7 +569,7 @@ function solveEC_UQ(Hs,target_nuc,tJNs,Erefs,errors;
 
     ln_int = length(iSPEs[1])+length(V1s[1])+length(V0s[1])
     Vint = zeros(Float64,ln_int)
-    iThetas = [ zeros(Float64,ln_int)];deleteat!(iThetas,1)   
+    iThetas = Vector{Float64}[ ]  
     #AllThetas = [ [ zeros(Float64,ln_int)] for i = 1:num_replica]
     #for i=1:num_replica; deleteat!(AllThetas[i],1); end
     nSPEs = deepcopy(iSPEs); nV1s = deepcopy(V1s); nV0s = deepcopy(V0s)
@@ -597,7 +593,7 @@ function solveEC_UQ(Hs,target_nuc,tJNs,Erefs,errors;
     println(tx)    
     #plot_MCMC_PT(iThetas,Ts,llhs,tJNs,Ens,Erefs)   
     write_history(iThetas,Ts,llhs,tJNs,Ens)   
-    show(to, allocations = true, compact = false)
+    show_TimerOutput_results(to)
     println("")
     return nothing
 end
@@ -658,7 +654,7 @@ function plot_from_history(Hs,target_nuc,tJNs,Erefs,Eexact,intf;path="./history/
     nr = read(io,Int64)
     Ns = read(io,Int64)
     Np = read(io,Int64)    
-    Thetas = [ Float64[1.0] ] ;deleteat!(Thetas,1)
+    Thetas = Vector{Float64}[ ] 
     for i=1:Ns
         push!(Thetas,[read(io,Float64) for i=1:Np])
     end
@@ -668,7 +664,7 @@ function plot_from_history(Hs,target_nuc,tJNs,Erefs,Eexact,intf;path="./history/
     nr = read(io,Int64)
     Ns = read(io,Int64)
     Ts = [read(io,Float64) for i=1:nr]   
-    llhs = [ Float64[1.0] ];deleteat!(llhs,1)
+    llhs = Vector{Float64}[ ] 
     for i=1:nr
         push!(llhs,[read(io,Float64) for i=1:Ns])
     end
@@ -681,7 +677,7 @@ function plot_from_history(Hs,target_nuc,tJNs,Erefs,Eexact,intf;path="./history/
         io = open(inpf,"r")
         nr = read(io,Int64)
         Ns = read(io,Int64)
-        Ens = [ Float64[1.0] ];deleteat!(Ens,1)
+        Ens = Vector{Float64}[ ] 
         for i=1:num_states
             push!(Ens,[read(io,Float64) for i = 1:Ns])
         end
@@ -805,7 +801,7 @@ function intMCMC_PT(itnum_MCMC,burnin,var_M,Ts,
     en_s = [ [ zeros(Float64,tmp[2]) for i =1:num_history] for tmp in tJNs ]
     ####
     
-    jobs = [ [0,0] ]; deleteat!(jobs,1)
+    jobs = Vector{Int64}[ ]
     for jidx = 1:lnJ
         info = Allinfos[jidx]
         for idx = 1:length(AllTDs[jidx])
@@ -1362,7 +1358,7 @@ function prepTBTD(tJ,idxs,p_sps,n_sps,
     vec_ani_p = [false for i = 1:lp];vec_cre_p = [false for i = 1:lp]
     vec_ani_n = [false for i = 1:ln];vec_cre_n = [false for i = 1:ln]
     retM = [0,0,0]
-    bif_idxs=[ [0,0,0] ];deleteat!(bif_idxs,1)
+    bif_idxs= Vector{Int64}[ ]
     for i = 1:lblock
         for j=i:lblock
             push!(bif_idxs,[i,j,idx_from_ij(i,j,lblock)])

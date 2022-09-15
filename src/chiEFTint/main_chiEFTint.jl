@@ -8,32 +8,31 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 # Optional arguments: Note that these are mainly for too specific purposes, so you do not specify these.
 - `is_show::Bool` to show `TimerOutputs`
 - `itnum::Int` number of iteration for LECs calibration with HFMBPT
-- `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you repeat large number of calculations for different LECs.
-- `nucs`
-- `optimizer::String` method for LECs calibration. "MCMC","LHC","BayesOpt" are available
+- `writesnt::Bool`, to write out interaction file in snt (KSHELL) format. ```julia writesnt = false``` case can be usefull when you iteratively calculate with different LECs.
+- `nucs` target nuclei used for LECs calibration with HFMBPT
+- `optimizer::String` method for LECs calibration. "MCMC","LHS","BayesOpt" are available
 - `MPIcomm::Bool`, to carry out LECs sampling with HF-MBPT and affine inveriant MCMC
 - `Operators::Vector{String}` specifies operators you need to use in LECs calibrations
 """
 function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl")
-    to = TimerOutput()    
-    optHFMBPT=false
+    to = TimerOutput()
+    do2n3ncalib=false
     if (optimizer!="" && nucs != []) || MPIcomm
-        optHFMBPT=true; writesnt=false
+        do2n3ncalib=true; writesnt=false
     end
     io = select_io(MPIcomm,optimizer,nucs)
-    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params)
+    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
-    if optHFMBPT #calibrate 2n3n LECs by HFMBPT
+    if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
         caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators) 
     else # write out snt/snt.bin file
         add2n3n(chiEFTobj,to)
-        @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,to;writesnt=writesnt)
+        @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
     end
-
     if io != stdout; close(io);end
-    if is_show; show(to, allocations = true,compact = false);println("");end
+    show_TimerOutput_results(to;tf=is_show)
     return true
 end
 
@@ -48,16 +47,14 @@ end
 - `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
 ```math
 \\begin{Bmatrix} 
-j_a/2&  j_b/2&   J \\\\
-j_c/2&  j_d/2&   J_p
+j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p
 \\end{Bmatrix}
 ```
 where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
 - `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
 ```math
 \\begin{Bmatrix} 
-j_a/2&  j_b/2&     1 \\\\
-  l_2&    l_1&   1/2
+j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2
 \\end{Bmatrix}
 ```
 - `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
@@ -119,6 +116,7 @@ struct ChiralEFTobject
     dict_pwch::Vector{Dict{Vector{Int64}, Int64}} 
     arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
 end
+
 """
 
 It returns 
@@ -127,13 +125,12 @@ It returns
 - `d9j::Vector{Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}}` array of Wigner-9j symbols used for Pandya transformation in HF-MBPT/IMSRG calculations.
 - `HOBs::Dict{Int64, Dict{Int64, Float64}}` dictionary for harmonic oscillator brackets.
 """
-function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
+function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
     # specify chiEFT parameters
     params = init_chiEFTparams(;io=io,fn_params=fn_params)
-
     #Next, prepare momentum/integral mesh, arrays, etc.
-     ## Prep WignerSymbols
-    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax,!optHFMBPT)
+    ## Prep WignerSymbols
+    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax,!do2n3ncalib)
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
     pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)    
@@ -160,23 +157,22 @@ function construct_chiEFTobj(optHFMBPT,itnum,optimizer,MPIcomm,io,to;fn_params="
     infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)   
+    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
-    X9,U6 = prepareX9U6(2*params.emax)   
+    X9,U6 = prepareX9U6(2*params.emax)
     chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
                                 xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
                                 Numpn,infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
                                 V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
-      
     # make Opt stuff    
-    OPTobj = prepOPT(LECs,optHFMBPT,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
-    d9j = Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}[ ]
+    OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
+    d9j  = Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}[ ]
     HOBs = Dict{Int64, Dict{Int64, Float64}}()
-    if optHFMBPT
+    #if do2n3ncalib
         d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
-    end
+    #end
     return chiEFTobj,OPTobj,d9j,HOBs
 end
 
@@ -198,7 +194,7 @@ function calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     return nothing
 end
 
-function updateLECs_in_chiEFTobj!(chiEFTobj::ChiralEFTobject,targetkeys,targets)
+function updateLECs_in_chiEFTobj!(chiEFTobj::ChiralEFTobject,targetkeys,targets::Vector{Float64})
     for (k,target) in enumerate(targetkeys)
         idx = chiEFTobj.LECs.idxs[target]
         chiEFTobj.LECs.vals[idx] = chiEFTobj.LECs.dLECs[target] = targets[k] 
@@ -212,14 +208,12 @@ function add2n3n(chiEFTobj,to,it=1)
     return nothing
 end
 
-
 function add_V12mom!(V12mom,V12mom_2n3n,a=1.0)
     for i in eachindex(V12mom)
         V12mom_2n3n[i] .+= V12mom[i] * a
     end
     return nothing
 end
-
 
 function genLaguerre(n,alpha,x)
     if n==0
@@ -275,7 +269,7 @@ end
 """ 
     QL(z,J::Int64,ts,ws)
 
-To calculate Legendre functions of second kind by Gauss-Legendre quadrature
+To calculate Legendre functions of second kind by Gauss-Legendre quadrature.
 """
 function QL(z,J::Int64,ts,ws,QLdict)
     s = 0.0
@@ -340,6 +334,10 @@ function make_sp_state(chiEFTobj,Numpn;io=stdout)
     return infos,izs_ab,nTBME
 end
 
+# @emax 2 hitCG 29351 dWS <  11.31 MB   9j(322) <   0.20 MB   HOB (204) <   0.02 MB
+# target: He4 Ref. => Z=2 N=2 EMP2    -5.801 1b    -0.000 pp    -0.005 pn    -5.788 nn    -0.008
+# E_HF       1.4756  E_MBPT(3) =      -3.9323  Eexp:      -28.296
+
 """
     get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)
 
@@ -350,16 +348,15 @@ For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
 - `nTBME::Int` # of TBMEs
 """
 function get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
-    infos = [ [0,0,0,0] ];deleteat!(infos,1)
-    izs_ab = [ [[0,0,0,0]] ];deleteat!(izs_ab,1)
-    ichan = 0
-    nTBME = 0
+    infos = Vector{Int64}[ ]  
+    izs_ab = Vector{Vector{Int64}}[ ] 
+    ichan = nTBME = 0
     for izz = -2:2:2
         for ipp = -1:2:1
             for jjx = 0:2*emax+1
                 if jjx  > div(jab_max,2);continue;end
                 ndim = 0
-                tl = [ [0,0,0,0]];deleteat!(tl,1)
+                tl = Vector{Int64}[ ]
                 for iza = -1:2:1
                     for izb = iza:2:1
                         if iza + izb != izz;continue;end
@@ -392,10 +389,10 @@ function get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
 end
 
 function def_sps_snt(emax,target_nlj)
-    nljsnt = [ [0,0] ]; deleteat!(nljsnt,1)    
+    nljsnt = Vector{Int64}[ ] 
     tzs = [-1,1]
-    dict = Dict(0=>0); delete!(dict,0)
-    idx = 0; hit = 0
+    dict = Dict{Int64,Int64}()
+    idx = 0
     for pn = 1:2
         tz = tzs[pn]
         for temax = 0:emax
@@ -502,7 +499,7 @@ For example, [pnrank,L,Lp,S,J] = [0, 0, 2, 1, 1] corresponds to proton-neutron 3
 """
 function prepare_2b_pw_states(;io=stdout)
     #iz,lz1,lz2,isz,jz
-    pw_channels = [ [0,0,0,0,0] ];deleteat!(pw_channels,1)
+    pw_channels = Vector{Int64}[ ]
     dict_pwch = [Dict{Vector{Int64},Int64}() for pnrank=1:3] 
     arr_pwch = [[[[ zeros(Int64,j+iss-abs(j-iss)+1) for ll1=abs(j-iss):j+iss ] for j=0:jmax ] for iss=0:1 ] for pnrank=1:3]    
     num=0

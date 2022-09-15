@@ -1,5 +1,5 @@
 """
-    OPEP(ts,ws,xr,V12mom,dict_pwch,to,lsjs,llpSJ_s,tllsj,opfs;pigamma=true)
+    OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
 
 calc. One-pion exchange potential in the momentum-space
 """

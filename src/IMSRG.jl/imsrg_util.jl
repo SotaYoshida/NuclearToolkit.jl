@@ -683,7 +683,6 @@ function IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j
     aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
     write_omega_bin(binfo,IMSRGobj.n_written_omega[1],nOmega)
     IMSRGobj.n_written_omega[1] += 1
-    #show(to, allocations = true,compact = false);println("") 
     return nothing
 end   
 function NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)

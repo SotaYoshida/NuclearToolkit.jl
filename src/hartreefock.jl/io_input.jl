@@ -207,11 +207,11 @@ function make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
     msidx = 0
     @inbounds for i = 1:lpn_calc
         msidx +=1
-        push!(sps,deepcopy(p_sps[i]))
+        push!(sps,p_sps[i])
         dict_snt2ms[i] = msidx
         dict_ms2snt[msidx] = i
         msidx +=1
-        push!(sps,deepcopy(n_sps[i]))
+        push!(sps,n_sps[i])
         dict_snt2ms[i+lpn_calc] = msidx
         dict_ms2snt[msidx] = i+lpn_calc
     end

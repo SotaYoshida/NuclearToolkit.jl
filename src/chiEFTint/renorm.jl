@@ -55,7 +55,7 @@ function SRG(chiEFTobj,to)
         tkey[1] = 2*iz; tkey[2]=l1; tkey[3]=l2; tkey[4]=S;tkey[5]=J
         if l1 == l2
             V12idx = tdict[tkey]; tv = V12mom[V12idx]
-            sV  = @view  V[1:n_mesh,1:n_mesh]          
+            sV  = @view  V[1:n_mesh,1:n_mesh]
             sT  = @view  T[1:n_mesh,1:n_mesh]
             sH  = @view  H[1:n_mesh,1:n_mesh]
             sHt = @view Ht[1:n_mesh,1:n_mesh]
@@ -130,8 +130,8 @@ function RKstep(T,Ho,eta,R,faceta,fRK,Ht)
     BLAS.gemm!('N', 'N',  faceta, T, Ho, 0.0, eta)
     BLAS.gemm!('N', 'N', -faceta, Ho, T, 1.0, eta) # =>eta
     BLAS.gemm!('N', 'N',  1.0, eta, Ho, 0.0, R)
-    BLAS.gemm!('N', 'N', -1.0, Ho, eta, 1.0, R)    
-    BLAS.axpy!(fRK,R,Ht)    
+    BLAS.gemm!('N', 'N', -1.0, Ho, eta, 1.0, R)
+    axpy!(fRK,R,Ht)
     return nothing
 end
 function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
@@ -139,7 +139,7 @@ function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
     mul!(eta,Ho,T,-faceta,1.0)
     mul!(R,eta,Ho,1.0,0.0)
     mul!(R,Ho,eta,-1.0,1.0)
-    BLAS.axpy!(fRK,R,Ht)    
+    axpy!(fRK,R,Ht)    
     return nothing
 end
 

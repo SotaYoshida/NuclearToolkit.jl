@@ -5,6 +5,7 @@ chi_order = 4
 calc_NN = true
 calc_3N = true
 hw = 20.0
+srg = false
 tbme_fmt = "snt.bin"
 pottype="emn500n4lo"
 ### --- IMSRG ---

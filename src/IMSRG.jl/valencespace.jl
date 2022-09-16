@@ -89,7 +89,7 @@ function update_vsspace_chs!(HFobj,valencespace,Chan2b)
     spaces = HFobj.modelspace.spaces
     cc = spaces.cc; vc = spaces.vc; qc = spaces.qc
     vv = spaces.vv; qv = spaces.qv; qq = spaces.qq
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         tbc = Chan2b[ch]
         kets = tbc.kets
         for (ik,ket) in enumerate(kets)
@@ -164,12 +164,12 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
     end 
 
     ## two-body piece, decoupling of core 
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         Gam = Gamma[ch]; tbc = Chan2b[ch]; Tz = tbc.Tz; kets = tbc.kets
         eta2b = Eta2b[ch]; eta2b .*= 0.0
         pnrank = div(Tz,2) + 2
         ### decoupling of core - valence/qspace
-        for ik = 1:length(kets) # to be cc/vc (cq is not considered)
+        for ik in eachindex(kets) # to be cc/vc (cq is not considered)
             i,j = kets[ik]  
             oi =sps[i]; oj = sps[j]      
             if !oi.c && !oj.c;continue;end
@@ -178,7 +178,7 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
             if (ni*nj==0.0 && ni+nj!=0.0) && (oi.q || oj.q); continue;end
             tz_ij = oi.tz + oj.tz
             if tz_ij != Tz;continue;end
-            for ib =1:length(kets) # to be vv/qv/qq
+            for ib in eachindex(kets) # to be vv/qv/qq
                 a,b = kets[ib]
                 oa = sps[a]; ob = sps[b]
                 if oa.c || ob.c; continue;end
@@ -193,11 +193,11 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
             end
         end          
         ### decoupling of valence - qspace
-        for ik = 1:length(kets) # to be vv
+        for ik in eachindex(kets) # to be vv
             i,j = kets[ik]
             if !sps[i].v || !sps[j].v; continue;end
             ni = sps[i].occ; nj = sps[j].occ 
-            for ib =1:length(kets) # to be qv/qq
+            for ib in eachindex(kets) # to be qv/qq
                 a,b = kets[ib]
                 if sps[a].c || sps[b].c; continue;end
                 if !sps[a].q && !sps[b].q; continue;end

@@ -326,20 +326,3 @@ struct dWS2n
     dcgm0::Dict{Vector{Int64},Float64}
     keycg::Vector{Vector{Int64}}
 end
-
-"""
-struct `HarmonicOscillatorBrackets`
-
-A hierarchical array of dictionaries reduces readability, but on the other hand a few hierarchical structures.
-It may reduce the time taken to traverse the elements...
-
-# Fields
-- `dict::Vector{Vector{Dict{Vector{Int64},Float64}}}` dictionary for HOB [L][e2] #e2=2n+l+2N+L=2n1+l1+2n2+l2
-- `key::Vector{Int64}` 
-"""
-struct HarmonicOscillatorBrackets
-    dict::Vector{Vector{Dict{Vector{Int64},Float64}}}
-    key::Vector{Int64}
-end 
-
-

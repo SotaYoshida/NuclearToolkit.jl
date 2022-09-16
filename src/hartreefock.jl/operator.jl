@@ -7,7 +7,7 @@ function aOp!(Op::Operator,a)
     for pn =1:2
         lmul!(a,Op.onebody[pn])
     end
-    for ch =1:length(Op.twobody)
+    for ch in eachindex(Op.twobody)
         lmul!(a,Op.twobody[ch])
     end
     return nothing
@@ -24,7 +24,7 @@ function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a,b)
         axpy!(a,Op1.onebody[pn],Op2.onebody[pn])
     end
     Op2_2b = Op2.twobody
-    for ch = 1:length(Op2_2b)
+    for ch in eachindex(Op2_2b)
         axpy!(a,Op1.twobody[ch],Op2_2b[ch])
     end
     return nothing
@@ -42,7 +42,7 @@ function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
         axpy!(b,Op2.onebody[pn],Op3.onebody[pn])
     end
     Op3_2b = Op3.twobody
-    for ch = 1:length(Op3_2b)
+    for ch in eachindex(Op3_2b)
         axpy!(a,Op1.twobody[ch],Op3_2b[ch])
         axpy!(b,Op2.twobody[ch],Op3_2b[ch])
     end
@@ -477,7 +477,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         nthre = nthreads()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
-        @inbounds @threads for idx_a =1:length(allps)
+        @inbounds @threads for idx_a in eachindex(allps)
             a = allps[idx_a]
             threid = threadid()
             keych = keychs[threid]

@@ -17,6 +17,36 @@ function wigner9j(j1,j2,j3,j4,j5,j6,j7,j8,j9)
     return s
 end
 
+"""
+    wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,d6j_int)
+To calculate Wigner 9j symbols from pre-allocated dictionary `d6j_int`.
+"""
+function wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,d6j_int)
+    s= 0.0
+    xmin = max(abs(j1-j9),abs(j2-j6),abs(j4-j8))
+    xmax = min(abs(j1+j9),abs(j2+j6),abs(j4+j8))
+    for x =xmin:xmax
+        t  = (-1)^(2*x) * (2*x+1)
+        t *= get_dict6jint_for9j(j1,j4,j7,j8,j9,x,d6j_int)
+        t *= get_dict6jint_for9j(j2,j5,j8,j4,x,j6,d6j_int)
+        t *= get_dict6jint_for9j(j3,j6,j9,x,j1,j2,d6j_int)
+        s += t 
+    end
+    return s
+end
+
+"""
+    get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int)
+To get Wigner6j 
+```math
+\\begin{Bmatrix}
+j_a & j_b & J \\\\ j_c & j_d & J'
+\\end{Bmatrix}
+```
+from pre-allocated dictionary `d6j_int`.
+Since `d6j_int` is prepared assuming some symmetries to reduce the redundancy,
+some rows and columns are to be swapped in this function.
+"""
 function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int)
     oja = ja; ojb = jb; oJ = tJ; ojc=jc;ojd=jd; oJp = tJp
     j1 = ja; j2 = jb; J = tJ; j3=jc;j4=jd; Jp = tJp
@@ -36,24 +66,16 @@ function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int)
     return r
 end
 
-function wigner9j_from_dict6j(j1,j2,j3,j4,j5,j6,j7,j8,j9,d6j_int)
-    s= 0.0
-    xmin = max(abs(j1-j9),abs(j2-j6),abs(j4-j8))
-    xmax = min(abs(j1+j9),abs(j2+j6),abs(j4+j8))
-    for x =xmin:xmax
-        t  = (-1)^(2*x) * (2*x+1)
-        t *= get_dict6jint_for9j(j1,j4,j7,j8,j9,x,d6j_int)
-        t *= get_dict6jint_for9j(j2,j5,j8,j4,x,j6,d6j_int)
-        t *= get_dict6jint_for9j(j3,j6,j9,x,j1,j2,d6j_int)
-        s += t 
-    end
-    return s
-end
 
 """
     s_wigner9j(j1,j3,j4,j6,j7,j8,j9) 
 
 to calc. wigner9j for specific cases with j2=j5=1/2
+```math
+\\begin{Bmatrix}
+j_1 & 1/2 & j_3 \\\\ j_4 & 1/2 & j_6 \\\\ j_7 & j_8 & j_9
+\\end{Bmatrix}
+```
 """
 function s_wigner9j(j1,j3,j4,j6,j7,j8,j9) 
     s= 0.0
@@ -72,7 +94,7 @@ end
 """
     TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
 
-Function to carry out Talmi-Mochinsky transformation to get NN interaction in HO space.
+Function to carry out Talmi-Mochinsky transformation for NN interaction in HO space and to write out an sinput file.
 """
 function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
@@ -82,7 +104,7 @@ function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     nTBME = chiEFTobj.nTBME; infos = chiEFTobj.infos; izs_ab = chiEFTobj.izs_ab
     dict6j = chiEFTobj.dict6j; d6j_nabla = chiEFTobj.d6j_nabla
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6
-    emax = chiEFTobj.params.emax; Nrmax = 2*emax    
+    emax = chiEFTobj.params.emax  
     sp_P5_9j = [ wigner9j(1,1,0,1//2,1//2,0,1//2,1//2,0) wigner9j(1,1,0,1//2,1//2,1,1//2,1//2,1);
                  wigner9j(1,1,2,1//2,1//2,0,1//2,1//2,0) wigner9j(1,1,2,1//2,1//2,1,1//2,1//2,1)]
     cg1s = [clebschgordan(Float64,1,0,1,0,0,0),clebschgordan(Float64,1,0,1,0,2,0)]
@@ -123,13 +145,12 @@ function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     tkeys = [zeros(Int64,4) for i=1:4]
     key6j = zeros(Int64,5)
     t5vs=[zeros(Int64,5) for i=1:nthreads()]            
-    @inbounds for ich in eachindex(infos) #1:length(infos)
+    @inbounds for ich in eachindex(infos) 
         izz,ip,Jtot,ndim=infos[ich]
         pnrank = Int(div(izz,2))+2
         izs = izs_ab[ich]
         vv = zeros(Float64,ndim,ndim)
-        #@timeit to "vtrans" @inbounds @threads for i = 1:ndim
-        @timeit to "vtrans" for i = 1:ndim
+        @timeit to "vtrans" @inbounds @threads for i = 1:ndim
             t5v=t5vs[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
@@ -316,52 +337,6 @@ function Nfac_jj(na,la,ja,nb,lb,jb)
     return s
 end
 
-"""
-    HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1)
-
-To calc. harmonic oscillator brackets (HOBs), ``<E_L,e_l:Lam|e_1l_1,e_2l_2:Lam>_d``.
-The phase ``(-1)^(N+n+n1+n2)`` is needed to reproduce Tab.1 of [1].
-
-## Reference:
-[1] B.Buck& A.C.merchant, Nucl.Phys. A600 (1996) 387-402
-
-[2] G.P.Kamuntavicius et al., Nucl.Phys. A695 (2001) 191-201
-"""
-function HObracket(n1,l1,n2,l2,n,l,N,L,Lam;d=1,with_phase=true)
-    e1 = 2*n1+l1
-    e2 = 2*n2+l2
-    e  = 2*n+l
-    E  = 2*N+L
-    t1 = d^((e1-e)/2) * (1+d)^(-(e1+e2)/2)
-    phase = (-1)^(N+n+n1+n2)
-    sum = 0.0
-    for ed = 0:min(e2,e)
-        ec = e2-ed
-        ea = E-ec
-        eb = e1-ea
-        for la = ea:-2:0
-            na = div(ea-la,2)
-            for lb = eb:-2:0
-                nb = div(eb-lb,2)
-                for lc = ec:-2:0
-                    nc = div(ec-l,2)
-                    for ld = ed:-2:0
-                        nd = div(ed-ld,2)
-                        t2 = (-d)^ed * wigner9j(la,lb,l1,lc,ld,l2,L,l,Lam)
-                        if t2 == 0.0;continue;end
-                        t2 *= Ghob(e1,l1,ea,la,eb,lb) * Ghob(e2,l2,ec,lc,ed,ld)
-                        if t2 == 0.0;continue;end
-                        t2 *= Ghob(E,L,ea,la,ec,lc) * Ghob(e,l,eb,lb,ed,ld)
-                        if t2 == 0.0;continue;end
-                        sum += t2
-                    end
-                end
-            end
-        end
-    end
-    return ifelse(with_phase,Float64(t1*sum) *phase,Float64(t1*sum))
-end
-
 function mydoublefactorial(n::Integer)
     if n ==0 || n==1 || n==-1; return 1.0;end
     if n < 0
@@ -423,16 +398,24 @@ function tri_check(ja,jb,jc)
     return true
 end
 
-function gmosh2(nl, ll, nr, lr, n1, l1, n2, l2, lm, d::Float64,dWs,tkey9j,dict9j_HOB,to)
-    targetdict = dict9j_HOB[lm+1]
+"""
+    HObracket(nl, ll, nr, lr, n1, l1, n2, l2, Lam, d::Float64,dWs,tkey9j,dict9j_HOB,to)
+To calc. generalized harmonic oscillator brackets (HOBs), ``<<n_l\\ell_l,n_r\\ell_r:\\Lambda|n_1\\ell_1,n_2\\ell_2:\\Lambda>>_d`` from the preallocated 9j dictionary.
+
+## Reference:
+- [1] B.Buck& A.C.merchant, Nucl.Phys. A600 (1996) 387-402
+- [2] G.P.Kamuntavicius et al., Nucl.Phys. A695 (2001) 191-201
+"""
+function HObracket(nl, ll, nr, lr, n1, l1, n2, l2, Lam, d::Float64,dWs,tkey9j,dict9j_HOB,to)
+    targetdict = dict9j_HOB[Lam+1]
     r = 0.0
     ee = 2*nl + ll
     er = 2*nr + lr
     e1 = 2*n1 + l1
     e2 = 2*n2 + l2
     if ee + er != e1 + e2; return r;end
-    if !tri_check(ll, lr, lm);return r;end
-    if !tri_check(l1, l2, lm);return r;end
+    if !tri_check(ll, lr, Lam);return r;end
+    if !tri_check(l1, l2, Lam);return r;end
     keycg = dWs.keycg[threadid()]
     dcgm0 = dWs.dcgm0
     dtri = dWs.dtri
@@ -453,10 +436,10 @@ function gmosh2(nl, ll, nr, lr, n1, l1, n2, l2, lm, d::Float64,dWs,tkey9j,dict9j
                         if !tri_check(la,ll,lc);continue;end
                         tkey9j[1] = la;tkey9j[2] = lb;tkey9j[3] = l1
                         tkey9j[4] = lc;tkey9j[5] = ld;tkey9j[6] = l2
-                        tkey9j[7] = ll;tkey9j[8] = lr;tkey9j[9] = lm
+                        tkey9j[7] = ll;tkey9j[8] = lr;tkey9j[9] = Lam
                         intkey9j_12,intkey9j_lr,intkey9j_abcd, flip = flip_needed(tkey9j)
                         t9j = targetdict[intkey9j_12][intkey9j_lr][intkey9j_abcd]
-                        if flip; t9j *= (-1)^(la+lb+l1+lc+ld+l2+ll+lr+lm);end
+                        if flip; t9j *= (-1)^(la+lb+l1+lc+ld+l2+ll+lr+Lam);end
                         tmp = ((-d)^ed)  * t                        
                         tmp *= t9j 
                         tmp *= Ghob(e1, l1, ea, la, eb, lb, dtri, dcgm0, keycg)
@@ -473,14 +456,14 @@ function gmosh2(nl, ll, nr, lr, n1, l1, n2, l2, lm, d::Float64,dWs,tkey9j,dict9j
 end
 
 function flip_needed(tkey9j)
-    la,lb,l1,lc,ld,l2,ll,lr,lm = tkey9j
+    la,lb,l1,lc,ld,l2,ll,lr,Lam = tkey9j
     nflip = 0
     if l1 > l2
         nflip += 1
         tkey9j[1] = lc; tkey9j[2] = ld; tkey9j[3] = l2
         tkey9j[4] = la; tkey9j[5] = lb; tkey9j[6] = l1
     end
-    la,lb,l1,lc,ld,l2,ll,lr,lm = tkey9j
+    la,lb,l1,lc,ld,l2,ll,lr,Lam = tkey9j
     if ll > lr
         nflip += 1
         tkey9j[1] = lb; tkey9j[2] = la
@@ -491,110 +474,6 @@ function flip_needed(tkey9j)
     intkey9j_lr = 1000*tkey9j[7] + tkey9j[8]
     intkey9j_abcd = (1000^3)*tkey9j[1] + (1000^2)*tkey9j[2] + (1000^1)*tkey9j[4] + tkey9j[5]
     return intkey9j_12,intkey9j_lr,intkey9j_abcd, nflip==1
-end
-
-# #to prepare Mochinsky brakets
-function gmosh(n,l,nc,lc,n1,l1,n2,l2,lr,d,f_mb,g_mb,w_mb)
-    ret = 0.0
-    if n+n+nc+nc+l+lc-n1-n1-n2-n2-l1-l2 != 0 ;return ret;end
-    if l+lc-lr < 0 || l1+l2-lr < 0 ;return ret;end
-    if abs(l-lc)-lr > 0 || abs(l1-l2)-lr > 0  ;return ret;end
-    dl=log(d)
-    d1l=log(d+1.0)
-
-    bb =  f_mb[n1+1]+f_mb[n2+1]+f_mb[n+1]-f_mb[nc+1]
-    bb += g_mb[n1+l1+1]+g_mb[n2+l2+1]-g_mb[n+l+1]-g_mb[nc+lc+1]
-    ba =  w_mb[l1+1]+w_mb[l2+1]+w_mb[lc+1]+w_mb[l+1]
-    ba += f_mb[l1+l2-lr+1]+f_mb[l+lc+lr+2]+f_mb[l+lc-lr+1]+f_mb[lc+lr-l+1]
-    ba += f_mb[lr+l-lc+1]-f_mb[l1+l2+lr+2]-f_mb[l1+lr-l2+1]-f_mb[l2+lr-l1+1]-l*d1l
-
-    ip=lr+n+n1+n2
-    p=1+2*(div(ip,2)*2-ip)
-
-    anorm=p*exp(0.5*(bb+ba))
-    y=0.0
-    j1f=l+1
-
-    for j1=1:j1f
-        j2=l+2-j1
-        k1i=abs(l1-j1+1)+1
-        k1f=l1+j1
-        for k1=k1i:2:k1f
-            m1f=n1-div(j1+k1-l1,2)+2
-            if m1f-1 < 0 ;continue;end
-            k2i=max(abs(l2-j2+1),abs(lc-k1+1))+1
-            k2f=min(l2+j2,lc+k1)
-            if k2i-k2f > 0 ;continue;end
-            for k2=k2i:2:k2f
-                m2f=n2-div(j2+k2-l2,2)+2
-                if m2f-1 < 0 ;continue;end
-                ip=j2-1+div(l1+k1+j1+l2+k2+j2,2)
-                p=1+2*(div(ip,2)*2-ip)
-                bc = 0.5*((k1+j2-2)*dl-(k1+k2-2)*d1l)
-                bc +=  f_mb[k1+l1-j1+1]+f_mb[k1+k2-lc-1]+f_mb[k2+l2-j2+1]-f_mb[k1+l1+j1]-f_mb[k1+k2+lc]
-                bc += -f_mb[k2+l2+j2]+w_mb[k1]+w_mb[k2]+f_mb[div(k1+l1+j1,2)]
-                bc +=  f_mb[div(k1+k2+lc,2)]+f_mb[div(k2+l2+j2,2)]              
-                bc += -f_mb[div(k1+l1-j1,2)+1]-f_mb[div(l1+j1-k1,2)+1]
-                bc += -f_mb[div(j1+k1-l1,2)]-f_mb[div(k1+k2-lc,2)]
-                bc += -f_mb[div(k2+lc-k1,2)+1]-f_mb[div(lc+k1-k2,2)+1] 
-                bc += -f_mb[div(k2+l2-j2,2)+1]-f_mb[div(l2+j2-k2,2)+1]
-                bc += -f_mb[div(j2+k2-l2,2)]
-                cfac=p*exp(bc)
-                sxy=0.0
-                ixf=min(k1+k1,k1+k2-lc)-1
-                for ix=1:ixf
-                    iyi=max(1,ix+j1+l2-k1-lr)
-                    iyf=min(l2+l2+1,l1+l2-lr+1,l2+lc+ix-k1-j2+2)
-                    if iyi-iyf > 0;continue;end
-                    for iy=iyi:iyf
-                        ip=ix+iy
-                        p=1+2*(div(ip,2)*2-ip)
-                        bxy =  f_mb[k1+k1-ix]+f_mb[l2+l2-iy+2]
-                        bxy += f_mb[k2+lc-k1+ix]+f_mb[l1+lr-l2+iy] 
-                        bxy += -f_mb[ix]-f_mb[iy]-f_mb[k1+k2-lc-ix]
-                        bxy += -f_mb[l1+l2-lr-iy+2]-f_mb[k1-l2+lr-j1+iy-ix+1]
-                        bxy += -f_mb[l2-k1+lc-j2+ix-iy+3]
-                        sxy += p*exp(bxy)
-                    end
-                end
-                s=cfac*sxy
-                sm=0.0
-                for m1=1:m1f
-                    m2i=max(1,nc-m1-div(k1+k2-lc,2)+3)
-                    if m2i-m2f > 0;continue;end
-                    for m2=m2i:m2f
-                        ip=m1+m2
-                        p=1+2*(div(ip,2)*2-ip)
-                        bm =  (m1-1)*dl-(m1+m2-2)*d1l+g_mb[1]
-                        bm += g_mb[m1+m2+div(k1+k2+lc,2)-2]-g_mb[k1+m1-1]
-                        bm += -g_mb[k2+m2-1]+f_mb[m1+m2+div(k1+k2-lc,2)-2]
-                        bm += -f_mb[m1]-f_mb[m2]-f_mb[n1-m1-div(j1+k1-l1,2)+3]
-                        bm += -f_mb[n2-m2-div(j2+k2-l2,2)+3]-f_mb[m1+m2-nc+div(k1+k2-lc,2)-2]
-                        sm=sm+p*exp(bm)
-                    end
-                end
-                y += s*sm
-            end
-        end
-    end
-    ret = anorm*y
-    return ret
-end
-
-function def_fgw(;maxjj=200)
-    f_mb = zeros(Float64,maxjj)
-    g_mb = zeros(Float64,maxjj)
-    w_mb = zeros(Float64,maxjj)
-    f_mb[1]=0.0
-    g_mb[1]=log(0.5)
-    w_mb[1]=0.0
-    for i=2:maxjj
-       a=i-1
-       f_mb[i]=f_mb[i-1]+log(a)
-       g_mb[i]=g_mb[i-1]+log(a+0.5)
-       w_mb[i]=log(a+a+1.0)
-    end
-    return f_mb,g_mb,w_mb
 end
 
 function vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
@@ -766,7 +645,6 @@ end
     PreCalcHOB(chiEFTobj,dict6j,to)
 
 calculating `dict9j`, dict of 9j for Pandya transformation and harmonic oscillator brackets (`HOBs`).
-see also "struct HarmonicOscillatorBrackets" in hartreefock.jl/def_struct.jl
 
 In the early version, dict9j is defined as
 dict9j = [ [ Dict{Vector{Int64},Float64}() for S=0:1 ] for J=0:Jmax] with key~[la,ja,lb,jb,L]
@@ -849,8 +727,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
 
     ### Calc. HObrackets
     # To reduce total number of HOBs stored, 2n_i+l_i > 2n_j+l_j case is not considered
-    #HOBs = [[[[[[[[ 0.0 for l1 = 0:2*N+Lam+2*n+lam-2*n1-2*n2] for n2 =0:div(2*N+Lam+2*n+lam,2)-n1] for n1=0:div(2*N+Lam+2*n+lam,2)] for L = 0:e2max-2*N-2*n] for lam = 0:e2max-2*N-2*n-Lam] for Lam =0:e2max-2*N-2*n] for n=0:e2max-N] for N=0:e2max]
-    # used order n_ab,N_ab,lam_ab,Lam_ab,Lab+1,nb+1,na+1,lb+1 or N_ab,n_ab,Lam_ab,lam_ab,Lab+1,na+1,nb+1,la+1
+    # sed order n_ab,N_ab,lam_ab,Lam_ab,Lab+1,nb+1,na+1,lb+1 or N_ab,n_ab,Lam_ab,lam_ab,Lab+1,na+1,nb+1,la+1
     #new (faster, but more memory greedy)
     @timeit to "HOB" begin
         HOBs = Dict{Int64, Dict{Int64,Float64}}()
@@ -891,8 +768,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                 end
             end
         end
-        #@timeit to "prep9jHOB" @threads 
-        @timeit to "prep9jHOB" for L = 0:e2max 
+        @timeit to "prep9jHOB" @threads for L = 0:e2max
+        #@timeit to "prep9jHOB" for L = 0:e2max 
             targetdict = dict9j_HOB[L+1]
             tkey9j = arr9j[threadid()]
             for N=0:e2max-L
@@ -920,8 +797,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
         tkeys = [ zeros(Int64,4) for i=1:nthreads()]
-        #@threads 
-        for i = 1:hit
+        @threads for i = 1:hit
             nkey1,nkey2 = HOBkeys[i]
             tkey = tkeys[threadid()]
             tkey9j = arr9j[threadid()]
@@ -930,7 +806,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             get_abcdarr_from_intkey!(nkey2,tkey)
             L = tkey[1]; n1 = tkey[2]; n2 = tkey[3]; l1 = tkey[4]
             e2 = 2*N+Lam+2*n+lam; l2 = e2-2*n1-2*n2-l1
-            tHOB = gmosh2(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,tkey9j,dict9j_HOB,to)
+            tHOB = HObracket(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,tkey9j,dict9j_HOB,to)
             HOBs[nkey1][nkey2] = tHOB
         end  
     end    
@@ -1033,8 +909,7 @@ end
 
 preparing Clebsch-Gordan coefficients for some special cases: cg1s = (1,0,l,0|l',0), cg2s = (2,0,l,0|l',0)
 """
-function prep_wsyms()
-    lmax = 7
+function prep_wsyms(;lmax=7)
     dim = lmax+3
     cg1s = zeros(Float64,dim,dim)
     cg2s = zeros(Float64,dim,dim)
@@ -1208,20 +1083,21 @@ end
 """
     PreCalc6j(emax)
 
-preallocate 6j used for HF
+Preallocating Wigner-6j symbols.
+The `d6j` have
 ```math
 \\begin{Bmatrix} 
 j_a & j_b & J \\\\ j_c & j_d & J'
 \\end{Bmatrix}
 ```
-``ja,jb,jc,jd`` are half-integer extended for kinetic_tb
+with half-integer ``ja,jb,jc,jd``.
+The `dict6j` and `d6j_nabla`
 ```math
 \\begin{Bmatrix} 
 j_1/2&  j_2/2&     1 \\\\  l_2&    l_1&   1/2
 \\end{Bmatrix}
 ```
-are needed to get `dict6j[J][key]` with `key = [ja,jb,jd,jc,Jp]`.
-Using array as key is in general slow, so the key is integer for dict6j & d6jint (I know this reduces readability, though)
+are used in `kinetic_tb`, and the `d6j_int` will be used for harmonic oscillator brackets, HF, MBPT, IMSRG, etc.
 """
 function PreCalc6j(emax,only_halfinteger=false)
     Jmax = maximum([4,2*emax+1]) 

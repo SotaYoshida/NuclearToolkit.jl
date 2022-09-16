@@ -325,7 +325,7 @@ function propose_MH!(it,OPTobj)
         OPTobj.chain[:,it] .= OPTobj.chain[:,it-1]
         OPTobj.history[it] .= OPTobj.history[it-1]
     end
-    for n = 1:length(params)
+    for n in eachindex(params)
         params[n] += OPTobj.sigmas[n] * randn()
     end
     return nothing

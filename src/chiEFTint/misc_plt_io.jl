@@ -167,7 +167,7 @@ end
 
 function delta_arr(a,b)
     hit = 0
-    for i=1:length(a)
+    for i in eachindex(a)
         hit += ifelse(a[i]==b[i],1,0)
     end
     return ifelse(length(a)==hit,1.0,0.0)
@@ -396,7 +396,7 @@ function write_spes(chiEFTobj,io,nljsnt,lp,nTBME,nljdict;bin=false)
         end 
     end
     for tz = -1:2:1
-        for i = 1:length(nljsnt)
+        for i in eachindex(nljsnt)
             n,l,j = nljsnt[i]
             if target_nlj != []
                 ii = ifelse(tz==-1,i,i+lp)

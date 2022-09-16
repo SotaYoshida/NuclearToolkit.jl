@@ -1,9 +1,7 @@
-
-
 """
     SRG(xr,wr,V12mom,dict_pwch,to)
 
-main function for Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
+Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
 """
 function SRG(chiEFTobj,to) 
     if !chiEFTobj.params.srg; return nothing;end
@@ -26,8 +24,7 @@ function SRG(chiEFTobj,to)
     etas = [zeros(Float64,ndim,ndim) for i = 1:nthre]
     Rs = [zeros(Float64,ndim,ndim) for i = 1:nthre]
     tkeys = [ zeros(Int64,5) for i=1:nthre]
-    
-    sSRG = (1.0/srg_lambda)^4 # s in literature
+    sSRG = (1.0/srg_lambda)^4
     ds = 1.e-4
     srange = 0.0:ds:sSRG
     numit = length(srange)
@@ -72,7 +69,7 @@ function SRG(chiEFTobj,to)
                 sT[i,i] = (x *hc)^2 / (2*rmass)
                 sH[i,i] += (x *hc)^2 / (2*rmass)
             end
-            if norm(sH-sH',Inf) > 1.e-9; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
+            if norm(sH-sH',Inf) > 1.e-6; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
             srg_tr(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
             ## overwrite V12
             for (i,x) in enumerate(xr_fm)

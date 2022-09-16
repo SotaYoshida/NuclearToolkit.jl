@@ -368,7 +368,6 @@ function get_abcdarr_from_intkey!(nkey,abcdarr;ofst=1000)
     q = div(intkey,ofst^2); abcdarr[3] = q;intkey -= q *ofst^2
     q = div(intkey,ofst^1); abcdarr[2] = q;intkey -= q *ofst^1
     abcdarr[1] = intkey 
-    #println("nkey $nkey ntkey => key $abcdarr")
     return nothing
 end
 
@@ -416,12 +415,7 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
             if div(ja+jb,2) != div(jc+jd,2);continue;end
             ts = tdictl[intkey]
             sqfac = sqrt( (1+delta(tkey[1],tkey[2])) * (1+delta(tkey[3],tkey[4])))
-            vmono = 0.0            
-            for t in ts
-                J = t[1]
-                v = t[3] + t[4] /Anum + t[5] * Anum
-                vmono += (2*J+1) * v
-            end
+            vmono = calc_vmono_for_given_abcd(ts,Anum,1.0,false)
             tdict[tkey] = vmono *sqfac
             exkey = [tkey[3],tkey[4],tkey[1],tkey[2]]
             tdict[exkey] = vmono *sqfac
@@ -435,49 +429,29 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
                 exkey = copy(tkey)
                 exkey[1] = tkey[2]; exkey[2] = tkey[1]
                 ja = sps[tkey[1]].j; jb = sps[tkey[2]].j
-                vmono = 0.0
-                parity = (-1)^(div(ja+jb,2)+1)
-                for t in ts
-                    J = t[1]
-                    v = t[3] + t[4] /Anum + t[5] * Anum
-                    phase = parity * (-1)^J
-                    vmono += ((2*J+1)*phase) * v
-                end
-                tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
+                phasefac = (-1)^(div(ja+jb,2)+1)
+                vmono = calc_vmono_for_given_abcd(ts,Anum,phasefac,true)
+                tdict[exkey] = tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
            
             if tkey[3] != tkey[4]
                 exkey = copy(tkey)
                 exkey[3] = tkey[4]; exkey[4] = tkey[3]
                 jc = sps[tkey[3]].j; jd = sps[tkey[4]].j
-                vmono = 0.0
-                parity = (-1)^(div(jc+jd,2)+1)
-                for t in ts
-                    J = t[1]
-                    v = t[3] + t[4] /Anum + t[5] * Anum
-                    phase = parity * (-1)^J
-                    vmono += ((2*J+1)*phase) * v
-                end
-                tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
+                phasefac = (-1)^(div(jc+jd,2)+1)
+                vmono = calc_vmono_for_given_abcd(ts,Anum,phasefac,true)
+                tdict[exkey] = tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
 
             if ((tkey[1] != tkey[2]) && (tkey[3] != tkey[4]))
                 exkey = copy(tkey)
                 exkey[1] = tkey[2]; exkey[2] = tkey[1]
-                exkey[3] = tkey[4]; exkey[4] = tkey[3]                
+                exkey[3] = tkey[4]; exkey[4] = tkey[3]    
                 ja = sps[tkey[1]].j; jb = sps[tkey[2]].j
                 jc = sps[tkey[3]].j; jd = sps[tkey[4]].j
-                vmono = 0.0
                 phase = (-1)^(div(jc+jd,2)+div(jc+jd,2))
-                for t in ts
-                    J = t[1]
-                    v = t[3] + t[4] /Anum  + t[5] * Anum                  
-                    vmono += ((2*J+1)*phase) * v
-                end
-                tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
+                vmono = calc_vmono_for_given_abcd(ts,Anum,phase,false)
+                tdict[exkey] = tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
         end
     end
@@ -486,6 +460,20 @@ function store_1b2b(sps,dicts1b,dicts,binfo)
     dictsnt = dictSnt(dictTBMEs,dictMonopole)
     Hamil = Operator([0.0],[p1b,n1b],V2,true,false)
     return Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq
+end
+
+function calc_vmono_for_given_abcd(ts,Anum,phasefac,phaseJ::Bool;calcT=true,calcCM=true)
+    vmono = 0.0            
+    for t in ts
+        J = t[1]
+        if calcT || calcCM
+            v = t[3] + ifelse(calcT,t[4] /Anum,0.0) + ifelse(calcCM,t[5] * Anum,0.0)
+        else
+            v = t[2]
+        end
+        vmono += (2*J+1) * v * phasefac * ifelse(phaseJ,(-1)^J,1.0)
+    end
+    return vmono
 end
 
 function get_pn_sps(sps)
@@ -612,16 +600,11 @@ function def_chan2b(binfo,dicts,sps,Chan1b)
                             tkey[3]=a; tkey[4]=b
                         end
                         intkey = get_nkey_from_abcdarr(tkey)
-                        try 
-                            for JV in tdict[intkey]
-                                tJ = JV[1]
-                                v = JV[3] + JV[4] /Anum  + JV[5] * Anum
-                                if Int(tJ) != J;continue;end                            
-                                vmat[i,j] = vmat[j,i] = v
-                            end
-                        catch
-                            #println("tidx $tidx tkey $tkey")
-                            nothing
+                        for JV in tdict[intkey]
+                            tJ = JV[1]
+                            v = JV[3] + JV[4] /Anum  + JV[5] * Anum
+                            if Int(tJ) != J;continue;end                            
+                            vmat[i,j] = vmat[j,i] = v
                         end
                     end
                 end
@@ -692,7 +675,6 @@ function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
     emax = binfo.emax; A = binfo.nuc.A
     V2 = Hamil.twobody
     Chan2b = Chan2bD.Chan2b
-    #for ch = 1:length(Chan2b);V2[ch] .= 0.0;end
     tkey = zeros(Float64,4)
     for pnrank=1:3
         tdictl = dicts[pnrank]        
@@ -707,11 +689,8 @@ function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
             if div(ja+jb,2) != div(jc+jd,2);continue;end
             ts = tdictl[intkey]
             sqfac = sqrt( (1+delta(tkey[1],tkey[2])) * (1+delta(tkey[3],tkey[4])))
-            vmono = 0.0
-            for t in ts; vmono += (2*t[1]+1) * t[2]; end
-            tdict[tkey] = vmono *sqfac 
- 
-            #exchange term
+            vmono = calc_vmono_for_given_abcd(ts,A,1.0,false)
+            tdict[tkey] = sqfac * vmono
             exkey = [tkey[3],tkey[4],tkey[1],tkey[2]]
             tdict[exkey] = vmono *sqfac
             if tkey[1] != tkey[2]
@@ -719,29 +698,17 @@ function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
                 exkey .= tkey                
                 exkey[1] = tkey[2]; exkey[2] = tkey[1]
                 ja = sps[tkey[1]].j ; jb = sps[tkey[2]].j
-                vmono = 0.0
-                parity = (-1)^(div(ja+jb,2)+1)
-                for t in ts
-                    J,v = t
-                    phase = parity * (-1)^J
-                    vmono += ((2*J+1)*phase) * v
-                end
-                tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac #/ (Na*Nb)
+                phasefac = (-1)^(div(ja+jb,2)+1)
+                vmono = calc_vmono_for_given_abcd(ts,A,phasefac,true)
+                tdict[exkey] = tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
             if tkey[3] != tkey[4]
                 exkey = copy(tkey)
                 exkey[3] = tkey[4]; exkey[4] = tkey[3]
                 jc = sps[tkey[3]].j; jd = sps[tkey[4]].j
-                vmono = 0.0
-                parity = (-1)^(div(jc+jd,2)+1)
-                for t in ts
-                    J,v = t
-                    phase = parity * (-1)^J
-                    vmono += ((2*J+1)*phase) * v
-                end
-                tdict[exkey] = vmono *sqfac 
-                tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
+                phasefac = (-1)^(div(jc+jd,2)+1)
+                vmono = calc_vmono_for_given_abcd(ts,A,phasefac,true)
+                tdict[exkey] = tdict[[exkey[3],exkey[4],exkey[1],exkey[2]]] = vmono *sqfac 
             end
         end
     end

@@ -56,7 +56,6 @@ function dict_em500n3lo()
     dLECs["D_3D2"] = -1.46
     dLECs["D_3PF2"] = -0.465
     dLECs["D_3D3"] = 5.66
-
     ## For pion exchange contribution
     ## NNLO GeV^-1
     dLECs["c1_NNLO"] = -0.81
@@ -69,7 +68,6 @@ function dict_em500n3lo()
     dLECs["ct4_NNLO"] =  4.811   
     dLECs["cD"] =  0.545
     dLECs["cE"] = -0.044 
-
     ## N3LO GeV^-2
     dLECs["d12"] = 3.06
     dLECs["d3"] = -3.27
@@ -158,7 +156,6 @@ function dict_emn500nlo()
     dLECs["c_vs_3"] = 0.0
     dLECs["c_vs_4"] = 0.0
     dLECs["c_vs_5"] = 0.0
-
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
     return LECs(vals,idxs,dLECs)
 end
@@ -240,7 +237,6 @@ function dict_emn500n4lo()
     dLECs["c_vs_3"] = 0.0
     dLECs["c_vs_4"] = 0.0
     dLECs["c_vs_5"] = 0.0
-
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
     return LECs(vals,idxs,dLECs)
 end

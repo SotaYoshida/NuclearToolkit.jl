@@ -20,10 +20,29 @@ struct util_2n3n
     wsyms::wsyms_j1_1or2
 end
 
-function XF(Anum)
-    return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
+"""
+    prep_integrals_for2n3n(chiEFTobj)
+
+preparing integrals and Wigner symbols for density-dependent 3NFs:
+- `Fis::Fis_2n3n` vectors {F0s,F1s,F2s,F3s}, Eqs.(A13)-(A16) in [Kohno2013].
+- `QWs::` second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
+- `wsyms::` Wingner symbols with specific `j` used for both 2n and 2n3n.
+
+Reference:  
+[Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
+"""
+function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
+    n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
+    F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
+    QWs = prep_QWs(chiEFTobj,xr,ts,ws)
+    prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)        
+    wsyms = prep_wsyms()
+    Fis = Fis_2n3n(F0s,F1s,F2s,F3s)
+    return util_2n3n(Fis,QWs,wsyms)
 end
+
 function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
+    if !chiEFTobj.calc_3N; return nothing;end
     kF = chiEFTobj.kF
     n_mesh = chiEFTobj.n_mesh
     mpi = sum(mpis)/3.0 / hc; mpi2 = mpi^2; mpi4=mpi2^2
@@ -49,31 +68,7 @@ function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
     return nothing
 end
 
-"""
-    prep_integrals_for2n3n(chiEFTobj)
-
-preparing integrals and Wigner symbols for density-dependent 3NFs:
-- `Fis::Fis_2n3n` vectors {F0s,F1s,F2s,F3s}, Eqs.(A13)-(A16) in [Kohno2013].
-- `QWs::` second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
-- `wsyms::` Wingner symbols with specific `j` used for both 2n and 2n3n.
-
-Reference:  
-[Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
-"""
-function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
-    calc_3N = chiEFTobj.calc_3N
-    n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
-    F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
-    QWs = prep_QWs(chiEFTobj,xr,ts,ws)
-    if calc_3N
-        prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)        
-    end
-    wsyms = prep_wsyms()
-    Fis = Fis_2n3n(F0s,F1s,F2s,F3s)
-    return util_2n3n(Fis,QWs,wsyms)
-end
-
-function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
+function calc_vmom_3nf(chiEFTobj,it,to;pnm=false,nreg = 3)
     if !chiEFTobj.params.calc_3N; return nothing; end
     if it > 1; for i in eachindex(chiEFTobj.pw_channels); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr
@@ -84,10 +79,8 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     n_mesh = chiEFTobj.params.n_mesh
     LamChi = 700.0/hc
     rho = ifelse(pnm,2.0,4.0) * kF^3 / (6.0 * pi^2)
-    nreg = 3
     mpi = sum(mpis)/3.0/hc; mpi2 = mpi^2
     bbf =  2.0/3.0 / (4.0 * pi^2)
-
     r_c1 = dLECs["ct1_NNLO"] *1.e-3 *gA^2 * mpi2  / ((Fpi/hc)^4) *hc^2
     r_c3 = dLECs["ct3_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
     r_c4 = dLECs["ct4_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
@@ -99,7 +92,6 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     tllsj = [copy(tmp_llsj) for i =1:nthreads()]
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
-        #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
         itt = itts[pnrank]
         @views tllsj[1:nthreads()][1] .= itt
         @inbounds for J=0:jmax
@@ -109,11 +101,8 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
                 @inbounds for j = 1:n_mesh
                     y = xr[j]
                     fac3n = bbf  *freg(x,y,nreg)
-                    ## eff3nf 
-                    single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,
-                                  r_c1,r_c3,r_c4,r_cD,r_cE,
-                                  util_2n3n,lsj,tllsj[threadid()],
-                                  tdict,V12mom,i,j,to)
+                    single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,r_c1,r_c3,r_c4,r_cD,r_cE,
+                                  util_2n3n,lsj,tllsj[threadid()],tdict,V12mom,i,j,to)
                 end
             end
         end
@@ -121,17 +110,14 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     return nothing
 end
 
-function V_E(chiEFTobj,xr,cE,V12mom,dict_pwch,to)
-    nreg = 3
+function V_E(chiEFTobj,xr,cE,V12mom,dict_pwch,to;nreg = 3)
     pfunc = f1
     for pnrank = 1:3
         l=0;lp=0;S=0;J=0 ##1S0
-        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,
-                   l,lp,S,J,pfunc,nreg,to;is_3nf=true)
+        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,l,lp,S,J,pfunc,nreg,to;is_3nf=true)
         l=0;lp=0;S=1;J=1 ##3S1
         if pnrank%2==1;continue;end
-        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,
-                   l,lp,S,J,pfunc,nreg,to;is_3nf=true)
+        calc_Vmom!(chiEFTobj,pnrank,V12mom,dict_pwch[pnrank],xr,cE,cE,l,lp,S,J,pfunc,nreg,to;is_3nf=true)
     end
     return nothing
 end
@@ -283,8 +269,7 @@ function single_3NF_pe(J,pnrank,x,y,mpi2,fac3n,rho,
         ## Central term
         if ell == ellp
             ## V_D: central Eq.(B18)
-            tmp = Vc_cD(ell,XYT,rho,mpi2,ttit,ttis,F0X,F0Y,QL0)
-            allsum += tmp * fac3n * cD
+            allsum += fac3n * cD * Vc_cD(ell,XYT,rho,mpi2,ttit,ttis,F0X,F0Y,QL0)
             ## V_c1: central Eq.(B6)
             tmp = Vc_c1(ell,x_fm2,y_fm2,XYT,rho,mpi2,ttit,ttis,
                         F0X,F0Y,F1X,F1Y,QL0,QWL0_lp1,QWL0_lm1,

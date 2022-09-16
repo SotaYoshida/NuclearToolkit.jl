@@ -834,20 +834,11 @@ function intMCMC_PT(itnum_MCMC,burnin,var_M,Ts,
                 Eval = @views Evals[jidx]
                 BLAS.gemm!('N','N',1.0,Linv,Hmat,0.0,tMat)
                 BLAS.gemm!('T','N',1.0,Linv,tMat,0.0,tildH)                
-
-                #@timeit to "my_eigval" my_eigvals!(tildH,tMat,Dim,vks,en_s[jidx],
-                #                                   num_ev_target)                
-                #Evals[jidx] .= en_s[jidx][1]               
-                #println("En my ", Evals[jidx]) 
-
-                #@timeit to "Arpack" Evals[jidx] .= real.(
-                #    Arpack.eigs(tildH,nev=num_ev_target,
-                
+              
                 @timeit to "Arpack" begin
                     Eval .= Arpack.eigs(tildH,nev=num_ev_target,
                                         which=:SR,tol=1.e-6,maxiter=150)[1]
                 end
-                #println("En Arpack ", Evals[jidx], "\n")
                 nllhs[ridx] += L2_llh(Eval,Erefs[jidx],errors[jidx];T=Ts[ridx])
                 if ridx == 1
                     if itM > burnin 
@@ -1462,8 +1453,7 @@ function calcTBTD(TBTDs,
                   opTBTD1,pjumps,njumps,
                   pbits,nbits,tdims,wfs,idxs,bif_idxs,
                   olabels,oTBMEs,labels,to)
-    @inbounds @threads for k=1:length(idxs)
-        #@inbounds for k=1:length(idxs)
+    @inbounds @threads for k in eachindex(idxs)
         tmp = idxs[k]
         i = tmp.i; j=tmp.j; Nij=tmp.Nth
         w_i=wfs[i]; w_j = wfs[j]
@@ -1505,14 +1495,12 @@ function calcTBTD(TBTDs,
         vrank=3
         @inbounds for (nth,label) in enumerate(labels[vrank]) 
             vidx = label[end]
-            #@inbounds @threads for nth = 1:length(labels[vrank]) 
-            #    vidx = labels[vrank][nth][end]
             pjump = pjumps[nth]
             njump = njumps[nth]
-            @inbounds for opidx = 1:length(pjump)
+            @inbounds for opidx in eachindex(pjump)
                 tmp_pj = pjump[opidx]
                 tmp_nj = njump[opidx]
-                @inbounds for bidx = 1:length(bif_idxs)
+                @inbounds for bidx in eachindex(bif_idxs)
                     bi,bf,dummy = bif_idxs[bidx]
                     idim = tdims[bi]; lNi = length(nbits[bi])
                     fdim = tdims[bf]; lNf = length(nbits[bf])

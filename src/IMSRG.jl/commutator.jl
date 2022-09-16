@@ -155,16 +155,16 @@ end
 function comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float64}}
     sps = HFobj.modelspace.sps
     x2bs = X.twobody; y2bs = Y.twobody
-    for ch = 1:length(x2bs)
+    for ch in eachindex(x2bs)
         x2b = x2bs[ch]; y2b = y2bs[ch]; tbc = Chan2b[ch]
         J = tbc.J; kets = tbc.kets
         NJ = 2*J+1
         zsum = 0.0
-        for ib = 1:length(kets)
+        for ib in eachindex(kets)
             a,b = kets[ib]
             na = sps[a].occ; nb = sps[b].occ
             if na * nb == 0.0; continue;end
-            for ik = 1:length(kets)
+            for ik in eachindex(kets)
                 c,d = kets[ik]
                 nc = sps[c].occ; nd = sps[d].occ
                 zsum += (x2b[ib,ik]*y2b[ik,ib]-y2b[ib,ik]*x2b[ik,ib])*na*nb *(1-nc)*(1-nd)
@@ -488,7 +488,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
     tdict_ichidx = PandyaObj.dict_ich_idx_from_ketcc
     hermite = ret.hermite
     ofst1 = 1000
-    @inbounds @threads for ich = 1:length(numbers_addinv)
+    @inbounds @threads for ich in eachindex(numbers_addinv)
         ch = numbers_addinv[ich][1]
         tbc = Chan2b[ch]; tkets = tbc.kets; J = tbc.J
         nKets = length(tkets)

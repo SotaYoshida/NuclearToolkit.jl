@@ -1,5 +1,5 @@
 """
-under construction...
+Not used
 """
 
 struct dWS3n
@@ -208,7 +208,7 @@ function write_cfp_bin(io,north,nphys,vals,vecs,JPT,N,params)
   write(io, nphys);write(io,north);write(io,N)
   cfp = zeros(Float64,north,nphys)
   hit = 0
-  for i = 1:length(vals)
+  for i in eachindex(vals)
     val = vals[i]
     vec = @view vecs[:,i]
     if abs(val - 1.0) < 1.e-5

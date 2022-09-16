@@ -88,59 +88,6 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     return true
 end
 
-function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
-    for pn = 1:2
-        Hamil.onebody[pn] += fac .* HCM.onebody[pn]
-    end
-    return nothing
-end
-
-# function check_2bnorm(H,Chan2bD)
-#     Chan2b = Chan2bD.Chan2b
-#     nchan = length(Chan2b)
-#     tnormsum = 0.0
-#     for ch = 1:nchan
-#         tnorm = norm(H.twobody[ch],2)
-#         tnormsum += tnorm
-#     end
-#     println("tnormsum $tnormsum")
-#     println("p1b ",norm(H.onebody[1],2))
-#     println("n1b ",norm(H.onebody[2],2))
-# end
-
-
-
-function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
-    Chan2b = Chan2bD.Chan2b
-    nchan = length(Chan2b)
-    @threads for ch = 1:nchan
-        tkey = zeros(Int64,4)
-        tbc = Chan2b[ch]
-        kets = tbc.kets
-        J = tbc.J
-        Hcm = HCM.twobody[ch]
-        pnrank = 2 + div(tbc.Tz,2)
-        nkets = length(tbc.kets)
-        for i=1:nkets
-            bra = kets[i]            
-            tbra = @view tkey[1:2] 
-            tbra .= bra
-            for j=i:nkets
-                ket = kets[j]
-                tket = @view tkey[3:4] 
-                tket .= ket
-                tHcm = Hcm[i,j]
-                nkey = get_nkey_from_abcdarr(tkey)
-                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
-                    if J != target[1];continue;end
-                    target[5] = tHcm
-                end
-            end
-        end
-    end
-    return nothing
-end
-
 """
     hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
@@ -179,6 +126,44 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;
         end
     end
     return true
+end
+
+function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
+    for pn = 1:2
+        Hamil.onebody[pn] += fac .* HCM.onebody[pn]
+    end
+    return nothing
+end
+
+function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
+    Chan2b = Chan2bD.Chan2b
+    nchan = length(Chan2b)
+    @threads for ch = 1:nchan
+        tkey = zeros(Int64,4)
+        tbc = Chan2b[ch]
+        kets = tbc.kets
+        J = tbc.J
+        Hcm = HCM.twobody[ch]
+        pnrank = 2 + div(tbc.Tz,2)
+        nkets = length(tbc.kets)
+        for i=1:nkets
+            bra = kets[i]            
+            tbra = @view tkey[1:2] 
+            tbra .= bra
+            for j=i:nkets
+                ket = kets[j]
+                tket = @view tkey[3:4] 
+                tket .= ket
+                tHcm = Hcm[i,j]
+                nkey = get_nkey_from_abcdarr(tkey)
+                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
+                    if J != target[1];continue;end
+                    target[5] = tHcm
+                end
+            end
+        end
+    end
+    return nothing
 end
 
 function make_dicts_formem(nuc,dicts1b,dict_TM,sps)
@@ -274,15 +259,14 @@ end
     recalc_v!(A,dicts)
 Function to calculate two-body interaction from snt file.
 This is needed because in the readsnt/readsnt_bin function, the interaction part and the kinetic term 
-are stored separately to avoid multiple reads of the input file when calculating multiple nuclei.
+are stored separately to avoid multiple reads of the input file for calculation of multiple nuclei.
 """
 function recalc_v!(A,dicts)
-    #V2b = Vjj + Vpp*hw/Anum
     for pnrank = 1:3
         tdict = dicts[pnrank]
         for tkey in keys(tdict)
             tmp = tdict[tkey]            
-            for i = 1:length(tmp)
+            for i in eachindex(tmp)
                 tmp[i][2] = tmp[i][3] + tmp[i][4]/A + tmp[i][5] *A
             end
         end 
@@ -364,10 +348,10 @@ end
 initialize occupation number matrices (```occ_p```&```occ_n```) by naive filling configurations ```pconf```&```nconf```
 """
 function ini_occ!(pconf,occ_p,nconf,occ_n)
-    for i=1:length(pconf)
+    for i in eachindex(pconf)
         occ_p[i,i] = pconf[i]
     end
-    for i=1:length(nconf)
+    for i in eachindex(nconf)
         occ_n[i,i] = nconf[i] 
     end    
     return nothing
@@ -601,7 +585,7 @@ function get_space_chs(sps,Chan2b)
     vv = Dict{Int64,Vector{Int64}}()
     qv = Dict{Int64,Vector{Int64}}()
     qq = Dict{Int64,Vector{Int64}}()
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         tbc = Chan2b[ch]
         kets = tbc.kets
         for (ik,ket) in enumerate(kets)
@@ -668,7 +652,6 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 - `E0,EMP2,EMP3` HF energy and its MBPT corrections
 - `fp/fn::Matrix{Float64}` one-body int.
 - `Gamma:: Vector{Matrix{Float64}}` two-body int.
-
 """
 function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
                       itnum=100,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)
@@ -762,9 +745,6 @@ function calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,Es;
             if rho_p[i,j] == 0.0;continue;end
             E2bpp += 0.5 * rho_p[i,j] *Vt_pp[i,j]
             E2bpn += 0.5 * rho_p[i,j] *Vt_pn[i,j]
-            # if rho_p[i,j] != 0.0 && verbose
-            #     println("i $i j $j \t rho_p ",@sprintf("%15.6f",rho_p[i,j]),"  p from pp: ",@sprintf("%15.6f",Vt_pp[i,j])," pn ", @sprintf("%15.6f",Vt_pn[i,j]))
-            # end
         end        
     end
     for i = 1:ln
@@ -772,9 +752,6 @@ function calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,Es;
             if rho_n[i,j] == 0.0;continue;end
             E2bnn += 0.5* rho_n[i,j] *Vt_nn[i,j]
             E2bpn += 0.5* rho_n[i,j] *Vt_np[i,j]
-            # if rho_n[i,j] != 0.0 && verbose
-            #     println("i ",i+lp," j ",j+lp, " \t rho_n ",@sprintf("%15.6f",rho_n[i,j]),"  n from nn: ",@sprintf("%15.6f",Vt_nn[i,j])," np ", @sprintf("%15.6f",Vt_np[i,j]))
-            # end
         end        
     end
     E2b = E2bpp + E2bpn + E2bnn

@@ -8,15 +8,15 @@
 - `HFobj::HamiltonianNormalOrdered` struct HNO, which includes info. of HF solution (HF energy, occupation, f,Gamma,...)
 - `dictMono::Dict` dictionary to get Vmonopole
 - `d9j` preallocated dictionaries for wigner 9j symbols, which are needed to calculate Rp2
-- `HOBs` struct HarmonicOscillatorBrackets 
+- `HOBs::Dict{Int64, Dict{Int64,Float64}}` harmonic oscillator brackets 
 - `dict6j` preallocated dictionaries for wigner6j symbols (needed in e.g., Pandya transformation)
 - `valencespace` to specify valence space  
 - `Operators::Vector{String}` non-Hamiltonian operators
 - `to` TimerOutput object to measure runtime&memory allocations
 
 # Optional Arguments
-- `core_generator_type` only the "atan" is implemented
-- `valence_generator_type` only the "shell-model-atan" is implemented
+- `core_generator_type` only the "atan" is available
+- `valence_generator_type` only the "shell-model-atan" is available
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 """
 function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
@@ -77,7 +77,7 @@ end
 initialize `dictMonopole`
 """
 function init_dictMonopole!(dictMonopole,Chan2b)
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         tbc = Chan2b[ch]
         kets = tbc.kets; J = tbc.J; Tz = tbc.Tz
         pnrank = 2 + div(Tz,2)
@@ -229,7 +229,7 @@ function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
         for ik in idxs_cc
             i,j = kets[ik]
             ni = sps[i].occ; nj = sps[j].occ
-            for ib =1:length(kets)
+            for ib in eachindex(kets)
                 a,b = kets[ib]
                 na = sps[a].occ; nb = sps[b].occ
                 if sps[a].c || sps[b].c ; continue;end                

@@ -170,9 +170,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
     d9j  = Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}[ ]
     HOBs = Dict{Int64, Dict{Int64, Float64}}()
-    #if do2n3ncalib
-        d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
-    #end
+    d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
     return chiEFTobj,OPTobj,d9j,HOBs
 end
 

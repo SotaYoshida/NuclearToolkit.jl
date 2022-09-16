@@ -217,11 +217,11 @@ function dict_emn500n4lo()
     dLECs["cD"] = -0.2766
     dLECs["cE"] = 0.8202
 
-    dLECs["ct1_NNLO"] = -0.73
-    dLECs["ct3_NNLO"] = -3.38
-    dLECs["ct4_NNLO"] = 1.69
-    dLECs["cD"] = 0.00
-    dLECs["cE"] = 0.00
+    #dLECs["ct1_NNLO"] = -0.73
+    #dLECs["ct3_NNLO"] = -3.38
+    #dLECs["ct4_NNLO"] = 1.69
+    #dLECs["cD"] = 0.00
+    #dLECs["cE"] = 0.00
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18

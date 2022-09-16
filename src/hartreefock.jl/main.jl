@@ -78,7 +78,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         else
             if "Rp2" in Operators
                 Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-                eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
+                @timeit to "Rp2" eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
             end
         end
         Aold = A

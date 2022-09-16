@@ -742,9 +742,9 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     norms = zeros(Float64,4)
     Omega = IMSRGobj.Omega
     tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
-    tmpOp  = deepcopy(Op_Rp2);  aOp!(tmpOp,0.0)
-    tmpOp2 = deepcopy(Op_Rp2); aOp!(tmpOp2,0.0)
-    Nested = deepcopy(Op_Rp2); aOp!(Nested,0.0)
+    tmpOp  = deepcopy(Op_Rp2);aOp!(tmpOp,0.0)
+    tmpOp2 = deepcopy(Op_Rp2);aOp!(tmpOp2,0.0)
+    Nested = deepcopy(Op_Rp2);aOp!(Nested,0.0)
     nwritten = IMSRGobj.n_written_omega[1]
     for i = 1:nwritten
         read_omega_bin!(binfo,i,tOmega)

@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         mpi: [ 'mpich', 'openmpi' ]
-    name: ${{ matrix.mpi }} example
+    name: MPI example
     steps:
       - name: Checkout
         uses: actions/checkout@v3

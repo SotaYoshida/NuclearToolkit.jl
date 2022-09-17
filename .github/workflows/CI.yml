@@ -38,6 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         mpi: [ 'mpich', 'openmpi' ]
+    name: mpi test
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -46,6 +47,4 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia ./mpirun_test.jl
-      if: ${{ matrix.payload == 'mpi' }}
-      continue-on-error: ${{ matrix.version == 'nightly' }}
 

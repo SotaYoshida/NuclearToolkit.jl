@@ -14,16 +14,16 @@ using Test
         nucs = ["He4"]
 
         ## HF-MBPT from snt/snt.bin
-        sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
+        sntf = "tbme_em500n3lo_2n3n_barehw20emax2.snt.bin"
         HFobj1 = hf_main(nucs,sntf,hw,emax;return_HFobj=true)
         Es1 = [HFobj1.E0, HFobj1.EMP2, HFobj1.EMP3]
-        sntf = "tbme_em500n3lo_barehw20emax2.snt"
+        sntf = "tbme_em500n3lo_2n3n_barehw20emax2.snt"
         HFobj2 = hf_main(nucs,sntf,hw,emax;return_HFobj=true)
         Es2 = [HFobj2.E0, HFobj2.EMP2, HFobj2.EMP3]
         @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
 
         ## IMSRG
-        sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
+        sntf = "tbme_em500n3lo_2n3n_barehw20emax2.snt.bin"
         @test hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace)
 
         ## shell model calculation

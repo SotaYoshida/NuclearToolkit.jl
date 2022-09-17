@@ -1,3 +1,4 @@
+import Pkg; Pkg.add("NuclearToolkit")
 using NuclearToolkit
 using Test
 

@@ -33,13 +33,7 @@ jobs:
         if: ${{ matrix.payload == 'serial' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
       - name: Execute MPI-parallel tests
-        run: |
-          julia --project -e '
-            using Pkg; Pkg.build(); Pkg.precompile()
-            Pkg.add("MPI"); using MPI; MPI.install_mpiexecjl()
-            Pkg.test()
-          '
-          $HOME/.julia/bin/mpiexecjl -np 4 julia --check-bounds=yes --depwarn=yes --project --color=yes
+        run: mpirun -np 4 julia mpirun_test.jl
         if: ${{ matrix.payload == 'mpi' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
 

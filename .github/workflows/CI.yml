@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mpi: [ 'mpich', 'openmpi' ]
+        mpi: [ 'openmpi' ]
     name: mpi test
     steps:
       - name: Checkout
@@ -46,5 +46,5 @@ jobs:
         uses: mpi4py/setup-mpi@v1
         with:
           mpi: ${{ matrix.mpi }}
-      - run: mpiexec -n 4 julia ./mpirun_test.jl
+      - run: mpiexec -n 4 julia ./test/mpirun_test.jl
 

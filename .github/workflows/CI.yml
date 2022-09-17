@@ -19,10 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
-          - {version: '1.7',   os: macOS-latest,   payload: serial}
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
-          - {version: nightly,   os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -45,22 +42,4 @@ jobs:
           $HOME/.julia/bin/mpiexecjl -np 4 julia --check-bounds=yes --depwarn=yes --project --color=yes
         if: ${{ matrix.payload == 'mpi' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1'
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-docdeploy@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - run: |
-          julia --project=docs -e '
-            using Documenter: DocMeta, doctest
-            using NuclearToolkit
-            DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
-            doctest(NuclearToolkit)'
+

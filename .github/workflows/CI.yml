@@ -40,9 +40,9 @@ jobs:
           julia --project -e '
             using Pkg; Pkg.build(); Pkg.precompile()
             Pkg.add("MPI"); using MPI; MPI.install_mpiexecjl()
-            Pkg.test(; test_args=["quick"])
+            Pkg.test()
           '
-          $HOME/.julia/bin/mpiexecjl -np 4 julia '
+          $HOME/.julia/bin/mpiexecjl -np 4 julia --check-bounds=yes --depwarn=yes --project --color=yes
         if: ${{ matrix.payload == 'mpi' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
   docs:

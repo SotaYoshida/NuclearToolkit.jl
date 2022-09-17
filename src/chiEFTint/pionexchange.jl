@@ -2,6 +2,8 @@
     OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
 
 calc. One-pion exchange potential in the momentum-space
+
+Reference: R. Machleidt, Phys. Rev. C 63 024001 (2001).
 """
 function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr; V12mom = chiEFTobj.V12mom
@@ -64,10 +66,6 @@ function fac_pig(beta,c5=0.0)
     return - (1.0-beta)^2 / (2*beta^2) * log(1+beta) +(1.0+beta)/(2*beta) -2.0*c5
 end
 
-"""
-
-Reference: R. Machleidt, Phys. Rev. C 63 024001 (2001).
-"""
 function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamma=false;additive=false)
     x2 = x^2; y2 = y^2
     z = (mpi2+x2+y2) / (2.0*x*y)
@@ -107,25 +105,33 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamm
     d2j1 = 1.0/(2*J+1)
     if nterm == 1
         phase = ifelse(pnrank==2,-1.0,1.0)         
-        tVs[1] = ifelse(additive,tVs[1]+v1 *phase,v1 *phase)
-        tVs[2] = ifelse(additive,tVs[2]+v2 *phase,v2 *phase)
-        tVs[3] = ifelse(additive,tVs[3]+d2j1 * ((J+1)* v3 + J*v4-v56)*phase,d2j1 * ((J+1)* v3 + J*v4-v56)*phase)
-        tVs[4] = ifelse(additive,tVs[4]+d2j1 * ( J*v3 + (J+1)*v4 +v56) *phase,d2j1 * ( J*v3 + (J+1)*v4 +v56) *phase)
-        tVs[5] = ifelse(additive,tVs[5]-d2j1 * (v34-(J+1)*v5+J*v6)*phase,-d2j1 * (v34-(J+1)*v5+J*v6)*phase)
-        tVs[6] = ifelse(additive,tVs[6]-d2j1 * (v34+J*v5-(J+1)*v6)*phase,-d2j1 * (v34+J*v5-(J+1)*v6)*phase)
+        tVs[1] = additive_sum(additive,tVs[1],v1 *phase)
+        tVs[2] = additive_sum(additive,tVs[2],v2 *phase)
+        tVs[3] = additive_sum(additive,tVs[3],d2j1 * ((J+1)* v3 + J*v4-v56)*phase)
+        tVs[4] = additive_sum(additive,tVs[4],d2j1 * ( J*v3 + (J+1)*v4 +v56) *phase)
+        tVs[5] = additive_sum(additive,tVs[5],-d2j1 * (v34-(J+1)*v5+J*v6)*phase)
+        tVs[6] = additive_sum(additive,tVs[6],-d2j1 * (v34+J*v5-(J+1)*v6)*phase)
     else
         is = J%2 + 1
         it = is%2 +1
         ttis = ifelse(is==2,-2.0,2.0)
         ttit = ifelse(it==2,-2.0,2.0)
-        tVs[1] = ifelse(additive,tVs[1]+ttis * v1,ttis * v1)
-        tVs[2] = ifelse(additive,tVs[2]+ttit * v2,ttit * v2)
-        tVs[3] = ifelse(additive,tVs[3]+d2j1 * ((J+1)* (ttis*v3) + J*(ttis*v4)-(ttis*v56)),d2j1 * ((J+1)* (ttis*v3) + J*(ttis*v4)-(ttis*v56)))
-        tVs[4] = ifelse(additive,tVs[4]+d2j1 * ( J*(v3*ttis) + (J+1)*(ttis*v4) +(ttis*v56)),d2j1 * ( J*(v3*ttis) + (J+1)*(ttis*v4) +(ttis*v56)))
-        tVs[5] = ifelse(additive,tVs[5]-d2j1 * ((ttis*v34)-(J+1)*(ttis*v5)+J*(ttis*v6)),-d2j1 * ((ttis*v34)-(J+1)*(ttis*v5)+J*(ttis*v6)))
-        tVs[6] = ifelse(additive,tVs[6]-d2j1 * ((ttis*v34)+J*(ttis*v5)-(J+1)*(ttis*v6)),-d2j1 * ((ttis*v34)+J*(ttis*v5)-(J+1)*(ttis*v6)))
+        tVs[1] = additive_sum(additive,tVs[1],ttis * v1)
+        tVs[2] = additive_sum(additive,tVs[2],ttit * v2)
+        tVs[3] = additive_sum(additive,tVs[3],d2j1 * ((J+1)* (ttis*v3) + J*(ttis*v4)-(ttis*v56)))
+        tVs[4] = additive_sum(additive,tVs[4],d2j1 * ( J*(v3*ttis) + (J+1)*(ttis*v4) +(ttis*v56)))
+        tVs[5] = additive_sum(additive,tVs[5],-d2j1 * ((ttis*v34)-(J+1)*(ttis*v5)+J*(ttis*v6)))
+        tVs[6] = additive_sum(additive,tVs[6],-d2j1 * ((ttis*v34)+J*(ttis*v5)-(J+1)*(ttis*v6)))
     end
     return nothing 
+end
+
+function additive_sum(TF::Bool,retv,inv)
+    if TF
+         return retv + inv 
+    else
+        return inv
+    end
 end
 
 ### function-forms for partial waves
@@ -800,8 +806,7 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
 
             for ch =1:9
                 gi = gis[ch]
-                tid = threadid()
-                target = tmpsum[tid]
+                target = tmpsum[threadid()]
                 axpy!(1.0,target[ch],gi)
                 target[ch] .= 0.0 
             end
@@ -849,7 +854,7 @@ function n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
         sumWt += fac1_3l * fac_ImVT *  ws[ith] * ImWt3 / (mu^3 * (mu^2 + q2))
         sumVs += fac1_3l * fac_ImVT *  ws[ith] * ImVs3 / (mu^3 * (mu^2 + q2))
         sumWs += fac1_3l * fac_ImVT *  ws[ith] * ImWs3 / (mu^3 * (mu^2 + q2))
-        sumWc += fac1_3l * fac_ImV  *  ws[ith] * ImWc3 / (mu^5 *(mu^2 + q2))
+        sumWc += fac1_3l * fac_ImV  *  ws[ith] * ImWc3 / (mu^5 * (mu^2 + q2))
     end
     axpy!(sumVt*int_w,tpj,target[1])
     axpy!(sumWt*int_w,tpj,target[2])
@@ -890,7 +895,7 @@ function calc_IJ_V(J,pnrank,gi,opf,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,t
         V0  += opf[6] * IJ4 
         V1  += opf[1] * IJ4 + opf[9] * IJ5 
         V12 += opf[1] * IJ10
-        V34 += opf[9] * IJ1 +opf[1] * IJ11
+        V34 += opf[9] * IJ1 + opf[1] * IJ11
         e1 = opf[6] * IJ12
         V55 += e1
         V66 += e1
@@ -929,7 +934,6 @@ function transV_into_lsj(J,pnrank,Vs,v1,v2,v3,v4,v5,v6;isodep=false)
     Vs[6] = -d2j1 * (v34+J*v5-(J+1)*v6) * ttis
     return nothing
 end
-
 
 struct n3lo_2loopObj
     nmu::Int64

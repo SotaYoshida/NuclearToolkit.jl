@@ -158,7 +158,7 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,n
     twobody = Op_Rp2.twobody
     frirj = - 4/(A*Z)
     nch = length(Chan2b)
-    @threads for ch = 1:nch
+    @timeit to "RCM 2body" @threads for ch in eachindex(Chan2b)
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J;kets = tmp.kets
         factor_rirj = ifelse(Tz==0, 0.5, 1.0)
@@ -576,15 +576,18 @@ function calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
     nd = od.n; ld = od.l; jd = od.j; tzd = od.tz
     fab = 2*na + la + 2*nb + lb
     fcd = 2*nc + lc + 2*nd + ld
-    for Lab = abs(la-lb):la+lb
-        for Sab = 0:1
+    
+    for Sab = 0:1
+        Scd = Sab
+        tdict9j_ab = dict9j[Sab+1][div(ja,2)+1][la+1][div(jb,2)+1][lb+1]            
+        tdict9j_cd = dict9j[Scd+1][div(jc,2)+1][lc+1][div(jd,2)+1][ld+1]
+        for Lab = abs(la-lb):la+lb
             if !tri_check(Lab,Sab,J);continue;end
-            tdict9j = dict9j[Sab+1]
-            njab = tdict9j[div(ja,2)+1][la+1][div(jb,2)+1][lb+1][Lab+1]
+            njab = tdict9j_ab[Lab+1]
             njab *= sqrt( (2*Lab+1) *(2*Sab+1) * (ja+1) * (jb+1))
             if njab == 0.0; continue;end
-            Scd = Sab; Lcd = Lab
-            njcd = tdict9j[div(jc,2)+1][lc+1][div(jd,2)+1][ld+1][Lab+1]
+            Lcd = Lab
+            njcd = tdict9j_cd[Lcd+1]
             njcd *= sqrt( (2*Lcd+1) *(2*Scd+1) * (jc+1) * (jd+1) )
             if njcd == 0.0; continue; end
             for N_ab = 0:div(fab,2)                
@@ -673,10 +676,10 @@ where ``\\langle r^2_p \\rangle = 0.769 \\mathrm{fm}^2``, ``\\langle r^2_n \\ran
 `` \\frac{3}{4m^2_p c^4} =0.033\\mathrm{fm}^2`` is the so-called Darwin-Foldy term, and the last term is Spin-Orbit correction term.
 """
 function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true)   
-    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
+    @timeit to "RCM" Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
     Calculate_intR2p(binfo,Chan1b,HFobj,Op_Rp2)
     Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
-    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
+    @timeit to "expec" Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
     return Rp,Rp_PT
 end
 

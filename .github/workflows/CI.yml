@@ -37,6 +37,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        include:
+          - {version: 'nightly',   os: ubuntu-latest,  payload: mpi}
         mpi: [ 'openmpi' ]
     name: mpi test
     steps:

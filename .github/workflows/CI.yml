@@ -19,7 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: 'nightly',   os: ubuntu-latest,  payload: mpi}
+          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
+          - {version: '1.7',   os: macOS-latest,   payload: serial}
+          - {version: nightly,   os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -28,30 +30,47 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - name: Execute serial tests
-        uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-runtest@v1
         if: ${{ matrix.payload == 'serial' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
-  build:
+  # build:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
+  #       mpi: [ 'openmpi' ]
+  #   name: mpi test
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: julia-actions/setup-julia@v1
+  #       with:
+  #         version: ${{ matrix.version }}
+  #         arch: x64
+  #     - uses: julia-actions/cache@v1
+  #     - uses: julia-actions/julia-buildpkg@v1
+  #     - name: Setup MPI
+  #       uses: mpi4py/setup-mpi@v1
+  #       with:
+  #         mpi: ${{ matrix.mpi }}
+  #     - run: mpiexec -n 4 julia ./test/mpirun_test.jl
+  docs:
+    name: Documentation
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
-        mpi: [ 'openmpi' ]
-    name: mpi test
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.version }}
-          arch: x64
-      - uses: julia-actions/cache@v1
+          version: '1.7'
       - uses: julia-actions/julia-buildpkg@v1
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: ${{ matrix.mpi }}
-      - run: mpiexec -n 4 julia ./test/mpirun_test.jl
-
+      - uses: julia-actions/julia-docdeploy@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+      - run: |
+          julia --project=docs -e '
+            using Documenter: DocMeta, doctest
+            using NuclearToolkit
+            DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
+            doctest(NuclearToolkit)'

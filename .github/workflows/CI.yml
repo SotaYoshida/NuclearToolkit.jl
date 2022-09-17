@@ -18,23 +18,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.7'
-          - 'nightly'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        include:
+          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
+          - {version: '1.7',   os: macOS-latest,   payload: serial}
+          - {version: '1,7',   os: ubuntu-latest,  payload: mpi}
+          - {version: nigthly,   os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1      
-      - run: mpiexec -n 4 mpirun_test.jl
+      - name: Execute serial tests
+        uses: julia-actions/julia-runtest@v1
+        if: ${{ matrix.payload == 'serial' }}
+        continue-on-error: ${{ matrix.version == 'nightly' }}
+      - name: Execute MPI-parallel tests
+        run: |
+          julia --project -e '
+            using Pkg; Pkg.build(); Pkg.precompile()
+            Pkg.add("MPI"); using MPI; MPI.install_mpiexecjl()
+            Pkg.test(; test_args=["quick"])
+          '
+          $HOME/.julia/bin/mpiexecjl -np 4 julia '
+        if: ${{ matrix.payload == 'mpi' }}
+        continue-on-error: ${{ matrix.version == 'nightly' }}
   docs:
     name: Documentation
     runs-on: ubuntu-latest

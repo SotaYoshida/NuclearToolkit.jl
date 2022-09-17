@@ -34,14 +34,6 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1      
-  test:
-    name: mpitest Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        mpi: [ 'mpich', 'openmpi' ]
-    name: ${{ matrix.mpi }} example
-    steps:
       - run: mpiexec -n 4 mpirun_test.jl
   docs:
     name: Documentation

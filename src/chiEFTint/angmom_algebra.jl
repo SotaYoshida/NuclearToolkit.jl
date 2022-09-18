@@ -769,7 +769,6 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
         @timeit to "prep9jHOB" @threads for L = 0:e2max
-        #@timeit to "prep9jHOB" for L = 0:e2max 
             targetdict = dict9j_HOB[L+1]
             tkey9j = arr9j[threadid()]
             for N=0:e2max-L

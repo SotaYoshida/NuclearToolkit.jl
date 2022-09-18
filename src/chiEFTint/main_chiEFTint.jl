@@ -23,6 +23,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     io = select_io(MPIcomm,optimizer,nucs)
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
+    @timeit to "deutron" Calc_Deuteron(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
@@ -435,8 +436,7 @@ function read_LECs(pottype)
     elseif pottype == "emn500n4lo"
         return dict_emn500n4lo()
     else
-        @error "unknown potype $pottype"
-        exit()
+        @error "unknown potype $pottype"       
     end
 end
 
@@ -475,8 +475,7 @@ function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
     Rnl = zeros(Float64,Nnmax+1,lmax_in+1,n_mesh)
     for l=0:lmax_in
         for kidx=1:n_mesh
-            pb = br * xr_fm[kidx]
-            pb2 = pb^2
+            pb = br * xr_fm[kidx]; pb2 = pb^2
             fexp = exp(-0.5*pb2)
             fpow = pb^(l+1)
             for n=0:Nnmax
@@ -492,65 +491,34 @@ end
 """
     prepare_2b_pw_states(;io=stdout)
 
-preparing two-body channels in terms of <Lp,S,J| |L,S,J>.
+preparing two-body partical-wave channels, <Lp,S,J| |L,S,J>.
 For example, [pnrank,L,Lp,S,J] = [0, 0, 2, 1, 1] corresponds to proton-neutron 3S1-3D1 channel.
 """
 function prepare_2b_pw_states(;io=stdout)
-    #iz,lz1,lz2,isz,jz
     pw_channels = Vector{Int64}[ ]
     dict_pwch = [Dict{Vector{Int64},Int64}() for pnrank=1:3] 
     arr_pwch = [[[[ zeros(Int64,j+iss-abs(j-iss)+1) for ll1=abs(j-iss):j+iss ] for j=0:jmax ] for iss=0:1 ] for pnrank=1:3]    
     num=0
-    ## pp iz = -2
-    itt = 1
-    for iss=0:1
-        for j=0:jmax
-            for ll1=abs(j-iss):j+iss
-                for ll2=abs(j-iss):j+iss
-                    if (-1)^ll1 != (-1)^ll2;continue;end
-                    if itt != Int( (1+(-1)^(ll1+iss))/2);continue;end
-                    if (-1)^(ll1+iss+itt) != -1;continue;end
-                    num=num+1
-                    push!(pw_channels,[-2,ll1,ll2,iss,j])
-                    dict_pwch[1][[-2,ll1,ll2,iss,j]] = num
-                    arr_pwch[1][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
-                end
-            end
-        end
-    end
-    ##  nn iz = 2
-    pnrank=3
-    for iss=0:1
-        for j=0:jmax
-            for ll1=abs(j-iss):j+iss
-                for ll2=abs(j-iss):j+iss
-                    if (-1)^ll1 != (-1)^ll2;continue;end
-                    if itt != Int( (1+(-1)^(ll1+iss))/2);continue;end
-                    if (-1)^(ll1+iss+itt) != -1;continue;end
-                    num=num+1
-                    push!(pw_channels,[2,ll1,ll2,iss,j])
-                    dict_pwch[pnrank][[2,ll1,ll2,iss,j]] = num
-                    arr_pwch[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
-                end
-            end
-        end
-    end
-    ## pn iz = 0
-    pnrank=2
-    for iss=0:1
-        for ktt=1:2
-            if (iss==0 && ktt==1) || (iss==1 && ktt==2);itt=1;end
-            if (iss==0 && ktt==2) || (iss==1 && ktt==1);itt=0;end
+    for pnrank = [1,3,2]
+        itt = 1
+        Tz = 2*pnrank -4 
+        for S=0:1
             for j=0:jmax
-                for ll1=abs(j-iss):j+iss
-                    for ll2=abs(j-iss):j+iss
-                        if (-1)^ll1 != (-1)^ll2;continue;end
-                        if itt != Int((1+(-1)^(ll1+iss))/2) ;continue;end
-                        if (-1)^(ll1+iss+itt) != -1;continue;end
-                        num=num+1
-                        push!(pw_channels,[0,ll1,ll2,iss,j])
-                        dict_pwch[pnrank][[0,ll1,ll2,iss,j]] = num
-                        arr_pwch[pnrank][iss+1][j+1][ll1-abs(j-iss)+1][ll2-abs(j-iss)+1] = num
+                for ll1=abs(j-S):j+S
+                    for ll2=abs(j-S):j+S
+                        for ktt = 1:ifelse(pnrank==2,2,1)
+                            if pnrank==2
+                                if (S==0 && ktt==1) || (S==1 && ktt==2);itt=1;end
+                                if (S==0 && ktt==2) || (S==1 && ktt==1);itt=0;end
+                            end                    
+                            if (-1)^ll1 != (-1)^ll2;continue;end
+                            if itt != Int((1+(-1)^(ll1+S))/2);continue;end
+                            if (-1)^(ll1+S+itt) != -1;continue;end
+                            num=num+1
+                            push!(pw_channels,[Tz,ll1,ll2,S,j])
+                            dict_pwch[pnrank][[Tz,ll1,ll2,S,j]] = num
+                            arr_pwch[pnrank][S+1][j+1][ll1-abs(j-S)+1][ll2-abs(j-S)+1] = num
+                        end
                     end
                 end
             end
@@ -569,8 +537,7 @@ function calc_coulomb(chiEFTobj,xs,ws,Vcoulomb,pw_channels,num2bch,Rnl;meshp=100
     r,w = Gauss_Legendre(0.0,rmax,meshp)
     ra1 = zeros(Float64,meshp);rb1 = zeros(Float64,meshp)
     ra2 = zeros(Float64,meshp);rb2 = zeros(Float64,meshp)
-    rnl1 = zeros(Float64,meshp)
-    rnl2 = zeros(Float64,meshp)
+    rnl1 = zeros(Float64,meshp);rnl2 = zeros(Float64,meshp)
     vcl = zeros(Float64,meshp)
     fmcoul(vcl,r)
     memo1=[0]; memo2=[0]
@@ -605,7 +572,6 @@ function fmcoul(vcl,r)
 end
 
 function howf(num,brange,n,l,r,ra,rb,ret_rnl,meshp,memo)
-    #BR,N,L,R,RNL,NMESH
     kmax = l +1
     gam = sqrt(pi)
     for k=1:kmax
@@ -663,7 +629,6 @@ function howf(num,brange,n,l,r,ra,rb,ret_rnl,meshp,memo)
     return nothing
 end
 
-
 function Vrel(chiEFTobj,to) 
     V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels; Rnl = chiEFTobj.Rnl
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
@@ -705,11 +670,47 @@ function Vrel(chiEFTobj,to)
                 t_vcoul = vcoul[n1+1,n2+1]
                 Vab[n1+1,n2+1]= phase * vsum + t_vcoul
             end
-        end
+        end        
     end
     return V12ab
 end
 
+function Calc_Deuteron(chiEFTobj,to;io=stdout)
+    V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels
+    xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
+    ndim = 2*n_mesh
+    H_d = zeros(Float64,ndim,ndim); V_d = zeros(Float64,ndim,ndim); T_d = zeros(Float64,ndim,ndim)
+    ofst_i = ofst_j = 0
+    Rmass = Mp * Mn / (Mp+Mn)
+    for num in eachindex(V12mom)
+        iz,l1,l2,isz,jz = pw_channels[num]
+        if iz != 0 || isz !=1 || jz != 1; continue;end
+        if l1 == l2 == 0
+            ofst_i = ofst_j = 0
+        elseif l1 == l2 == 2
+            ofst_i = ofst_j = n_mesh
+        elseif l1 == 0 && l2 == 2
+            ofst_i = 0 ; ofst_j = n_mesh
+        else
+            continue
+        end
+        Vtmp = V12mom[num]
+        for i = 1:n_mesh
+            for j = 1:n_mesh
+                idx_i = i + ofst_i
+                idx_j = j + ofst_j
+                v = Vtmp[i,j] * xr_fm[i]*xr_fm[j] * sqrt(wr[i]*wr[j])
+                V_d[idx_i,idx_j] = V_d[idx_j,idx_i] = v
+            end
+            T_d[i,i] = T_d[i+n_mesh,i+n_mesh] = (xr_fm[i]*hc)^2 / (2*Rmass)
+        end
+    end
+    H_d .= V_d
+    H_d .+= T_d
+    evals,evecs = eigen(H_d)
+    println(io,"Deuteron energy:",@sprintf("%10.5f",minimum(evals))," MeV")
+    return nothing
+end
 
 """
     hw_formula(A,fnum)

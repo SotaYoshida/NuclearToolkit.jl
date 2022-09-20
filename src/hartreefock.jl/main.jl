@@ -16,7 +16,7 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_HFobj=false,oupfn="")
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="")
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
@@ -74,7 +74,8 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to)
+           if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
                 @timeit to "Rp2" begin 
@@ -82,9 +83,9 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
                     eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
                 end
             end
+            if return_obj; return HFobj;end
         end
         Aold = A
-        if return_HFobj; return HFobj;end
     end
     show_TimerOutput_results(to;io=io,tf=is_show)
     return true
@@ -625,16 +626,16 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     modelspace = ModelSpace(p_sps,n_sps,sps,occ_p,occ_n,holes,particles,spaces)
     ## Calc. Gamma (2bchanel matrix element)    
     calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
-    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=true,io=io)
+    EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;io=io)
     EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=io)
     exists = get(amedata,binfo.nuc.cnuc,false)   
     Eexp = 0.0
     if exists==false
-        println(io,"E_HF ", @sprintf("%12.4f",E0), 
+        println(io,"E_HF ", @sprintf("%12.5f",E0), 
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: Not Available")
     else
         Eexp = - binfo.nuc.A * amedata[binfo.nuc.cnuc][1]/1000.0
-        println(io,"E_HF ", @sprintf("%12.4f",E0),
+        println(io,"E_HF ", @sprintf("%12.5f",E0),
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))  
     end
     println("")

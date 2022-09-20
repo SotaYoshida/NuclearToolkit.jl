@@ -52,7 +52,7 @@ function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencesp
     else
         flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
     end
-    return nothing
+    return IMSRGobj
 end
 
 """

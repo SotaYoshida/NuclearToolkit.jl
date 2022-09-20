@@ -31,6 +31,8 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        env:
+          JULIA_NUM_THREADS: 4
         if: ${{ matrix.payload == 'serial' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
   build:
@@ -55,6 +57,7 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia ./test/mpirun_test.jl
+  
   docs:
     name: Documentation
     runs-on: ubuntu-latest

@@ -23,7 +23,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     io = select_io(MPIcomm,optimizer,nucs)
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
-    @timeit to "deutron" Calc_Deuteron(chiEFTobj,to)
+    @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
@@ -158,7 +158,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    @timeit to "util 2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
+    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
@@ -703,8 +703,9 @@ function Calc_Deuteron(chiEFTobj,to;io=stdout)
     H_d .= V_d
     H_d .+= T_d
     evals,evecs = eigen(H_d)
-    println(io,"Deuteron energy:",@sprintf("%10.5f",minimum(evals))," MeV")
-    return nothing
+    E_d = minimum(evals)
+    println(io,"Deuteron energy:",@sprintf("%10.5f",E_d)," MeV")
+    return E_d
 end
 
 """

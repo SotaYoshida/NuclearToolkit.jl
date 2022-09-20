@@ -27,10 +27,8 @@ include("chiEFTint/calibration.jl")
 include("chiEFTint/main_chiEFTint.jl")
 include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
-export readsnt
 export make_chiEFTint
 export hw_formula
-#export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")
@@ -42,15 +40,15 @@ include("hartreefock.jl/main.jl")
 include("hartreefock.jl/hf_mbpt.jl")
 include("hartreefock.jl/operator.jl")
 export nuclist
-export eval_rch
-export def_nuc
+# export eval_rch
+# export def_nuc
 export hf_main
 
 ### IMSRG.jl
 include("IMSRG.jl/imsrg_util.jl")
 include("IMSRG.jl/commutator.jl")
 include("IMSRG.jl/valencespace.jl")
-export imsrg_main
+#export imsrg_main
 
 ### ShellModel.jl
 include("ShellModel/shellmodel_main.jl")

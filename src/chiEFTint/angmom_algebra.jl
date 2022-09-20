@@ -144,14 +144,16 @@ function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     tbmes = [ Dict{Vector{Int64},Vector{Vector{Float64}}}() for pnrank=1:3]
     tkeys = [zeros(Int64,4) for i=1:4]
     key6j = zeros(Int64,5)
-    t5vs=[zeros(Int64,5) for i=1:nthreads()]            
+    t5vs=[zeros(Int64,5) for i=1:nthreads()]   
+    ttt = [deepcopy(HOBs) for i=1:nthreads()]   
     @inbounds for ich in eachindex(infos) 
         izz,ip,Jtot,ndim=infos[ich]
         pnrank = Int(div(izz,2))+2
         izs = izs_ab[ich]
         vv = zeros(Float64,ndim,ndim)
         @timeit to "vtrans" @inbounds @threads for i = 1:ndim
-            t5v=t5vs[threadid()]
+            t5v = t5vs[threadid()]
+            HOBs = ttt[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
                 izc,ic,izd,id= izs[j]
@@ -628,19 +630,6 @@ function prepareX9U6(Nrmax;to=nothing)
     return X9,U6
 end   
 
-function overwritekeyHOB!(key,N,Lam,n,lam,n1,l1,n2,l2,L)
-    key[1] =N; key[2] =Lam; key[3] =n;
-    key[4] =lam; key[5] =n1; key[6] =l1;
-    key[7] =n2; key[8] =l2; key[9] =L
-    phase = 1.0
-    if  (2*N+Lam > 2*n+lam) && (2*n1+l1 > 2*n2+l2)
-        key[1]=n; key[2]=lam; key[3]=N; key[4]=Lam
-        key[5]=n2; key[6]=l2; key[7]=n1; key[8]=l1
-        phase = (-1)^(Lam+l2)
-    end
-    return phase
-end 
-
 """
     PreCalcHOB(chiEFTobj,dict6j,to)
 
@@ -697,7 +686,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
     #### 9j with {la 1/2 ja; lb 1/2 jb; L S J} structure
     num9j = 0
     dict9j = [ [ [ [ [ [ [ 0.0 for L=0:Lmax] for lb=0:lmax] for jb=1:2:jmax2] for la=0:lmax] for ja=1:2:jmax2] for S=0:1] for J=0:Jmax]
-    for J = 0:Jmax
+    @threads for J = 0:Jmax
         tJ = dict9j[J+1]
         for S = 0:1
             tS = tJ[S+1]
@@ -731,7 +720,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
     #new (faster, but more memory greedy)
     @timeit to "HOB" begin
         HOBs = Dict{Int64, Dict{Int64,Float64}}()
-        HOBkeys = Vector{Int64}[ ]
+        HOBkeys = Dict{Int64,Vector{Int64}}()
+        n1keys = Int64[]
         hit = 0 
         dict9j_HOB = [ Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}() for L = 0:e2max]
         arr9j = [ zeros(Int64,9) for i=1:nthreads()]
@@ -746,6 +736,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                         defined = get(HOBs,nkey1,false)
                         if defined == false
                             HOBs[nkey1] = Dict{Int64,Float64}()
+                            HOBkeys[nkey1] = Int64[]
+                            push!(n1keys,nkey1)
                         end
                         for L = abs(Lam-lam):Lam+lam                            
                             for n1=0:div(e2,2)
@@ -758,8 +750,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                                         if (l1+l2+lam+Lam)%2 > 0;continue;end
                                         if !tri_check(l1,l2,L);continue;end
                                         nkey2 = get_nkey_from_key6j(L,n1,n2,l1,0)
-                                        push!(HOBkeys,[nkey1,nkey2])
-                                        hit += 1                                        
+                                        push!(HOBkeys[nkey1],nkey2)
+                                        hit += 1              
                                     end
                                 end
                             end
@@ -796,18 +788,21 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
         tkeys = [ zeros(Int64,4) for i=1:nthreads()]
-        @threads for i = 1:hit
-            nkey1,nkey2 = HOBkeys[i]
+        @threads for i in eachindex(n1keys)
+            nkey1 = n1keys[i]
             tkey = tkeys[threadid()]
             tkey9j = arr9j[threadid()]
-            get_abcdarr_from_intkey!(nkey1,tkey)
-            N = tkey[1]; n = tkey[2]; Lam = tkey[3]; lam = tkey[4]
-            get_abcdarr_from_intkey!(nkey2,tkey)
-            L = tkey[1]; n1 = tkey[2]; n2 = tkey[3]; l1 = tkey[4]
-            e2 = 2*N+Lam+2*n+lam; l2 = e2-2*n1-2*n2-l1
-            tHOB = HObracket(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,tkey9j,dict9j_HOB,to)
-            HOBs[nkey1][nkey2] = tHOB
-        end  
+            targetdict = HOBs[nkey1]
+            for nkey2 in HOBkeys[nkey1]                
+                get_abcdarr_from_intkey!(nkey1,tkey)
+                N = tkey[1]; n = tkey[2]; Lam = tkey[3]; lam = tkey[4]
+                get_abcdarr_from_intkey!(nkey2,tkey)
+                L = tkey[1]; n1 = tkey[2]; n2 = tkey[3]; l1 = tkey[4]
+                e2 = 2*N+Lam+2*n+lam; l2 = e2-2*n1-2*n2-l1
+                tHOB = HObracket(N,Lam,n,lam,n1,l1,n2,l2,L,1.0,dWS,tkey9j,dict9j_HOB,to)
+                targetdict[nkey2] = tHOB
+            end
+        end        
     end    
     println(io,"@emax $emax ","hitCG $hitCG dWS <", @sprintf("%7.2f",Base.summarysize(dWS)/1024/1024)," MB ",
             "  9j($num9j) <", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
@@ -876,19 +871,32 @@ function get_HOB(HOBs,Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
     end
     phase = 1.0
     L1=L2=L3=L4=N1=N2=N3=N4=0
+    hit = 0
     if Kr <= Kc && Ka <= Kb
         N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Na; L3=La; N4=Nb; L4=Lb; phase=1.0
+        hit = 1
     elseif Kr > Kc && Ka <= Kb
         N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Na; L3=La; N4=Nb; L4=Lb; phase=(-1.0)^(Lam-La)
+        hit = 2
     elseif Kr <= Kc && Ka > Kb
         N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lam-Lr)
+        hit = 3
     elseif Kr > Kc && Ka > Kb
         N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lc+La)
+        hit = 4
     end
-    nkey1 = get_nkey_from_key6j(N1,N2,L1,L2,0)
+    nkey1 = get_nkey_from_key6j(N1,N2,L1,L2,0); tHOB = HOBs[nkey1]
     nkey2 = get_nkey_from_key6j(Lam,N3,N4,L3,0)
-    tHOB = HOBs[nkey1][nkey2] * phase * (-1)^(Lr+Lb)
-    return tHOB
+    tf = get(tHOB,nkey2,nothing)
+    if tf == nothing
+        println("!hit $hit Nr $Nr Lr $Lr Nc $Nc Lc $Lc Na $Na Nb $Nb La $La Lb $Lb Lam $Lam")        
+        println("=> N3 $N3 L3 $L3 N4 $N4 Lam $Lam =>nkey1 $nkey1 nkey2 $nkey2 ")
+        println("nkey1 $nkey1 in keys $(keys(HOBs)) ", (nkey1 in keys(HOBs)))
+        println("nkey2 $nkey2 in keys $(keys(HOBs[nkey1]))", (nkey2 in keys(tHOB)))
+        println("get ", get(tHOB,nkey2,false))
+        exit()
+    end
+    return tHOB[nkey2] * phase * (-1)^(Lr+Lb)
 end 
 
 const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]

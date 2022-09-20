@@ -20,6 +20,7 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
         end
     else
         mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)
+        MPI.Finalize()
     end
     return nothing
 end
@@ -607,7 +608,6 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
             MPI.Barrier(comm) 
         end
     end
-    MPI.Finalize()
     return nothing
 end
 

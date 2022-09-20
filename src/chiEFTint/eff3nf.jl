@@ -24,12 +24,13 @@ function XF(Anum)
     return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
 end
 function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
+    if !chiEFTobj.calc_3N;return nothing;end
     kF = chiEFTobj.kF
     n_mesh = chiEFTobj.n_mesh
     mpi = sum(mpis)/3.0 / hc; mpi2 = mpi^2; mpi4=mpi2^2
     kF2 = kF^2; kF4 = kF2^2
     fac = 1.0 / (2*pi)^2
-    for i = 1:n_mesh
+    @threads for i = 1:n_mesh
         k = xr[i] / hc; k2 = k^2; k4=k2^2
         F0s[i] = fac * ( kF
                          + (kF2+mpi2-k2)/(4.0*k) *log( ((k+kF)^2 +mpi2)/((k-kF)^2 +mpi2))
@@ -65,9 +66,7 @@ function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
     n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
     F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
     QWs = prep_QWs(chiEFTobj,xr,ts,ws)
-    if calc_3N
-        prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)        
-    end
+    prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
     wsyms = prep_wsyms()
     Fis = Fis_2n3n(F0s,F1s,F2s,F3s)
     return util_2n3n(Fis,QWs,wsyms)

@@ -27,7 +27,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
-        caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators) 
+        caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)        
     else # write out snt/snt.bin file
         add2n3n(chiEFTobj,to)
         @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
@@ -136,7 +136,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
     pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)    
     V12mom = [ zeros(Float64,params.n_mesh,params.n_mesh) for i in eachindex(pw_channels)]
-    V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(pw_channels)]
+    V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(pw_channels)]    
     ## prep. radial functions
     rmass = Mp*Mn/(Mp+Mn)
     br = sqrt(hc^2 /(rmass* params.hw))
@@ -149,7 +149,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     lsjs = [[[J,J,0,J],[J,J,1,J],[J+1,J+1,1,J],[J-1,J-1,1,J],[J+1,J-1,1,J],[J-1,J+1,1,J]] for J = 0:jmax]
     llpSJ_s = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[1,1,1,2]]
     tllsj = zeros(Int64,5)
-    opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms ### why 11 or 8???
+    opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms 
     f_ss!(opfs[2]);f_c!(opfs[3])
     ## prep. Gauss point for integrals
     ts, ws = Gauss_Legendre(-1,1,96)
@@ -158,19 +158,18 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
+    @timeit to "util 2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
+
     X9,U6 = prepareX9U6(2*params.emax)
     chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
-                                xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
-                                Numpn,infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
-                                V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
+                            xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
+                            Numpn,infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
+                            V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
     # make Opt stuff    
     OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
-    d9j  = Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}[ ]
-    HOBs = Dict{Int64, Dict{Int64, Float64}}()
     d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
     return chiEFTobj,OPTobj,d9j,HOBs
 end
@@ -332,10 +331,6 @@ function make_sp_state(chiEFTobj,Numpn;io=stdout)
     infos,izs_ab,nTBME = get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
     return infos,izs_ab,nTBME
 end
-
-# @emax 2 hitCG 29351 dWS <  11.31 MB   9j(322) <   0.20 MB   HOB (204) <   0.02 MB
-# target: He4 Ref. => Z=2 N=2 EMP2    -5.801 1b    -0.000 pp    -0.005 pn    -5.788 nn    -0.008
-# E_HF       1.4756  E_MBPT(3) =      -3.9323  Eexp:      -28.296
 
 """
     get_twq_2b(emax,kh,kn,kl,kj,maxsps,jab_max)

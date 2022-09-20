@@ -511,7 +511,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
                     Jpmin = max(abs(div(ji-jl,2)),abs(div(jk-jj,2)))
                     Jpmax = min(div(ji+jl,2), div(jk+jj,2))
                     for Jpr = Jpmin:Jpmax
-                        nkey = get_nkey_from_key6j(ji,jj,jk,jl,Jpr,ofst1)
+                        nkey = get_nkey_from_key6j(ji,jj,jk,jl,Jpr;ofst_unit=ofst1)
                         sixj = tdict[nkey]
                         if abs(sixj) < 1.e-8;continue;end
                         key_JPT = @view key6j[1:3]
@@ -541,7 +541,7 @@ function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
                         Jpmin = max( abs(div(jj-jl,2)), abs(div(jk-ji,2)))
                         Jpmax = min( div(jj+jl,2), div(jk+ji,2))
                         for Jpr = Jpmin:Jpmax                            
-                            nkey = get_nkey_from_key6j(jj,ji,jk,jl,Jpr,ofst1)
+                            nkey = get_nkey_from_key6j(jj,ji,jk,jl,Jpr;ofst_unit=ofst1)
                             sixj = tdict[nkey]
 
                             if abs(sixj) < 1.e-8;continue;end

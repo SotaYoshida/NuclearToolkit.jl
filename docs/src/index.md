@@ -23,7 +23,10 @@ in sequence. One can try as follows
 julia -t 8 sample_script.jl
 ```
 
-You can specify target nuclei, emax, hw, etc., by editting the script and `optional_parameters.jl`, if necessary.
+Please make sure to use the latest version of the package. Update can be done with 
+```julia
+julia>]up NuclearToolkit
+```
 
 ## Package features and building blocks
 

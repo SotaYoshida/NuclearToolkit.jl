@@ -105,7 +105,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;
     binfo = basedat(nuc,sntf,hw,emax,ref)
     sps,p_sps,n_sps = def_sps(emax)
     new_sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax)
-    dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps)
+    dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps,hw)
     Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
     dictTBMEs = dictsnt.dictTBMEs
     MatOp = Matrix{Float64}[]
@@ -169,7 +169,7 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
     return nothing
 end
 
-function make_dicts_formem(nuc,dicts1b,dict_TM,sps)
+function make_dicts_formem(nuc,dicts1b,dict_TM,sps,hw)
     dicts=[ Dict{Int64,Vector{Vector{Float64}}}() for pnrank=1:3]
     dict_snt2ms = dicts1b.snt2ms    
     A = nuc.A  

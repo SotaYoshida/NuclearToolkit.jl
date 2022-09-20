@@ -106,7 +106,8 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
-        println("Since $fn_params is not found, the default parameters will be used.")        
+        println("Since $fn_params is not found, the default parameters will be used.")
+        println("You can specify the parameters with optional argument, fn_params like make_chiEFTint(;fn_params=\"PATH_TO_YOUR_FILE\").")
     else
         read_chiEFT_parameter!(fn_params,params;io=io)
         tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end

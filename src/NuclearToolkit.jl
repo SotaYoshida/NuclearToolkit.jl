@@ -40,15 +40,12 @@ include("hartreefock.jl/main.jl")
 include("hartreefock.jl/hf_mbpt.jl")
 include("hartreefock.jl/operator.jl")
 export nuclist
-# export eval_rch
-# export def_nuc
 export hf_main
 
 ### IMSRG.jl
 include("IMSRG.jl/imsrg_util.jl")
 include("IMSRG.jl/commutator.jl")
 include("IMSRG.jl/valencespace.jl")
-#export imsrg_main
 
 ### ShellModel.jl
 include("ShellModel/shellmodel_main.jl")

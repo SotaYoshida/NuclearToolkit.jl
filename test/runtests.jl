@@ -31,7 +31,7 @@ using Test
                 tsntf = replace(sntf,".snt.bin" => ".snt")
                 HFobj2 = hf_main(nucs,tsntf,hw,emax;return_obj=true)
                 Es2 = [HFobj2.E0, HFobj2.EMP2, HFobj2.EMP3]    
-                @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
+                @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-8
             end
         end
         @testset "IMSRG results under bare EM500,hw20,e2,nmesh50" begin

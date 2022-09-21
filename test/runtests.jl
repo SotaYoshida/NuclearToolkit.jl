@@ -7,7 +7,6 @@ using Test
         @test make_chiEFTint(;fn_params="optional_parameters.jl")
         @test make_chiEFTint(;fn_params="optional_parameters_snt.jl")
     end
-
     @testset "HFMBPT & VS-IMSRG calculations" begin
         hw = 20; emax=2
         nuc = "He4"; core = "He4"; vspace="p-shell"
@@ -31,23 +30,23 @@ using Test
                 tsntf = replace(sntf,".snt.bin" => ".snt")
                 HFobj2 = hf_main(nucs,tsntf,hw,emax;return_obj=true)
                 Es2 = [HFobj2.E0, HFobj2.EMP2, HFobj2.EMP3]    
-                @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-8
+                @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
             end
         end
         @testset "IMSRG results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
-            @test abs(-4.0678412818156415-Es[1]) < 1.e-6
+            @test abs(-4.06784128-Es[1]) < 1.e-6
         end
         @testset "VSIMSR results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
             @test abs(-4.06784128 - Es[1]) < 1.e-6
-
         end
         @testset "shell model calculation" begin
             vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
-            @test main_sm(vs_sntf,"Be8",n_eigen,targetJ)
+            Ens = main_sm(vs_sntf,"Be8",n_eigen,targetJ)
+            @test ((-10.740-Ens[1])^2 + (-8.428 - Ens[2])^2) < 1.e-6
         end
     end
 

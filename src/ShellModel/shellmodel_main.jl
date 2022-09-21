@@ -202,18 +202,6 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
                 end
             end
             Rvec .*= 1.0/sqrt(dot(Rvec,Rvec))
-            # if false # <H> check
-            #     Hv .= 0.0
-            #     operate_H!(Rvecs[nth],Hv,
-            #                pbits,nbits,
-            #                jocc_p,jocc_n,SPEs,
-            #                ppinfo,nninfo,
-            #                tdims,bis,bfs,block_tasks,
-            #                p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to)
-            #     if nth == 1; print("<v|H|v> ");end
-            #     print(" ", dot(Rvecs[nth],Hv))
-            #     if nth==num_ev;println("");end
-            # end
         end
     end   
     vt = zeros(Float64,mdim)
@@ -257,7 +245,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
     if tx_mom != ""
         println(tx_mom)
     end
-    return true
+    return en[1]
 end
 
 """

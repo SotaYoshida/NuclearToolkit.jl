@@ -1,6 +1,6 @@
 # Hartreefock
 
-Functions for Hartree-Fock calculations.
+Files in `src/hartreefock.jl` for Hartree-Fock calculations.
 
 - [def_struct.jl](https://github.com/SotaYoshida/NuclearToolkit.jl/tree/main/src/hartreefock.jl/def_struct.jl): define struct/mutable struct  
 - [hf_mbpt.jl](https://github.com/SotaYoshida/NuclearToolkit.jl/tree/main/src/hartreefock.jl/hf_mbpt.jl): calculate HFMBPT energy correction

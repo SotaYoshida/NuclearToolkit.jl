@@ -1,6 +1,6 @@
 # How to use NuclearToolkit.jl
 
-In this page, we explain the main interfaces of NuclearToolkit.jl and sample codes.
+In this page, we explain the main interfaces of NuclearToolkit.jl with sample codes.
 
 ## Generate Chiral EFT potentials
 
@@ -35,7 +35,7 @@ Then, you can run with, e.g., 20 nodes:
 mpirun -np 20 mpisample.jl
 ```
 
-When working on a working node (w/o permissions to access `~/`), overwrite the `JULIA_DEPOT_PATH` by `export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"`.
+When working on a working node w/o permissions to access `~/`, overwrite the `JULIA_DEPOT_PATH` by `export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"`.
 
 
 ## HF-MBPT calculations 

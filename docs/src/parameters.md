@@ -2,10 +2,10 @@
 
 Here is the summary of optional parameters, which can be specified by users like this:
 ```julia
-make_chiEFTint(;fn_params="your_parameterfile.jl")
+make_chiEFTint(;fn_params="your_parameter_file.jl")
 ```
 
-If you do not specify the optional argument `fn_params`, the pacakege tries to read "optional_parameters.jl" in the current path.
+If you do not specify the optional argument `fn_params`, the pacakege tries to read `optional_parameters.jl` in the current path.
 
 * For ChiEFTint
     - `n_mesh::Int64`, number of momentum mesh 

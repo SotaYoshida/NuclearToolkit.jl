@@ -28,7 +28,6 @@ include("chiEFTint/main_chiEFTint.jl")
 include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
 export make_chiEFTint
-export hw_formula
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")

@@ -475,7 +475,7 @@ function select_io(MPIcomm,optimizer,nucs;use_stdout=false,fn="")
         @assert nucs!=[] "nucs must not be empty if you set MPIcomm=true"
         MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-        io = open("./mpilog_rank"*string(myrank)*".dat","w")
+        io = open("./mpilog_rank$(myrank).dat","w")
     elseif fn !=""
         io = open(fn,"w")
     else

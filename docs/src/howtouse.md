@@ -15,7 +15,10 @@ make_chiEFTint()
 #2). 1). & showing how much time and memory has been used
 make_chiEFTint(;is_show=true)
 
-#3). You don't need to write out the snt/snt.bin file, but want to calibrate or sample the LECs in the 3NF using HFMBPT.
+#3). You can specify the parameters for ChiEFTint through the optional argument `fn_params`
+make_chiEFTint(;is_show=true,fn_params="myparam.jl")
+
+#4). You don't need to write out the snt/snt.bin file, but want to calibrate or sample the LECs in the 3NF using HFMBPT.
 #    You have to specify the number of itertions, target nuclei, optimizer:
 make_chiEFTint(;itnum=5,nucs=["O16"],optimizer="MCMC")
 ```

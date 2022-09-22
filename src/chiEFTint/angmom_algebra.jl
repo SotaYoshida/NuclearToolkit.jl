@@ -96,7 +96,7 @@ end
 
 Function to carry out Talmi-Mochinsky transformation for NN interaction in HO space and to write out an sinput file.
 """
-function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
+function TMtrans(chiEFTobj::ChiralEFTobject,HOBs,to;calc_relcm=false,writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
     params = chiEFTobj.params
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
@@ -131,7 +131,7 @@ function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
             println(io,"tza,  a, tzb,  b, tzc,  c, tzd,  d, J12,   <ab|v|cd>,   <ab|p_ip_j|cd>/mhw")
         elseif tbme_fmt=="snt"
             if length(target_nlj)!=0
-                nljdict = def_sps_snt(params.emax,params.target_nlj)[2]
+                nljdict = def_sps_snt(params.emax,target_nlj)[2]
             end
             write_spes(params,io,nljsnt,nofst,nTBME,nljdict)
         elseif tbme_fmt=="snt.bin"
@@ -181,7 +181,7 @@ function TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
     end
 end
 
-function set_tbme(chiEFTobj,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=0)
+function set_tbme(chiEFTobj::ChiralEFTobject,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=0)
     dict6j = chiEFTobj.dict6j
     d6j_nabla = chiEFTobj.d6j_nabla
     target_nlj = chiEFTobj.params.target_nlj
@@ -243,8 +243,11 @@ function set_tbme(chiEFTobj,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to
     return nothing
 end
 
+"""
+    red_nabla_l(n1,l1,n2,l2)
+returns ``b \\langle n_1,l_1|| \\nabla ||n_2,l_2 \\rangle`` in ``l``-reduced matrix element.
+"""
 function red_nabla_l(n1,l1,n2,l2)
-    # b*<n1,l1|| nabla ||n2,l2> in l-reduced m.e.
     if n1 == n2 && l1 == l2+1
         return -sqrt((l2 + 1.0)*(n2 + l2 + 1.5))
     elseif n1 == n2-1 && l1 == l2+1
@@ -257,18 +260,24 @@ function red_nabla_l(n1,l1,n2,l2)
         return 0.0
     end
 end
-
+"""
+    red_nabla_j(nlj1, nlj2)
+returns ```b \\langle j || \\nabla || j_2>```
+Note that ```l_1,l_2``` in `nlj1`&`nlj2` are not doubled.
+"""
 function red_nabla_j(nlj1, nlj2) 
-    # b*<j|| nabla ||j2> l1, l2 are not doubled 
     n1, l1, j1 = nlj1
     n2, l2, j2 = nlj2
     ret = (-1)^((3+2*l1+j2)//2) * sqrt(1.0*(j1+1)*(j2+1)) *
         wigner6j(Float64,j1//2, 1, j2//2, l2, 1//2, l1) * red_nabla_l(n1,l1,n2,l2)
     return ret
 end
+"""
+    red_nabla_j(nlj1,nlj2,d6j,key6j) 
+returns ```b \\langle j || \\nabla || j_2>```
+Note that ```l_1,l_2``` in `nlj1`&`nlj2` are not doubled.
+"""
 function red_nabla_j(nlj1,nlj2,d6j,key6j) 
-    # b*<j|| nabla ||j2> l1, l2 are not doubled
-    # j1//2  j2//2      1;  l2     l1   1//2
     n1, l1, j1 = nlj1
     n2, l2, j2 = nlj2
     if tri_check(j1//2,j2//2,1)==false;return 0.0;end                    
@@ -284,7 +293,7 @@ end
 """
     kinetic_ob(nlj1, nlj2)
 
-calc. kinetic one-body contribution <j1 |T/hw| j2> 
+calc. kinetic one-body contribution ```\\langle j_1 |T/\\habr\\omega| j_2 \\rangle```
 """
 function kinetic_ob(nlj1, nlj2)
     n1, l1, j1 = nlj1
@@ -478,7 +487,28 @@ function flip_needed(tkey9j)
     return intkey9j_12,intkey9j_lr,intkey9j_abcd, nflip==1
 end
 
-function vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
+""" 
+    vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
+
+Function to calculate V in pn-formalism:
+```math
+\\langle a,b;JTz|V| c,d;JTz \\rangle
+= N_{ab} N_{cd} 
+\\sum_{\\Lambda S \\Lambda' S'} \\sum_{n\\ell N L}\\sum_{n'\\ell' N' L'}  
+\\sum_{J_\\mathrm{rel}J'_\\mathrm{rel}}
+[\\Lambda][\\Lambda'] \\hat{S}\\hat{S'} \\hat{J}_\\mathrm{rel}\\hat{J}'_\\mathrm{rel} 
+\\hat{j}_a \\hat{j}_b \\hat{j}_c \\hat{j}_d
+(-1)^{\\ell + S + J_\\mathrm{rel} + L} (-1)^{\\ell' + S' + J'_\\mathrm{rel} + L'}
+\\langle n N [ (\\ell L)\\Lambda S] J| n_a n_b [ (\\ell_a \\ell_b)\\Lambda (\\tfrac{1}{2}\\tfrac{1}{2})S ]J \\rangle_{d=1}
+\\langle n' N' [ (\\ell' L')\\Lambda' S'] J| n_c n_d [ (\\ell_c \\ell_d)\\Lambda' (\\tfrac{1}{2}\\tfrac{1}{2})S' ]J \\rangle_{d=1}
+\\left\\{ \\begin{matrix} \\ell_a & \\ell_b & \\Lambda \\\\ 1/2 & 1/2 & S \\\\ j_a & j_b & J \\end{matrix} \\right\\} 
+\\left\\{ \\begin{matrix} \\ell_c & \\ell_d & \\Lambda' \\\\ 1/2 & 1/2 & S' \\\\ j_c & j_d & J \\end{matrix} \\right\\} 
+\\left\\{ \\begin{matrix} L & \\ell & \\Lambda \\\\ S & J & J_\\mathrm{rel} \\end{matrix} \\right\\}
+\\left\\{ \\begin{matrix} L' & \\ell' & \\Lambda' \\\\ S' & J & J'_\\mathrm{rel} \\end{matrix} \\right\\} 
+\\langle n\\ell S J_\\mathrm{rel} T|V_\\mathrm{NN}|n'\\ell' S' J'_\\mathrm{rel} T\\rangle
+```
+"""
+function vtrans(chiEFTobj::ChiralEFTobject,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_pwch = chiEFTobj.arr_pwch
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
@@ -614,11 +644,7 @@ function prepareX9U6(Nrmax;to=nothing)
                         for iss=0:1
                             for jj=abs(lam-iss):lam+iss
                                 sfac = sqrt((jda+1.0)*(jdb+1.0)*(2.0*lam+1.0)*(2.0*iss+1.0))
-                                X9[iss+1][jj+1][
-                                     [la,nja,lb,njb,lam]
-                                 ] = sfac .* s_wigner9j(la,jda//2,
-                                                        lb,jdb//2,
-                                                        lam,iss,jj)
+                                X9[iss+1][jj+1][[la,nja,lb,njb,lam]] = sfac .* s_wigner9j(la,jda//2, lb,jdb//2, lam,iss,jj)
                                 hit9 += 1
                             end
                         end
@@ -871,46 +897,20 @@ function get_HOB(HOBs,Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
     end
     phase = 1.0
     L1=L2=L3=L4=N1=N2=N3=N4=0
-    hit = 0
     if Kr <= Kc && Ka <= Kb
         N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Na; L3=La; N4=Nb; L4=Lb; phase=1.0
-        hit = 1
     elseif Kr > Kc && Ka <= Kb
         N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Na; L3=La; N4=Nb; L4=Lb; phase=(-1.0)^(Lam-La)
-        hit = 2
     elseif Kr <= Kc && Ka > Kb
         N1=Nr; L1=Lr; N2=Nc;L2=Lc; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lam-Lr)
-        hit = 3
     elseif Kr > Kc && Ka > Kb
         N1=Nc; L1=Lc; N2=Nr;L2=Lr; N3=Nb; L3=Lb; N4=Na; L4=La; phase=(-1.0)^(Lc+La)
-        hit = 4
     end
     nkey1 = get_nkey_from_key6j(N1,N2,L1,L2,0); tHOB = HOBs[nkey1]
     nkey2 = get_nkey_from_key6j(Lam,N3,N4,L3,0)
-    tf = get(tHOB,nkey2,nothing)
-    if tf == nothing
-        println("!hit $hit Nr $Nr Lr $Lr Nc $Nc Lc $Lc Na $Na Nb $Nb La $La Lb $Lb Lam $Lam")        
-        println("=> N3 $N3 L3 $L3 N4 $N4 Lam $Lam =>nkey1 $nkey1 nkey2 $nkey2 ")
-        println("nkey1 $nkey1 in keys $(keys(HOBs)) ", (nkey1 in keys(HOBs)))
-        println("nkey2 $nkey2 in keys $(keys(HOBs[nkey1]))", (nkey2 in keys(tHOB)))
-        println("get ", get(tHOB,nkey2,false))
-        exit()
-    end
     return tHOB[nkey2] * phase * (-1)^(Lr+Lb)
 end 
 
-const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
-const l2lnd =[[ wigner3j(Float64,l1,2,l2,0,0,0) for l2=0:8] for l1=0:8]
-
-
-struct wsyms_j1_1or2
-    cg1s::Matrix{Float64}
-    cg2s::Matrix{Float64}
-    d6_121::Array{Float64,3}
-    d6_21::Array{Float64,4}
-    d6_222::Array{Float64,3}
-    d9_12::Array{Float64,4}
-end
 """
     prep_wsyms()
 

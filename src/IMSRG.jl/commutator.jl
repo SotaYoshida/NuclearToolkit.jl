@@ -1,7 +1,7 @@
 """
     OpCommutator!(X::Op,Y::Op,ret::Op,HFobj,Chan1b,Chan2bD,dictMono,dict6j,PandyaObj,to) where{Op <: Operator}
     
-overwrite ret operator by ``[X,Y]`` 
+overwrite `ret` operator by the commutator ``[X,Y]`` 
 """
 function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj,Chan1b,Chan2bD,dictMono,dict6j,PandyaObj,to) where{Op <: Operator}
     Chan2b = Chan2bD.Chan2b
@@ -23,7 +23,6 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj,Chan1b,Chan2bD,dictMono,dict6j,
     @timeit to "comm122" comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
     @timeit to "comm222pphh" comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
     @timeit to "comm222ph" comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
-
     return nothing
 end
 
@@ -38,8 +37,8 @@ returns ``Z``  to satisfy: ``e^Z = e^X e^Y``
 
 For IMSRG flow of ``H(s)``, ``X=\\eta(s)*ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)`` 
 """
-function BCH_Product(X,Y,Z,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,
-                     dictMono,dict6j,PandyaObj,to;tol=1.e-4)
+function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm,norms,Chan1b,Chan2bD,HFobj,
+                     dictMono,dict6j,PandyaObj,to;tol=1.e-4) where Op <:Operator
     Nested.hermite = true; Nested.antihermite=false
     berfac = [-0.5, 1.0/12.0, 0.0, -1.0/720.0, 0.0, 1.0/30240.0, 0.0, 1.0/1209600.0 ]
     Chan2b = Chan2bD.Chan2b
@@ -457,13 +456,13 @@ end
 """
     calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zlefthalf,Zrighthalf,hz)
 
-- `Xbar`: (`nKets_cc`, 2*`nph_kets`) matrix
-- `Ybar`: (2*`nph_kets`,`nKets_cc`) matrix
-- `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix
-- `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix
+- `Xbar`: (`nKets_cc`, 2*`nph_kets`) matrix or SubArray
+- `Ybar`: (2*`nph_kets`,`nKets_cc`) matrix or SubArray
+- `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix or SubArray
+- `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix or SubArray
 """
 function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
-                   Zlefthalf,Zrighthalf,hz)
+                   Zlefthalf,Zrighthalf,hz) 
     BLAS.gemm!('N','N',1.0,Xbar,Ybar,0.0,Zlefthalf)
     ru = @view Ybar[nph_kets+1:2*nph_kets,:] 
     rl = @view Ybar[1:nph_kets,:]

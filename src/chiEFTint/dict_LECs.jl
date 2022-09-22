@@ -1,12 +1,5 @@
-struct LECs
-    vals::Vector{Float64}
-    idxs::Dict{String,Int64}
-    dLECs::Dict{String,Float64}
-end
-
 """
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
-
 overwrites `vals` and `idxs`, which are to be used in e.g., MCMC algorithms, by dict for LECs `dLECs`.
 """
 function prep_valsidxs_dLECs!(vals,idxs,dLECs)

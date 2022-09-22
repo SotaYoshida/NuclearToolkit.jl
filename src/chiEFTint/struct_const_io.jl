@@ -22,7 +22,53 @@ const hc4 = hc^4
 const gA2 = gA^2
 const gA4 = gA^4
 const mpis = [139.5702,134.9766,139.5702]
-const fsalpha = 7.2973525693* 1.e-3 #fine structure const.   
+const fsalpha = 7.2973525693* 1.e-3 #fine structure const. 
+const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
+const l2lnd =[[ wigner3j(Float64,l1,2,l2,0,0,0) for l2=0:8] for l1=0:8]
+
+const nuclist = [
+     "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
+    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
+    "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
+    "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
+    "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og" ]
+
+struct QLs
+    QL0s::Vector{Matrix{Float64}}
+    QWL2s::Vector{Matrix{Float64}}
+    QWL1s::Vector{Matrix{Float64}}
+    QWL0s::Vector{Matrix{Float64}}
+    QWlss::Vector{Matrix{Float64}}
+    ndQW1s::Vector{Vector{Matrix{Float64}}}
+    ndQW2s::Vector{Vector{Matrix{Float64}}}
+    QLdict::Vector{Dict{Float64,Float64}}
+end
+struct Fis_2n3n
+    F0s::Vector{Float64}
+    F1s::Vector{Float64}
+    F2s::Vector{Float64}
+    F3s::Vector{Float64}
+end
+struct wsyms_j1_1or2
+    cg1s::Matrix{Float64}
+    cg2s::Matrix{Float64}
+    d6_121::Array{Float64,3}
+    d6_21::Array{Float64,4}
+    d6_222::Array{Float64,3}
+    d9_12::Array{Float64,4}
+end
+struct util_2n3n
+    Fis::Fis_2n3n
+    QWs::QLs
+    wsyms::wsyms_j1_1or2
+end
+    
+struct LECs
+    vals::Vector{Float64}
+    idxs::Dict{String,Int64}
+    dLECs::Dict{String,Float64}
+end
 
 """
     chiEFTparams
@@ -73,6 +119,85 @@ mutable struct chiEFTparams
     kF::Float64
     BetaCM::Float64
 end
+
+"""
+    ChiralEFTobject
+# Fields
+- `params::chiEFTparams`
+- `xr_fm::Vector{Float64}` momentum mesh points in fm``^{-1}`` (0 to `pmax_fm`)
+- `xr::Vector{Float64}` momentum mesh points in MeV (`xr_fm` times ``\\hbar c``)
+- `wr::Vector{Float64}` weights vector for Gauss-Legendre quadrature
+- `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
+```math
+\\begin{Bmatrix} 
+j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p
+\\end{Bmatrix}
+```
+where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
+- `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
+```math
+\\begin{Bmatrix} 
+j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2
+\\end{Bmatrix}
+```
+- `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
+- `Rnl::Array{Float64,3}` arrays for radial functions
+- `xrP_fm::Vector{Float64}` "valence" counter part of `xr_fm` (usually not used)
+- `xrP::Vector{Float64}` "valence" counter part of `xr` (usually not used)
+- `wrP::Vector{Float64}` "valence" counter part of `wr` (usually not used)
+- `RNL::Array{Float64,3}` "valence" counter part of `Rnl` (usually not used)
+- `lsjs::Vector{Vector{Vector{Int64}}}`
+- `llpSJ_s::Vector{Vector{Int64}}`
+- `tllsj::Vector{Int64}`
+- `opfs::Vector{Vector{Float64}}`
+- `ts::Vector{Float64}` mesh points for angular integrals in pion-exchange terms
+- `ws::Vector{Float64}` weights vectors for angular integrals in pion-exchange terms
+- `infos::Vector{Vector{Int64}}` information of two-body channeles: { [``T_z``,parity,J,dim] } 
+- `izs_ab::Vector{Vector{Vector{Int64}}}` two-body kets: { [iza,ia,izb,ib] } where `iz*` stuff is isospin (-1 or 1) and `i*` stuff is label of sps. For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
+- `nTBME::Int64` # of two-body matrix elements (TBMEs)
+- `util_2n3n::util_2n3n`
+- `LECs::LECs`
+- `X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}` 9j for Vtrans
+- `U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}` 6j for Vtrans
+- `V12mom::Vector{Matrix{Float64}}` matrix elements of NN int in momentum space for each two-body channnel
+- `V12mom_2n3n::Vector{Matrix{Float64}}` matrix elements of 2n3n int in momentum space for each two-body channnel
+- `pw_channels::Vector{Vector{Int64}}` list of partial wave two-body channels like {[pnrank,L,L',S,J]}
+- `dict_pwch::Vector{Dict{Vector{Int64}, Int64}}`
+- `arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}`
+"""
+struct ChiralEFTobject
+    params::chiEFTparams
+    xr_fm::Vector{Float64}
+    xr::Vector{Float64}
+    wr::Vector{Float64}
+    dict6j::Vector{Dict{Int64, Float64}}
+    d6j_nabla::Dict{Vector{Int64}, Float64}  
+    d6j_int::Vector{Dict{Int64, Float64}}
+    Rnl::Array{Float64,3}
+    xrP_fm::Vector{Float64}
+    xrP::Vector{Float64}
+    wrP::Vector{Float64}
+    RNL::Array{Float64,3}
+    lsjs::Vector{Vector{Vector{Int64}}}
+    llpSJ_s::Vector{Vector{Int64}}
+    tllsj::Vector{Int64}
+    opfs::Vector{Vector{Float64}}
+    ts::Vector{Float64}
+    ws::Vector{Float64}
+    infos::Vector{Vector{Int64}} 
+    izs_ab::Vector{Vector{Vector{Int64}}}
+    nTBME::Int64
+    util_2n3n::util_2n3n
+    LECs::LECs
+    X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}
+    U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}
+    V12mom::Vector{Matrix{Float64}}
+    V12mom_2n3n::Vector{Matrix{Float64}}
+    pw_channels::Vector{Vector{Int64}}
+    dict_pwch::Vector{Dict{Vector{Int64}, Int64}} 
+    arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
+end
+
 
 """
     init_chiEFTparams(;fn_params="optional_parameters.jl")
@@ -174,12 +299,6 @@ function delta_arr(a,b)
     return ifelse(length(a)==hit,1.0,0.0)
 end
 
-function c_orbit(tarr)
-    n,l,j=tarr
-    tx = string(n)*lowercase(chara_L[l+1])*string(j)
-    return tx
-end
-
 function owtkey!(tkey,n,l,j,tz)
     tkey[1]=n; tkey[2]=l; tkey[3]=j; tkey[4]=tz
     return nothing
@@ -272,15 +391,16 @@ write tbme in myg/snt(snt.bin) format
 function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
     tbme_fmt = chiEFTobj.tbme_fmt
     target_nlj = chiEFTobj.target_nlj
-    if tbme_fmt == "myg"
-        @inbounds for i = 1:ndim
-            iza,ia,izb,ib = izs[i]
-            na,la,ja = nljsnt[ia]
-            nb,lb,jb = nljsnt[ib]
-            for j = 1:i
-                izc,ic,izd,id= izs[j]
-                nc,lc,jc = nljsnt[ic]
-                nd,ld,jd = nljsnt[id]
+    
+    @inbounds for i = 1:ndim
+        iza,ia,izb,ib = izs[i]
+        na,la,ja = nljsnt[ia]
+        nb,lb,jb = nljsnt[ib]
+        for j = 1:i
+            izc,ic,izd,id= izs[j]
+            nc,lc,jc = nljsnt[ic]
+            nd,ld,jd = nljsnt[id]
+            if tbme_fmt == "myg"
                 owtkey!(tkeys[1],na,la,ja,iza)
                 owtkey!(tkeys[2],nb,lb,jb,izb)
                 owtkey!(tkeys[3],nc,lc,jc,izc)
@@ -290,18 +410,8 @@ function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6
                 print(io,@sprintf("%4i", izc), @sprintf("%4i", ic), @sprintf("%4i", izd), @sprintf("%4i", id))
                 print(io,@sprintf("%4i", Jtot),@sprintf("%20.10e", vv[i,j]))
                 println(io,@sprintf("%20.10e", vpp))
-            end
-        end
-    elseif tbme_fmt == "snt" ||  tbme_fmt == "snt.bin"
-        @inbounds for i = 1:ndim
-            iza,ia,izb,ib = izs[i]
-            na,la,ja = nljsnt[ia]
-            nb,lb,jb = nljsnt[ib]
-            for j = 1:i
+            elseif tbme_fmt == "snt" ||  tbme_fmt == "snt.bin"
                 tv = vv[i,j]
-                izc,ic,izd,id= izs[j]
-                nc,lc,jc = nljsnt[ic]
-                nd,ld,jd = nljsnt[id]
                 a = ifelse(iza==-1,ia,ia+ofst)
                 b = ifelse(izb==-1,ib,ib+ofst)
                 c = ifelse(izc==-1,ic,ic+ofst)

@@ -65,5 +65,6 @@ See the [Optional parameters](parameters) page for more details.
 ## Issues/Pull requests
 
 NuclearToolkit.jl is designed to be an open-source software and to guarantee reproducibility and transparancy of the future works.
-Making issues and pull requests are fully welcome, you will be acknowledged or can be an author of future version of the paper.
+Making issues and pull requests are fully welcome.
+If you would like to contribute to development of the package and want be an author of future versions of the paper, please do not hesitate to contact me (S.Yoshida).
 

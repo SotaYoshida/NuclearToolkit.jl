@@ -1,16 +1,8 @@
-const nuclist = [
-     "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
-    "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
-    "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
-    "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
-    "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og" ]
-
 """
     get_ZNref(ref,Z,N,corenuc)
 get ``Z`` and ``N`` of the target reference
 """
-function get_ZNref(ref,Z,N,corenuc)
+function get_ZNref(ref::String,Z::Int,N::Int,corenuc::String)
     Zref = Z; Nref = N
     cZ = cN = 0
     if ref =="core"
@@ -27,7 +19,7 @@ end
     def_nuc(nuc::Vector{Int},ref,corenuc)
 constructor of `nuclei` strict from given `Z`,`N`,`ref`,`corenuc`
 """
-function def_nuc(nuc::Vector{Int},ref,corenuc)
+function def_nuc(nuc::Vector{Int},ref::String,corenuc::String)
     Z,N = nuc
     el = nuclist[Z]
     A = Z+N
@@ -54,8 +46,7 @@ function def_nuc(cnuc::String,ref::String,corenuc::String)
             Z = tZ;break
         end
     end 
-    A = parse(Int64,A); N = A-Z   
-
+    A = parse(Int64,A); N = A-Z
     Zref = Z; Nref = N    
     cZ,cN = cZN_from_corenuc(Zref,Nref,corenuc)
     if ref == "core"
@@ -350,18 +341,20 @@ function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to)
     return tf
 end
 
+"""
+    get_nkey_from_abcdarr(tkey;ofst=1000)
+
+To get integer key from an Int array (with length greater than equal 4)
+"""
 function get_nkey_from_abcdarr(tkey;ofst=1000)
     return tkey[1] + tkey[2] * ofst + tkey[3] * ofst^2 + tkey[4] * ofst^3 
 end
-function get_abcdarr_from_intkey(nkey;ofst=1000)
-    intkey = nkey
-    abcdarr = zeros(Int64,4)
-    q = div(intkey,ofst^3); abcdarr[4] = q;intkey -= q *ofst^3
-    q = div(intkey,ofst^2); abcdarr[3] = q;intkey -= q *ofst^2
-    q = div(intkey,ofst^1); abcdarr[2] = q;intkey -= q *ofst^1
-    abcdarr[1] = intkey 
-    return abcdarr
-end
+
+"""
+    get_abcdarr_from_intkey!(nkey,abcdarr;ofst=1000)
+
+A destructive function to get original array from integer array.
+"""
 function get_abcdarr_from_intkey!(nkey,abcdarr;ofst=1000)
     intkey = nkey
     q = div(intkey,ofst^3); abcdarr[4] = q;intkey -= q *ofst^3
@@ -374,7 +367,7 @@ end
 """
     store_1b2b(sps,dicts1b,dicts,binfo)
 """
-function store_1b2b(sps,dicts1b,dicts,binfo)
+function store_1b2b(sps,dicts1b::Dict1b,dicts,binfo)
     Anum = binfo.nuc.Aref; hw = binfo.hw
     dim1b = div(length(sps),2)
     ### store one-body part

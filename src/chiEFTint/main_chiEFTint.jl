@@ -2,7 +2,7 @@
     make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[])
 
 The interface function in chiEFTint.
-This generates NN-potential in momentum space and then transforms it in HO basis.
+This generates NN-potential in momentum space and then transforms it in HO basis to give inputs for many-body calculations.
 The function is exported and can be simply called make_chiEFTint() in your script. 
 
 # Optional arguments: Note that these are mainly for too specific purposes, so you do not specify these.
@@ -35,87 +35,6 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     if io != stdout; close(io);end
     show_TimerOutput_results(to;tf=is_show)
     return true
-end
-
-"""
-    ChiralEFTobject
-
-# Fields
-- `params::chiEFTparams`
-- `xr_fm::Vector{Float64}` momentum mesh points in fm``^{-1}`` (0 to `pmax_fm`)
-- `xr::Vector{Float64}` momentum mesh points in MeV (`xr_fm` times ``\\hbar c``)
-- `wr::Vector{Float64}` weights vector for Gauss-Legendre quadrature
-- `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
-```math
-\\begin{Bmatrix} 
-j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p
-\\end{Bmatrix}
-```
-where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
-- `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
-```math
-\\begin{Bmatrix} 
-j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2
-\\end{Bmatrix}
-```
-- `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
-- `Rnl::Array{Float64,3}` arrays for radial functions
-- `xrP_fm::Vector{Float64}` "valence" counter part of `xr_fm` (usually not used)
-- `xrP::Vector{Float64}` "valence" counter part of `xr` (usually not used)
-- `wrP::Vector{Float64}` "valence" counter part of `wr` (usually not used)
-- `RNL::Array{Float64,3}` "valence" counter part of `Rnl` (usually not used)
-- `lsjs::Vector{Vector{Vector{Int64}}}`
-- `llpSJ_s::Vector{Vector{Int64}}`
-- `tllsj::Vector{Int64}`
-- `opfs::Vector{Vector{Float64}}`
-- `ts::Vector{Float64}` mesh points for angular integrals in pion-exchange terms
-- `ws::Vector{Float64}` weights vectors for angular integrals in pion-exchange terms
-- `Numpn::Dict{Vector{Int64},Int64}`
-- `infos::Vector{Vector{Int64}}` information of two-body channeles: { [``T_z``,parity,J,dim] } 
-- `izs_ab::Vector{Vector{Vector{Int64}}}` two-body kets: { [iza,ia,izb,ib] } where `iz*` stuff is isospin (-1 or 1) and `i*` stuff is label of sps. For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
-- `nTBME::Int64` # of two-body matrix elements (TBMEs)
-- `util_2n3n::util_2n3n`
-- `LECs::LECs`
-- `X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}` 9j for Vtrans
-- `U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}` 6j for Vtrans
-- `V12mom::Vector{Matrix{Float64}}` matrix elements of NN int in momentum space for each two-body channnel
-- `V12mom_2n3n::Vector{Matrix{Float64}}` matrix elements of 2n3n int in momentum space for each two-body channnel
-- `pw_channels::Vector{Vector{Int64}}` list of partial wave two-body channels like {[pnrank,L,L',S,J]}
-- `dict_pwch::Vector{Dict{Vector{Int64}, Int64}}`
-- `arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}`
-"""
-struct ChiralEFTobject
-    params::chiEFTparams
-    xr_fm::Vector{Float64}
-    xr::Vector{Float64}
-    wr::Vector{Float64}
-    dict6j::Vector{Dict{Int64, Float64}}
-    d6j_nabla::Dict{Vector{Int64}, Float64}  
-    d6j_int::Vector{Dict{Int64, Float64}}
-    Rnl::Array{Float64,3}
-    xrP_fm::Vector{Float64}
-    xrP::Vector{Float64}
-    wrP::Vector{Float64}
-    RNL::Array{Float64,3}
-    lsjs::Vector{Vector{Vector{Int64}}}
-    llpSJ_s::Vector{Vector{Int64}}
-    tllsj::Vector{Int64}
-    opfs::Vector{Vector{Float64}}
-    ts::Vector{Float64}
-    ws::Vector{Float64}
-    Numpn::Dict{Vector{Int64},Int64}
-    infos::Vector{Vector{Int64}} 
-    izs_ab::Vector{Vector{Vector{Int64}}}
-    nTBME::Int64
-    util_2n3n::util_2n3n
-    LECs::LECs
-    X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}
-    U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}
-    V12mom::Vector{Matrix{Float64}}
-    V12mom_2n3n::Vector{Matrix{Float64}}
-    pw_channels::Vector{Vector{Int64}}
-    dict_pwch::Vector{Dict{Vector{Int64}, Int64}} 
-    arr_pwch::Vector{Vector{Vector{Vector{Vector{Int64}}}}}
 end
 
 """
@@ -154,8 +73,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     ## prep. Gauss point for integrals
     ts, ws = Gauss_Legendre(-1,1,96)
     ## prep. for TBMEs        
-    Numpn= Dict{Vector{Int64},Int64}()
-    infos,izs_ab,nTBME = make_sp_state(params,Numpn;io=io)
+    infos,izs_ab,nTBME = make_sp_state(params;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
     util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
@@ -166,7 +84,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     X9,U6 = prepareX9U6(2*params.emax)
     chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
                             xrP_fm,xrP,wrP,RNL,lsjs,llpSJ_s,tllsj,opfs,ts,ws,
-                            Numpn,infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
+                            infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
                             V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
     # make Opt stuff    
     OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
@@ -200,22 +118,25 @@ function updateLECs_in_chiEFTobj!(chiEFTobj::ChiralEFTobject,targetkeys,targets:
     return nothing
 end
 
-function add2n3n(chiEFTobj,to,it=1)
+function add2n3n(chiEFTobj::ChiralEFTobject,to,it=1)
     calc_vmom_3nf(chiEFTobj,it,to)
     add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)        
     return nothing
 end
 
-function add_V12mom!(V12mom,V12mom_2n3n,a=1.0)
+function add_V12mom!(V12mom::VM,V12mom_2n3n::VM,a=1.0) where VM<:Vector{Matrix{Float64}}
     for i in eachindex(V12mom)
         V12mom_2n3n[i] .+= V12mom[i] * a
     end
     return nothing
 end
-
-function genLaguerre(n,alpha,x)
+"""
+    genLaguerre(n::Int,alpha,x)
+returns generalized Laguaerre polynomials, ``L^{\\alpha}_n(x)``
+"""
+function genLaguerre(n::Int,alpha,x)
     if n==0
-        return 1
+        return 1.0
     elseif n==1
         return -x + (alpha+1)
     else
@@ -267,7 +188,7 @@ end
 """ 
     QL(z,J::Int64,ts,ws)
 
-To calculate Legendre functions of second kind by Gauss-Legendre quadrature.
+To calculate Legendre functions of second kind, which are needed for pion-exchange contributions, by Gauss-Legendre quadrature.
 """
 function QL(z,J::Int64,ts,ws,QLdict)
     s = 0.0
@@ -297,11 +218,11 @@ function QL(z,J::Int64,ts,ws,QLdict)
 end
 
 """
-    make_sp_state(chiEFTobj,Numpn;io=stdout)
+    make_sp_state(chiEFTparams;io=stdout)
 
-Defining the number of single particle states from emax and two-body channels.
+Defining the two-body channels or kets.
 """
-function make_sp_state(chiEFTobj,Numpn;io=stdout)
+function make_sp_state(chiEFTobj::chiEFTparams;io=stdout)
     emax = chiEFTobj.emax
     jab_max = 4*emax + 2
     kh = Dict{Vector{Int64},Int64}()
@@ -323,8 +244,6 @@ function make_sp_state(chiEFTobj,Numpn;io=stdout)
                 kn[[-1,n]]=Nn; kn[[1,n]]=Nn
                 kl[[-1,n]]=L;  kl[[1,n]]=L
                 kj[[-1,n]]=jd; kj[[1,n]]=jd
-                Numpn[[-1,Nn,L,jd]]=n
-                Numpn[[ 1,Nn,L,jd]]=n
             end
         end
     end 
@@ -341,7 +260,7 @@ returns `infos`, `izs_ab`, `nTBME`
 For example, [-1,1,1,1] corresponds to |p0s1/2 n0s1/2>.
 - `nTBME::Int` # of TBMEs
 """
-function get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
+function get_twobody_channels(emax::Int,kh,kn,kl,kj,maxsps::Int,jab_max::Int)
     infos = Vector{Int64}[ ]  
     izs_ab = Vector{Vector{Int64}}[ ] 
     ichan = nTBME = 0
@@ -382,6 +301,11 @@ function get_twobody_channels(emax,kh,kn,kl,kj,maxsps,jab_max)
     return infos,izs_ab,nTBME
 end
 
+"""
+    def_sps_snt(emax,target_nlj)
+Defining dicts for single particle states.
+One can truncate sps by specifying `target_nlj`, but it is usually empty so this function is usually not used.
+"""
 function def_sps_snt(emax,target_nlj)
     nljsnt = Vector{Int64}[ ] 
     tzs = [-1,1]
@@ -409,6 +333,11 @@ function def_sps_snt(emax,target_nlj)
     return nljsnt,dict
 end
 
+"""
+    freg(p,pp,n;Lambchi=500.0)
+the regulator function used for NN or 2n3n contribution, Eq.(4.63) in EM's review:
+``f(p,p') = \\exp [ -(p/\\Lambda)^{2n} -(p'/\\Lambda)^{2n}  ]``
+"""
 function freg(p,pp,n;Lambchi=500.0)
     if n==0;return 1.0;end
     if n==-1 # for 3D3 pw in older EM interaction
@@ -523,7 +452,10 @@ function prepare_2b_pw_states(;io=stdout)
     return pw_channels,dict_pwch,arr_pwch
 end
 
-function calc_coulomb(chiEFTobj,xs,ws,Vcoulomb,pw_channels,num2bch,Rnl;meshp=100)
+"""
+calculating coulomb contribution in HO base. Results are overwritten to `Vcoulomb`
+"""
+function calc_coulomb(chiEFTobj,Vcoulomb,pw_channels,num2bch;meshp=100)
     hw = chiEFTobj.hw
     Nnmax = chiEFTobj.Nnmax
     rmass = 0.5 * Mp
@@ -624,14 +556,18 @@ function howf(num,brange,n,l,r,ra,rb,ret_rnl,meshp,memo)
     return nothing
 end
 
-function Vrel(chiEFTobj,to) 
+"""
+    Vrel(chiEFTobj::ChiralEFTobject,to) 
+To define V in two-particle HO basis.
+"""
+function Vrel(chiEFTobj::ChiralEFTobject,to) 
     V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels; Rnl = chiEFTobj.Rnl
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
     Nnmax= chiEFTobj.params.Nnmax; num2bch = length(pw_channels)
     V12ab = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
     Vcoulomb = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
     if chiEFTobj.params.coulomb
-        calc_coulomb(chiEFTobj.params,xr_fm,wr,Vcoulomb,pw_channels,num2bch,Rnl)
+        calc_coulomb(chiEFTobj.params,Vcoulomb,pw_channels,num2bch)
     end
     x = zeros(Float64,Nnmax+1,n_mesh)
     for num = 1:num2bch
@@ -670,7 +606,11 @@ function Vrel(chiEFTobj,to)
     return V12ab
 end
 
-function Calc_Deuteron(chiEFTobj,to;io=stdout)
+"""
+    Calc_Deuteron(chiEFTobj::ChiralEFTobject,to;io=stdout)
+Function to calculate deuteron binding energy.
+"""
+function Calc_Deuteron(chiEFTobj::ChiralEFTobject,to;io=stdout)
     V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
     ndim = 2*n_mesh

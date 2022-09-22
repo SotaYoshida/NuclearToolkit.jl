@@ -19,7 +19,7 @@
 - `valence_generator_type` only the "shell-model-atan" is available
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 """
-function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
+function imsrg_main(binfo::basedat,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
                     core_generator_type="atan",valence_generator_type="shell-model-atan")
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
@@ -31,21 +31,21 @@ function imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencesp
     init_dictMonopole!(dictMono,Chan2b)
     IMSRGobj = init_IMSRGobject(HFobj)    
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
-
-    ##IMSRG(2) calculation for target nucleus
+    
     IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to)
+
     if vsIMSRG
         IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;valenceflow=true)
         effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
-            getNormalOrderedO(binfo,HFobj,IMSRGobj.H,Chan1b,Chan2bD,dict6j,to;undo=true,OpeqH=true)
+            getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;undo=true,OpeqH=true)
             set_sps_to_core!(binfo,HFobj)
-            getNormalOrderedO(binfo,HFobj,IMSRGobj.H,Chan1b,Chan2bD,dict6j,to;OpeqH=true)            
+            getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;OpeqH=true)            
             for Op in effOps
                 set_sps_to_modelspace!(binfo,HFobj)
-                getNormalOrderedO(binfo,HFobj,Op,Chan1b,Chan2bD,dict6j,to;undo=true,OpeqH=false)
+                getNormalOrderedO(HFobj,Op,Chan1b,Chan2bD,to;undo=true,OpeqH=false)
                 set_sps_to_core!(binfo,HFobj)
-                getNormalOrderedO(binfo,HFobj,Op,Chan1b,Chan2bD,dict6j,to;OpeqH=false)
+                getNormalOrderedO(HFobj,Op,Chan1b,Chan2bD,to;OpeqH=false)
             end
         end
         write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,valencespace)
@@ -182,8 +182,7 @@ calc. ``\\eta(s)`` with atan generator
 """
 function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
     MS = HFobj.modelspace
-    sps = MS.sps; holes = MS.holes; particles = MS.particles
-    p_sps = MS.p_sps; n_sps = MS.n_sps
+    sps = MS.sps; p_sps = MS.p_sps; n_sps = MS.n_sps
     key = zeros(Int64,2)
     ## one-body piece a->h i->v/p
     Hs = IMSRGobj.H; f = Hs.onebody;  Gamma = Hs.twobody
@@ -264,7 +263,7 @@ end
 """
     Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key;verbose=false)
 
-`` f_{aa} +f_{bb} −f_{ii} −f_{jj} +G_{abij} +\\Delta``
+`` f_{aa}+f_{bb}-f_{ii}-f_{jj}+G_{abij} +\\Delta``
 
 with ``G_{abij} = \\Gamma_{abab} + \\Gamma_{ijij} - (\\Gamma_{aiai} + \\Gamma_{bjbj} + [a \\leftrightarrow b])``
 """
@@ -308,7 +307,7 @@ end
     make_PandyaKets(emax,HFobj)
 
 To prepare "kets" for Pandya transformation.
-For ordinary two-body channels, kets like ```|i,j=i;J=odd>``` where ```i={n,l,j,tz}``` are hindered, but necessary for Pandya transformation.
+For ordinary two-body channels, kets like ```|i,j=i;J=odd>``` with ```i={n,l,j,tz}``` are hindered, but necessary for Pandya transformation.
 """
 function make_PandyaKets(emax,HFobj)
     Chan2b_Pandya = chan2b[ ]
@@ -332,8 +331,6 @@ function make_PandyaKets(emax,HFobj)
                         if tri_check(ja//2,jb//2,J)==false;continue;end
                         tprty = (-1)^(la+lb)
                         if prty != tprty; continue;end
-                        #if oa.occ + ob.occ == 2; nhh +=1;end                                             
-                        #if oa.occ + ob.occ == 1; nph +=1;end
                         if (na != 0.0) && (nb !=0.0); nhh +=1;end 
                         if (na*nb ==0.0) && (na+nb!=0.0);nph +=1;end
                         push!(kets,[a,b])
@@ -356,7 +353,7 @@ function make_PandyaKets(emax,HFobj)
         end
     end
     ## sort Chan2bPandya by nKets_cc
-    nkets = [ ns[i][2] for i=1:length(ns)]
+    nkets = [ ns[i][2] for i in eachindex(ns)]
     idxs = sortperm(nkets,rev=true)
     sortedChan2b = chan2b[]
     sorted_ns = Vector{Int64}[]
@@ -534,74 +531,6 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,PandyaObj,numbers
     return nothing
 end
 
-function get_nkets_permutation(tbc)
-    kets = tbc.kets
-    Tz = tbc.Tz
-    count = 0
-    for ket in kets
-        count +=1 
-        if Tz != 0 #&& ket[1] != ket[2]
-            count +=1
-        end
-    end
-    return count
-end
-
-
-function need_check(tbc_bra_cc, tbc_ket_cc, li,ji,tzi, lj,jj,tzj, lk,jk,tzk, ll,jl,tzl)
-    tf = false
-    twoJ_bra_cc = tbc_bra_cc.J * 2
-    twoJ_ket_cc = tbc_ket_cc.J * 2
-    par_bra = tbc_bra_cc.prty
-    par_ket = tbc_ket_cc.prty
-    Tz_bra  = tbc_bra_cc.Tz
-    Tz_ket  = tbc_ket_cc.Tz
-    ## i-l & j-k
-    j3min = abs(ji-jl); j3max = ji+jl
-    j4min = abs(jk-jj); j4max = jk+jj
-    if ( ((-1)^(li+ll) == par_bra) && 
-         ((-1)^(lj+lk) == par_ket) && 
-         (abs(tzi+tzl) == Tz_bra) && 
-         (abs(tzj+tzk) == Tz_ket) && 
-         j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
-         j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @1");end
-        return true
-    end
-    if (((-1)^(li+ll) == par_ket) && 
-        ((-1)^(lj+lk) == par_bra) && 
-        (abs(tzi+tzl) == Tz_ket)   && 
-        (abs(tzj+tzk) == Tz_bra)   && 
-        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
-        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @2");end
-       return true
-   end
-   ##i-k j-l
-   j3min = abs(jj-jl); j3max = jj+jl
-   j4min = abs(ji-jk); j4max = ji+jk
-   if (((-1)^(lj+ll) == par_bra) && 
-       ((-1)^(li+lk) == par_ket) && 
-       (abs(tzj+tzl) == Tz_bra)   && 
-       (abs(tzi+tzk) == Tz_ket)   && 
-        j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
-        j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @3");end
-        return true
-   end
-   if (((-1)^(lj+ll) == par_ket) && 
-       ((-1)^(li+lk) == par_bra) && 
-       (abs(tzj+tzl) == Tz_ket)   && 
-       (abs(tzi+tzk) == Tz_bra)   && 
-        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
-        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @4");end
-        return true
-   end
-   return tf
-end
-
-
 function get_nkey_from_key6j(tkey;ofst_unit=1000)
     nkey = tkey[1] + tkey[2] * ofst_unit + tkey[3] * ofst_unit^2 + tkey[4] * ofst_unit^3 +  tkey[5] * ofst_unit^4
     return nkey
@@ -705,9 +634,9 @@ end
 
 """
     write_omega_bin(binfo,n_written,Omega)
-to write binary file of Operator matrix elements, when spliting the flow
+Function to write temporary binary files of Operator matrix elements, when spliting the flow.
 """
-function write_omega_bin(binfo,n_written,Omega)
+function write_omega_bin(binfo::basedat,n_written::Int,Omega::Operator)
     if isdir("flowOmega") 
         if n_written==0
             rm.(glob("flowOmega/*bin"))
@@ -757,7 +686,7 @@ end
 
 read written Omega file and update ```Op::Operator```
 """
-function read_omega_bin!(binfo,nw,Op,verbose=false)
+function read_omega_bin!(binfo::basedat,nw::Int,Op::Operator,verbose=false)
     pid = getpid()
     fn = "flowOmega/Omega_$pid"*binfo.nuc.cnuc*"_$nw.bin"
     io = open(fn,"r")
@@ -792,7 +721,8 @@ end
 
 This may not be used now.
 """
-function GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to)
+function GatherOmega(Omega::Op,nOmega::Op,gatherer::Op,tmpOp::Op,Nested::Op,
+                     H0,Hs,ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to) where Op<:Operator
     MS = HFobj.modelspace; p_sps =MS.p_sps; n_sps=MS.n_sps
     Chan2b = Chan2bD.Chan2b
     maxnormOmega = IMSRGobj.maxnormOmega
@@ -832,8 +762,7 @@ function Gethhph(kets,sps)
     for (idx,ket) in enumerate(kets)
         p,q = ket 
         occs = sps[p].occ + sps[q].occ 
-        #if occs == 2 || occs == 1; push!(idx_hhph,idx);end
-        if occs != 0.0; push!(idx_hhph,idx);end # for fractional
+        if occs != 0.0; push!(idx_hhph,idx);end
     end
     return idx_hhph
 end
@@ -976,4 +905,60 @@ function set_sps_to_modelspace!(binfo,HFobj)
         n_sps[i].occ = sps[2*i].occ = cn
     end
     return nothing
+end
+
+###
+### Followings will be removed
+###
+function need_check(tbc_bra_cc, tbc_ket_cc, li,ji,tzi, lj,jj,tzj, lk,jk,tzk, ll,jl,tzl)
+    tf = false
+    twoJ_bra_cc = tbc_bra_cc.J * 2
+    twoJ_ket_cc = tbc_ket_cc.J * 2
+    par_bra = tbc_bra_cc.prty
+    par_ket = tbc_ket_cc.prty
+    Tz_bra  = tbc_bra_cc.Tz
+    Tz_ket  = tbc_ket_cc.Tz
+    ## i-l & j-k
+    j3min = abs(ji-jl); j3max = ji+jl
+    j4min = abs(jk-jj); j4max = jk+jj
+    if ( ((-1)^(li+ll) == par_bra) && 
+         ((-1)^(lj+lk) == par_ket) && 
+         (abs(tzi+tzl) == Tz_bra) && 
+         (abs(tzj+tzk) == Tz_ket) && 
+         j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
+         j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
+        #if ch_bra_cc == ch_ket_cc == 1; println("hit @1");end
+        return true
+    end
+    if (((-1)^(li+ll) == par_ket) && 
+        ((-1)^(lj+lk) == par_bra) && 
+        (abs(tzi+tzl) == Tz_ket)   && 
+        (abs(tzj+tzk) == Tz_bra)   && 
+        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
+        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
+        #if ch_bra_cc == ch_ket_cc == 1; println("hit @2");end
+       return true
+   end
+   ##i-k j-l
+   j3min = abs(jj-jl); j3max = jj+jl
+   j4min = abs(ji-jk); j4max = ji+jk
+   if (((-1)^(lj+ll) == par_bra) && 
+       ((-1)^(li+lk) == par_ket) && 
+       (abs(tzj+tzl) == Tz_bra)   && 
+       (abs(tzi+tzk) == Tz_ket)   && 
+        j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
+        j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
+        #if ch_bra_cc == ch_ket_cc == 1; println("hit @3");end
+        return true
+   end
+   if (((-1)^(lj+ll) == par_ket) && 
+       ((-1)^(li+lk) == par_bra) && 
+       (abs(tzj+tzl) == Tz_ket)   && 
+       (abs(tzi+tzk) == Tz_bra)   && 
+        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
+        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
+        #if ch_bra_cc == ch_ket_cc == 1; println("hit @4");end
+        return true
+   end
+   return tf
 end

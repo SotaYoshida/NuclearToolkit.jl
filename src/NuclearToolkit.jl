@@ -16,15 +16,15 @@ using TimerOutputs
 using WignerSymbols
 
 ### ChiEFTint.jl  chiEFTint/
+include("chiEFTint/struct_const_io.jl")
 include("chiEFTint/dict_LECs.jl")
-include("chiEFTint/misc_plt_io.jl")
-include("chiEFTint/angmom_algebra.jl")
 include("chiEFTint/contact.jl")
 include("chiEFTint/pionexchange.jl")
-include("chiEFTint/valence.jl")
+include("chiEFTint/angmom_algebra.jl")
 include("chiEFTint/eff3nf.jl")
-include("chiEFTint/calibration.jl")
 include("chiEFTint/main_chiEFTint.jl")
+include("chiEFTint/calibration.jl")
+include("chiEFTint/valence.jl")
 include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
 export make_chiEFTint

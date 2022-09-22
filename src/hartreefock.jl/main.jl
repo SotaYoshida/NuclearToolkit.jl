@@ -284,7 +284,6 @@ calculate naive filling configurations by given sps and proton/neutron number (`
 For some nuclei, especially for heavier ones, carrying out naive filling is ambiguous
 (e.g., neutron occupation of 22O can be both 0s1(2),0p1(2),0p3(4),0d5(6) and  0s1(2),0p1(2),0p3(4),1s1(2), 0d3(4)).
 In this function, "naive filling" means to try fill orbits with lower ``2n+l`` and then "lower" ``j``.
-The occupations will be updated when appropriate during HF iterations.
 """
 function naive_filling(sps,n_target,emax,for_ref=false)
     ln = length(sps)

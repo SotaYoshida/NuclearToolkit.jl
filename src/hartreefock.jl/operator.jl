@@ -676,17 +676,17 @@ where ``\\langle r^2_p \\rangle = 0.769 \\mathrm{fm}^2``, ``\\langle r^2_n \\ran
 `` \\frac{3}{4m^2_p c^4} =0.033\\mathrm{fm}^2`` is the so-called Darwin-Foldy term, and the last term is Spin-Orbit correction term.
 """
 function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true)   
-    @timeit to "RCM" Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
+    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
     Calculate_intR2p(binfo,Chan1b,HFobj,Op_Rp2)
     Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
-    @timeit to "expec" Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
+    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
     return Rp,Rp_PT
 end
 
 """
     eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,to)
 
-evaluate charge radii with HFMBPT
+function to evaluate charge radii with HFMBPT
 """
 function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,MatOp,to;io=stdout)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
@@ -715,7 +715,7 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
         ctxt = " HF+PT => " * RPT
     end
     println(io,"   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
-    getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to) 
+    getNormalOrderedO(HFobj,Op_Rp2,Chan1b,Chan2bD,to) 
     return nothing
 end
 
@@ -733,7 +733,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     Op_Rp2 = InitOp(Chan1b,Chan2b)
     ## HF level
     Rpp,Rp_PT = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to)
-    getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to;firstNO=true) 
+    getNormalOrderedO(HFobj,Op_Rp2,Chan1b,Chan2bD,to;firstNO=true) 
     Rpp_HF = Op_Rp2.zerobody[1]
     Rch2_HF = Rpp_HF + Rp2 + N/Z *Rn2 + DF
     Rch_HF = sqrt(Rch2_HF)
@@ -763,11 +763,11 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
 end
 
 """
-    getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
+    getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
 
 NormalOrdering for a target Operator. For now, it only supports scaler operators.
 """
-function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
+function getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
     Chan2b = Chan2bD.Chan2b
     dict_idx_from_chket = Chan2bD.dict_idx_from_chket
     sps = HFobj.modelspace.sps

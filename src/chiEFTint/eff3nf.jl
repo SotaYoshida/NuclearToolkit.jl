@@ -1,25 +1,3 @@
-struct QLs
-    QL0s::Vector{Matrix{Float64}}
-    QWL2s::Vector{Matrix{Float64}}
-    QWL1s::Vector{Matrix{Float64}}
-    QWL0s::Vector{Matrix{Float64}}
-    QWlss::Vector{Matrix{Float64}}
-    ndQW1s::Vector{Vector{Matrix{Float64}}}
-    ndQW2s::Vector{Vector{Matrix{Float64}}}
-    QLdict::Vector{Dict{Float64,Float64}}
-end
-struct Fis_2n3n
-    F0s::Vector{Float64}
-    F1s::Vector{Float64}
-    F2s::Vector{Float64}
-    F3s::Vector{Float64}
-end
-struct util_2n3n
-    Fis::Fis_2n3n
-    QWs::QLs
-    wsyms::wsyms_j1_1or2
-end
-
 function XF(Anum)
     return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
 end

@@ -125,9 +125,9 @@ end
 """
     calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
-``\\eta(s)`` with shell-model atan generator to decouple valence space
+``\\eta(s)`` with shell-model atan generator to decouple the specified valence space.
 """
-function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
+function calc_Eta_smatan!(HFobj::HamiltonianNormalOrdered,IMSRGobj,Chan2b,dictMono,norms)
     MS = HFobj.modelspace
     sps = MS.sps; p_sps = MS.p_sps; n_sps = MS.n_sps    
     key = zeros(Int64,2)

@@ -76,7 +76,7 @@ struct chan2b
 end
 
 """
-struct `chan2bD`
+struct `Chan2bD`
 # Fields
 - `Chan2b::Vector{chan2b}` array of chan2b (ch=1,...,nchan)
 - `dict_ch_JPT::Dict{Vector{Int64},VdictCh}` dict to get VdictCh by given key `[J,prty,T]`

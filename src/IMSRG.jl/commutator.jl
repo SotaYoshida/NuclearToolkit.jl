@@ -3,42 +3,41 @@
     
 overwrite `ret` operator by the commutator ``[X,Y]`` 
 """
-function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj,Chan1b,Chan2bD,dictMono,dict6j,PandyaObj,to) where{Op <: Operator}
-    Chan2b = Chan2bD.Chan2b
-    E0 = ret.zerobody        
+function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD,dictMono,dict6j,PandyaObj::PandyaObject,to) where{Op <: Operator}
+    Chan2b = Chan2bD.Chan2b  
     if X.hermite && Y.hermite; ret.hermite=false; ret.antihermite=true
     elseif X.hermite && Y.antihermite; ret.hermite=true;ret.antihermite=false
     elseif X.antihermite && Y.hermite; ret.hermite=true;ret.antihermite=false;
     else ret.hermite = false;end
     ## zero-body pieces
     if !ret.antihermite
-        comm110ss!(X,Y,E0,HFobj)
-        comm220ss!(X,Y,E0,HFobj,Chan2b)
+        comm110ss!(X,Y,ret,HFobj)
+        comm220ss!(X,Y,ret,HFobj,Chan2b)
     end    
     ## one-body pieces
     @timeit to "comm111" comm111ss!(X,Y,ret)
-    @timeit to "comm121" comm121ss!(X,Y,ret,HFobj,Chan1b,Chan2b,dictMono,PandyaObj)
+    @timeit to "comm121" comm121ss!(X,Y,ret,HFobj,Chan1b,dictMono,PandyaObj)
     @timeit to "comm221" comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
     ## two-body pieces
-    @timeit to "comm122" comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
+    @timeit to "comm122" comm122ss!(X,Y,ret,Chan2b,PandyaObj,to)
     @timeit to "comm222pphh" comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
     @timeit to "comm222ph" comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
     return nothing
 end
 
 """
-    BCH_Product(X,Y,Z,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to;tol=1.e-4)
+    BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
+dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
 
-returns ``Z``  to satisfy: ``e^Z = e^X e^Y``  
+returns ``Z``  to satisfy: ``e^Z = e^X e^Y``.
 
 ``Z`` is calculated with Baker–Campbell–Hausdorff (BCH) formula:
-
 ``Z = X + Y + 1/2[X, Y]  + 1/12 [X,[X,Y]] + 1/12 [Y,[Y,X]] -1/24 [Y,[X,[X,Y]]] -1/720 [Y,[Y,[Y,[Y,X]]]] -1/720 [X,[X,[X,[X,Y]]]] +...``
 
 For IMSRG flow of ``H(s)``, ``X=\\eta(s)*ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)`` 
 """
-function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm,norms,Chan1b,Chan2bD,HFobj,
-                     dictMono,dict6j,PandyaObj,to;tol=1.e-4) where Op <:Operator
+function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
+                     dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
     Nested.hermite = true; Nested.antihermite=false
     berfac = [-0.5, 1.0/12.0, 0.0, -1.0/720.0, 0.0, 1.0/30240.0, 0.0, 1.0/1209600.0 ]
     Chan2b = Chan2bD.Chan2b
@@ -47,9 +46,9 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm,norms,Chan1b,C
     Ncomm = 0
     aOp1_p_bOp2_Op3!(X,Y,Z,1.0,1.0,0.0)
     ## comm1 term: 1/2[X,Y]
-    ## norm check to determine whther to go further or not    
+    ## norm check to determine whther to go further or not 
     Ncomm +=1  
-    aOp!(Nested,0.0) ## clear old history   
+    aOp!(Nested,0.0) ## clear old history
     @timeit to "comm." OpCommutator!(Y,X,Nested,HFobj,Chan1b,Chan2bD,dictMono,dict6j,PandyaObj,to)
     nx  = getNorm(X,p_sps,n_sps,Chan2b)
     sqrt(getNorm1b(X.onebody,p_sps,n_sps)^2 + getNorm2b(X.twobody,Chan2b)^2)
@@ -94,8 +93,8 @@ Note that the `ret` and `tOp` are also overwritten.
 e.g.,
 `Omega`: ``\\Omega(s+ds)``, `H0`: ``H(s=0)`` or ``O(s=0)``, and `ret`: ``H(s+ds)``
 """
-function BCH_Transform(Omega,O0,Hs,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,
-                       dictMono,dict6j,PandyaObj,to;tol=1.e-9,maxit=100,verbose=false)   
+function BCH_Transform(Omega::Op,O0::Op,Hs::Op,tOp::Op,Nested::Op,ncomm,norms,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
+                       dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-9,maxit=100,verbose=false) where Op<:Operator
     if Omega.hermite && O0.hermite; tOp.hermite=false; tOp.antihermite=true
     elseif Omega.hermite && O0.antihermite; tOp.hermite=true;tOp.antihermite=false
     elseif Omega.antihermite && O0.hermite; tOp.hermite=true;tOp.antihermite=false;
@@ -128,11 +127,10 @@ function BCH_Transform(Omega,O0,Hs,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,
     return nothing
 end
 
-## comm. to 0-body
-function comm110ss!(X,Y,Z0::zerobody,HFobj) where {zerobody<:Vector{Float64}}                                      
+function comm110ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered) where {Op<:Operator}
     if X.hermite && Y.hermite; return nothing;end
     if X.antihermite && Y.antihermite; return nothing;end
-    x1bs = X.onebody; y1bs = Y.onebody
+    Z0 = ret.zerobody; x1bs = X.onebody; y1bs = Y.onebody
     sps = HFobj.modelspace.sps; holes = HFobj.modelspace.holes
     for pn = 1:2        
         x1b = x1bs[pn]; y1b = y1bs[pn]
@@ -147,11 +145,11 @@ function comm110ss!(X,Y,Z0::zerobody,HFobj) where {zerobody<:Vector{Float64}}
 end 
 
 """
-    comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float64}}
+    comm220ss!(X::Op,Y::Op,Z::Op,HFobj::HamiltonianNormalOrdered,Chan2b::Vector{chan2b}) where Op<:Operator
 
 ``[X_2,Y_2]_0 = 2 \\sum_{J}(2J+1) \\mathrm{Tr}(X_{hh'pp'}  Y_{pp'hh'}) ``
 """
-function comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float64}}
+function comm220ss!(X::Op,Y::Op,Z::Op,HFobj::HamiltonianNormalOrdered,Chan2b::Vector{chan2b}) where Op<:Operator
     sps = HFobj.modelspace.sps
     x2bs = X.twobody; y2bs = Y.twobody
     for ch in eachindex(x2bs)
@@ -169,18 +167,17 @@ function comm220ss!(X,Y,Z::zerobody,HFobj,Chan2b) where {zerobody<:Vector{Float6
                 zsum += (x2b[ib,ik]*y2b[ik,ib]-y2b[ib,ik]*x2b[ik,ib])*na*nb *(1-nc)*(1-nd)
             end 
         end
-        Z[1] += NJ * zsum
+        Z.zerobody[1] += NJ * zsum
     end                                     
     return nothing
 end
 
-## comm. to 1body
 """
     comm111ss!(X,Y,ret;inifac=1.0)
 
-``[X_1,Y_1]``
+returns ``[X_1,Y_1]``
 """
-function comm111ss!(X,Y,ret;inifac=1.0)
+function comm111ss!(X::Op,Y::Op,ret::Op;inifac=1.0) where Op<:Operator
     m1bs = ret.onebody; x1bs = X.onebody; y1bs = Y.onebody
     for pn = 1:2
         m1b = m1bs[pn]; x1b = x1bs[pn]; y1b = y1bs[pn]
@@ -197,13 +194,13 @@ returns ``[X_1,Y_2] - [Y_1,X_2]``, whose elements are given as
 
 `` [X_1,Y_2]_{ij} = \\frac{1}{2j_i+1}\\sum_{ab} (n_a \\bar{n}_b) \\sum_{J} (2J+1) (X_{ab} Y^J_{biaj} - X_{ba} Y^J_{aibj}) ``
 """
-function comm121ss!(X,Y,ret,HFobj,Chan1b,Chan2b,dictMono,PandyaObj)
+function comm121ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,dictMono,PandyaObj::PandyaObject) where Op <:Operator
     x1bs = X.onebody; y1bs = Y.onebody; m1bs = ret.onebody
     x2bs = X.twobody; y2bs = Y.twobody; hZ = ifelse(ret.hermite,1.0,-1.0)
     sps = HFobj.modelspace.sps
     keys6j = PandyaObj.keys6j
     dim1b = size(x1bs[1])[1]
-    for pn = 1:2 #pn_for i,j
+    for pn = 1:2
         y1b = y1bs[pn]; m1b = m1bs[pn]        
         chan1bs = Chan1b.chs1b[pn]
         imin = ifelse(pn==1,1,2)
@@ -257,7 +254,7 @@ end
 
 calc 121part ``[X_1,Y_2]-[Y_1,X_2]`` for given `i`,`j` and `a`,`b`.
 
-``\\sum_{J} [J]^2 (o1_{ab}o2_{biaj} - o1_{ba}o2_{aibj})``
+``\\sum_{J} [J]^2 (o_{1,ab}o_{2,biaj} - o_{1,ba}o_{2,aibj})``
 """
 function single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
     key1 = @view key[1:2]; key2 = @view key[3:4]
@@ -313,13 +310,13 @@ function single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
 end
 
 """
-    comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
+    comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD,PandyaObj::PandyaObject) where Op<:Operator 
 
 returns ``[X_2,Y_2]_1 - [Y_2,X_2]_1``, whose elements are given as
 
 ``[X_2,Y_2]_{ij} = 1/(2[j_i]) \\sum_{abc}\\sum_{J}[J](n'_an'_bn_c-n_an_bn'_c)(X_{2,ciab}Y_{2,abcj}-Y_{2,ciab}X_{2,abcj})``
 """
-function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
+function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD,PandyaObj::PandyaObject) where Op<:Operator
     Chan2b = Chan2bD.Chan2b
     hZ = ifelse(ret.hermite,1.0,-1.0)
     x2bs = X.twobody; y2bs = Y.twobody; m1bs = ret.onebody
@@ -409,8 +406,7 @@ function comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
     return nothing
 end
 
-
-function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
+function comm222ph_ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan2bD::Chan2bD,dict6j,PandyaObj::PandyaObject,to) where Op<:Operator
     hy = ifelse(Y.hermite,1.0,-1.0)
     hz = ifelse(ret.hermite,1.0,-1.0)
     MS = HFobj.modelspace; sps = MS.sps
@@ -432,8 +428,8 @@ function comm222ph_ss!(X,Y,ret,HFobj,Chan2bD,dict6j,PandyaObj,to)
         Ybar_ph = @view XYbars[threadid()][2][1:2*nph_kets,1:nKets_cc]        
         if nKets_cc * nph_kets !=0
             Xbar_ph .= 0.0; Ybar_ph .= 0.0
-            DoPandyaTransformation(X, Xbar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"T") 
-            DoPandyaTransformation(Y, Ybar_ph, tbc_cc, Chan2bD, HFobj, PandyaObj, tnumbers,dict6j,key6j,"N") 
+            DoPandyaTransformation(X, Xbar_ph, tbc_cc, Chan2bD, HFobj, tnumbers,dict6j,key6j,"T") 
+            DoPandyaTransformation(Y, Ybar_ph, tbc_cc, Chan2bD, HFobj, tnumbers,dict6j,key6j,"N") 
             PhaseMat = PhaseMats[ich]; PhaseMat .= 1.0
             tkets = tbc_cc.kets
             for iket = 1:nKets_cc
@@ -461,8 +457,7 @@ end
 - `PhaseMatY`: (`nph_kets`,`nKets_cc`) matrix or SubArray
 - `Zbar`: (`nKets_cc`, 2*`nKets_cc`) matrix or SubArray
 """
-function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
-                   Zlefthalf,Zrighthalf,hz) 
+function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,Zlefthalf,Zrighthalf,hz) 
     BLAS.gemm!('N','N',1.0,Xbar,Ybar,0.0,Zlefthalf)
     ru = @view Ybar[nph_kets+1:2*nph_kets,:] 
     rl = @view Ybar[1:nph_kets,:]
@@ -478,7 +473,7 @@ function calcZbar!(Xbar,Ybar,PhaseMat,PhaseMatY,tmpMat,hy,nph_kets,nKets_cc,
     return nothing
 end 
 
-function AddInvPandya!(Zbars,ret,Chan2bD,dict6j,PandyaObj,sps,to)
+function AddInvPandya!(Zbars::Vector{Matrix{Float64}},ret::Operator,Chan2bD::Chan2bD,dict6j,PandyaObj::PandyaObject,sps,to)
     Chan2b =Chan2bD.Chan2b
     Chan2b_Pandya = PandyaObj.Chan2b
     dict_2b_ch = Chan2bD.dict_ch_JPT
@@ -608,7 +603,7 @@ function getlocalidx(i,j,tkets_cc;ofst=true)
     end
 end
 
-function prep122(HFobj,Chan1b,Chan2bD)
+function prep122(HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD)
     Chan2b = Chan2bD.Chan2b
     idx_dict = Chan2bD.dict_idx_from_chket
     MS = HFobj.modelspace; sps = MS.sps
@@ -674,7 +669,7 @@ function prep122(HFobj,Chan1b,Chan2bD)
     end
     return util122
 end
-function comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
+function comm122ss!(X::Op,Y::Op,ret::Op,Chan2b::Vector{chan2b},PandyaObj::PandyaObject,to) where Op<:Operator
     hZ = ifelse(ret.hermite,1.0,-1.0)
     x1 = X.onebody; x2bs = X.twobody
     y1 = Y.onebody; y2bs = Y.twobody; m2bs = ret.twobody
@@ -690,12 +685,10 @@ function comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
         w2  = @view tM[1:dim,1:dim]
         M_L = XYbars[threadid()][1]
         M_R = XYbars[threadid()][2]
-
         tx1_i = @view tM[1:dim,dim+1]
         tx1_j = @view tM[1:dim,dim+2]
         ty1_i = @view tM[1:dim,dim+3]
         ty1_j = @view tM[1:dim,dim+4]
-
         @inbounds for idx_ij = 1:dim
             i,j = tkets[idx_ij]
             idx_i = div(i,2)+i%2; pn_i = 2-i%2
@@ -739,7 +732,7 @@ function comm122ss!(X,Y,ret,HFobj,Chan1b,Chan2b,PandyaObj,to)
     return nothing
 end 
 
-function comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
+function comm222_pphh_ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan2bD::Chan2bD,PandyaObj::PandyaObject,to) where Op<:Operator
     Chan2b = Chan2bD.Chan2b
     m2bs = ret.twobody; x2bs = X.twobody; y2bs = Y.twobody
     nch = length(Chan2b)

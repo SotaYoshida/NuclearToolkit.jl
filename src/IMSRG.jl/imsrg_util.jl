@@ -1,5 +1,5 @@
 """
-    imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictMono,d9j,HOBs,dict6j,valencespace,Operators,to; core_generator_type="atan",valence_generator_type="shell-model-atan",denominatorDelta=0.0)
+    imsrg_main(binfo::basedat,Chan1b,Chan2bD,HFobj,dictMono,d9j,HOBs,dict6j,valencespace,Operators,to; core_generator_type="atan",valence_generator_type="shell-model-atan",denominatorDelta=0.0)
     
 # Arguments
 - `binfo::basedat` struct basedat(nuc::nuclei,sntf::String,hw::Float,emax::Int)
@@ -19,7 +19,7 @@
 - `valence_generator_type` only the "shell-model-atan" is available
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 """
-function imsrg_main(binfo::basedat,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
+function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
                     core_generator_type="atan",valence_generator_type="shell-model-atan")
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
@@ -59,7 +59,7 @@ end
     read_imsrg_parameter!(fn,IMSRGobj)
 Function to overwrite IMSRGobj from the parameter file `fn`.
 """
-function read_imsrg_parameter!(fn,IMSRGobj)
+function read_imsrg_parameter!(fn::String,IMSRGobj::IMSRGobject)
     include(fn)
     if @isdefined(smax); IMSRGobj.smax = smax; end
     if @isdefined(dsmax); IMSRGobj.dsmax = dsmax; end
@@ -99,7 +99,7 @@ end
 
 To update dictMonopole pp/pn/nn under H(s=0)/IMSRG H(s)
 """
-function set_dictMonopole!(dictMonopole,HFobj,H) 
+function set_dictMonopole!(dictMonopole,HFobj,H)
     MS = HFobj.modelspace; sps = MS.sps
     for pnrank =1:3
         for key in keys(dictMonopole[pnrank])
@@ -127,7 +127,7 @@ end
 
 returns sqrt(norm1b^2 + norm2b^2)
 """
-function getNorm(O,p_sps,n_sps,Chan2b)
+function getNorm(O::Operator,p_sps,n_sps,Chan2b)
     n1b = getNorm1b(O.onebody,p_sps,n_sps)
     n2b = getNorm2b(O.twobody,Chan2b)
     return sqrt(n1b^2+n2b^2)
@@ -165,7 +165,7 @@ end
 
 returns 2bnorm of the given Operator
 """
-function getNorm2b(Mat2b,Chan2b,verbose=false)
+function getNorm2b(Mat2b::Vector{Matrix{Float64}},Chan2b::Vector{chan2b},verbose=false)
     tnorm = 0.0
     for ch =1:length(Mat2b)
         J = Chan2b[ch].J
@@ -176,11 +176,11 @@ function getNorm2b(Mat2b,Chan2b,verbose=false)
     return sqrt(tnorm)
 end 
 """
-    calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
+    calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Chan2b::Vector{chan2b},dictMono,norms)
 
 calc. ``\\eta(s)`` with atan generator
 """
-function calc_Eta_atan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
+function calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Chan2b::Vector{chan2b},dictMono,norms)
     MS = HFobj.modelspace
     sps = MS.sps; p_sps = MS.p_sps; n_sps = MS.n_sps
     key = zeros(Int64,2)
@@ -306,10 +306,9 @@ end
 """
     make_PandyaKets(emax,HFobj)
 
-To prepare "kets" for Pandya transformation.
-For ordinary two-body channels, kets like ```|i,j=i;J=odd>``` with ```i={n,l,j,tz}``` are hindered, but necessary for Pandya transformation.
+To prepare "kets" for Pandya transformation. For ordinary two-body channels, kets like `|i,j=i;J=odd>` with ``={n,l,j,tz}` are hindered, but necessary for Pandya transformation.
 """
-function make_PandyaKets(emax,HFobj)
+function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
     Chan2b_Pandya = chan2b[ ]
     MS = HFobj.modelspace;sps = MS.sps
     dim1b = div(length(sps),2)
@@ -371,7 +370,7 @@ end
 constructor of utils for Pandya transformation and others
 numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya) 
 """
-function prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
+function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
     Chan2b = Chan2bD.Chan2b    
     numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj)
     MS = HFobj.modelspace; sps = MS.sps
@@ -464,7 +463,7 @@ function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose
     return tbme
 end
 
-function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,PandyaObj,numbers_ch,dict6j,key6j,orientation="N")
+function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j,key6j,orientation="N")
     Chan2b = Chan2bD.Chan2b
     MS = HFobj.modelspace; sps = MS.sps
     J_cc = tbc_cc.J
@@ -539,7 +538,7 @@ function get_nkey_from_key6j(ji,jj,jk,jl,Jp;ofst_unit=1000)
     return ji + jj*ofst_unit + jk * ofst_unit^2+ jl* ofst_unit^3 + Jp * ofst_unit^4
 end
 
-function IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,
+function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dict6j,
                    core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split")        
     Chan2b = Chan2bD.Chan2b
     ncomm = IMSRGobj.Ncomm    
@@ -722,7 +721,7 @@ end
 This may not be used now.
 """
 function GatherOmega(Omega::Op,nOmega::Op,gatherer::Op,tmpOp::Op,Nested::Op,
-                     H0,Hs,ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to) where Op<:Operator
+                     H0,Hs,ncomm,norms,Chan1b::chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to) where Op<:Operator
     MS = HFobj.modelspace; p_sps =MS.p_sps; n_sps=MS.n_sps
     Chan2b = Chan2bD.Chan2b
     maxnormOmega = IMSRGobj.maxnormOmega
@@ -813,7 +812,7 @@ end
 
 consistent IMSRG flow of scaler operators (Rp2) using written Omega
 """
-function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
+function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b::chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
     effOperators = Operator[ ]
     for c_op in Operators
         if c_op=="Rp2"

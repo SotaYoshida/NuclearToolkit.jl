@@ -654,7 +654,7 @@ end
 empirical formula for harmonis oscillator parameter hw by mass number A
 fnum=2: for sd-shell, Ref. J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
 """
-function hw_formula(A,fnum)
+function hw_formula(A::Int,fnum::Int)
     hw = 0.0
     if fnum == 2        
         hw = 45.0 * (A^(-1.0/3.0)) -25.0 * (A^(-2.0/3.0))

@@ -129,16 +129,12 @@ end
 - `wr::Vector{Float64}` weights vector for Gauss-Legendre quadrature
 - `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
 ```math
-\\begin{Bmatrix} 
-j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p
-\\end{Bmatrix}
+\\begin{Bmatrix} j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p \\end{Bmatrix}
 ```
 where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
 - `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
 ```math
-\\begin{Bmatrix} 
-j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2
-\\end{Bmatrix}
+\\begin{Bmatrix} j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2 \\end{Bmatrix}
 ```
 - `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
 - `Rnl::Array{Float64,3}` arrays for radial functions
@@ -388,9 +384,9 @@ end
 
 write tbme in myg/snt(snt.bin) format
 """
-function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
-    tbme_fmt = chiEFTobj.tbme_fmt
-    target_nlj = chiEFTobj.target_nlj
+function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
+    tbme_fmt = params.tbme_fmt
+    target_nlj = params.target_nlj
     
     @inbounds for i = 1:ndim
         iza,ia,izb,ib = izs[i]
@@ -468,7 +464,7 @@ function write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6
     return nothing
 end
 
-function select_io(MPIcomm,optimizer,nucs;use_stdout=false,fn="")
+function select_io(MPIcomm::Bool,optimizer::String,nucs;use_stdout=false,fn="")
     io = stdout
     if MPIcomm
         @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
@@ -485,7 +481,7 @@ function select_io(MPIcomm,optimizer,nucs;use_stdout=false,fn="")
     return io
 end
 
-function write_spes(chiEFTobj,io,nljsnt,lp,nTBME,nljdict;bin=false)
+function write_spes(chiEFTobj::chiEFTparams,io,nljsnt,lp,nTBME,nljdict;bin=false)
     hw = chiEFTobj.hw
     target_nlj = chiEFTobj.target_nlj
     ## header part
@@ -637,8 +633,7 @@ end
 """
     print_vec(s,v;ine=false)
 
-function to make println(stdout) more readable.
-This is usuful for debug.
+function to print float vectors more readable. This is usuful for debug.
 """
 function print_vec(s,v,io=stdout;ine=false)
     s *= " "

@@ -92,11 +92,11 @@ function s_wigner9j(j1,j3,j4,j6,j7,j8,j9)
 end
 
 """
-    TMtrans(chiEFTobj,HOBs,to;calc_relcm=false,writesnt=true)
+    TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;calc_relcm=false,writesnt=true)
 
 Function to carry out Talmi-Mochinsky transformation for NN interaction in HO space and to write out an sinput file.
 """
-function TMtrans(chiEFTobj::ChiralEFTobject,HOBs,to;calc_relcm=false,writesnt=true)
+function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;calc_relcm=false,writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
     params = chiEFTobj.params
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
@@ -145,7 +145,6 @@ function TMtrans(chiEFTobj::ChiralEFTobject,HOBs,to;calc_relcm=false,writesnt=tr
     tkeys = [zeros(Int64,4) for i=1:4]
     key6j = zeros(Int64,5)
     t5vs=[zeros(Int64,5) for i=1:nthreads()]   
-    ttt = [deepcopy(HOBs) for i=1:nthreads()]   
     @inbounds for ich in eachindex(infos) 
         izz,ip,Jtot,ndim=infos[ich]
         pnrank = Int(div(izz,2))+2
@@ -153,7 +152,6 @@ function TMtrans(chiEFTobj::ChiralEFTobject,HOBs,to;calc_relcm=false,writesnt=tr
         vv = zeros(Float64,ndim,ndim)
         @timeit to "vtrans" @inbounds @threads for i = 1:ndim
             t5v = t5vs[threadid()]
-            HOBs = ttt[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
                 izc,ic,izd,id= izs[j]
@@ -262,24 +260,22 @@ function red_nabla_l(n1,l1,n2,l2)
 end
 """
     red_nabla_j(nlj1, nlj2)
-returns ```b \\langle j || \\nabla || j_2>```
-Note that ```l_1,l_2``` in `nlj1`&`nlj2` are not doubled.
+returns ``b \\langle j || \\nabla || j_2\\rangle``
+Note that ``l_1,l_2`` in `nlj1`&`nlj2` are not doubled.
 """
 function red_nabla_j(nlj1, nlj2) 
-    n1, l1, j1 = nlj1
-    n2, l2, j2 = nlj2
+    n1, l1, j1 = nlj1; n2, l2, j2 = nlj2
     ret = (-1)^((3+2*l1+j2)//2) * sqrt(1.0*(j1+1)*(j2+1)) *
         wigner6j(Float64,j1//2, 1, j2//2, l2, 1//2, l1) * red_nabla_l(n1,l1,n2,l2)
     return ret
 end
 """
     red_nabla_j(nlj1,nlj2,d6j,key6j) 
-returns ```b \\langle j || \\nabla || j_2>```
-Note that ```l_1,l_2``` in `nlj1`&`nlj2` are not doubled.
+returns ``b \\langle j || \\nabla || j_2\\rangle``
+Note that ``l_1,l_2`` in `nlj1`&`nlj2` are not doubled.
 """
 function red_nabla_j(nlj1,nlj2,d6j,key6j) 
-    n1, l1, j1 = nlj1
-    n2, l2, j2 = nlj2
+    n1, l1, j1 = nlj1; n2, l2, j2 = nlj2
     if tri_check(j1//2,j2//2,1)==false;return 0.0;end                    
     if tri_check(l1,l2,1)==false;return 0.0;end                    
     if tri_check(j1//2,1//2,l1)==false;return 0.0;end   
@@ -313,9 +309,9 @@ end
 """
     kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
 
-calc. kinetic two-body contribution <j1j2|| -p1*p2/hw ||j3j4>_J using preallocated 6j Dict, <j1j2|| -p1*p2/hw ||j3j4>_J
+calc. kinetic two-body contribution ``\\langle j_1j_2|| -p_1 p_2/\\hbar\\omega ||j_3j_4\\rangle_J`` using preallocated 6j Dict.
 """
-function kinetic_tb(nljtz1, nljtz2, nljtz3, nljtz4,J, dict6j,d6j_nabla,key6j)
+function kinetic_tb(nljtz1,nljtz2,nljtz3,nljtz4,J,dict6j,d6j_nabla,key6j)
     n1, l1, j1, tz1 = nljtz1;  n2, l2, j2, tz2 = nljtz2
     n3, l3, j3, tz3 = nljtz3;  n4, l4, j4, tz4 = nljtz4
     nlj1 = @view nljtz1[1:3] 
@@ -492,11 +488,8 @@ end
 
 Function to calculate V in pn-formalism:
 ```math
-\\langle a,b;JTz|V| c,d;JTz \\rangle
-= N_{ab} N_{cd} 
-\\sum_{\\Lambda S \\Lambda' S'} \\sum_{n\\ell N L}\\sum_{n'\\ell' N' L'}  
-\\sum_{J_\\mathrm{rel}J'_\\mathrm{rel}}
-[\\Lambda][\\Lambda'] \\hat{S}\\hat{S'} \\hat{J}_\\mathrm{rel}\\hat{J}'_\\mathrm{rel} 
+\\langle ab;JTz|V| cd;JTz \\rangle = N_{ab} N_{cd}  \\sum_{\\Lambda S \\Lambda' S'} \\sum_{n\\ell N L}\\sum_{n'\\ell' N' L'}  
+\\sum_{J_\\mathrm{rel}J'_\\mathrm{rel}} [\\Lambda][\\Lambda'] \\hat{S}\\hat{S'} \\hat{J}_\\mathrm{rel}\\hat{J}'_\\mathrm{rel} 
 \\hat{j}_a \\hat{j}_b \\hat{j}_c \\hat{j}_d
 (-1)^{\\ell + S + J_\\mathrm{rel} + L} (-1)^{\\ell' + S' + J'_\\mathrm{rel} + L'}
 \\langle n N [ (\\ell L)\\Lambda S] J| n_a n_b [ (\\ell_a \\ell_b)\\Lambda (\\tfrac{1}{2}\\tfrac{1}{2})S ]J \\rangle_{d=1}
@@ -508,7 +501,7 @@ Function to calculate V in pn-formalism:
 \\langle n\\ell S J_\\mathrm{rel} T|V_\\mathrm{NN}|n'\\ell' S' J'_\\mathrm{rel} T\\rangle
 ```
 """
-function vtrans(chiEFTobj::ChiralEFTobject,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
+function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_pwch = chiEFTobj.arr_pwch
     ret = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
@@ -605,7 +598,7 @@ end
 return 6j/9j dict:
 for 6j => `jj`->`S`->`lam`->`lc`->`lr`, for 9j => `S`->`J`->`key`= [`la`,`nja`,`lb`,`njb`,`lam`]
 """
-function prepareX9U6(Nrmax;to=nothing)
+function prepareX9U6(Nrmax::Int;to=nothing)
     jrange = max(Nrmax+1,2*jmax+2)
     X9 = [ [ Dict{Vector{Int64},Float64}() for J=0:jrange ] for S=0:1]
     jrmax = jmax
@@ -890,7 +883,7 @@ The phase can be calculated via the symmetry property of HOB:
 = (-1)^{\\Lambda-L}(-1)^{\\Lambda-\\ell_2} <<e_2\\ell_2,e_1\\ell_1| e\\ell,EL>>_{\\Lambda,d}
 ```
 """
-function get_HOB(HOBs,Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
+function get_HOB(HOBs::Dict{Int64, Dict{Int64,Float64}},Nr,Lr,Nc,Lc,Na,La,Nb,Lb,Lam)
     Kr=2*Nr+Lr; Kc=2*Nc+Lc; Ka=2*Na+La; Kb=2*Nb+Lb
     if (Kr+Kc != Ka+Kb) || abs(Lr-Lc) > Lam || Lr+Lc < Lam || abs(La-Lb) > Lam || La+Lb < Lam
         return 0.0
@@ -1106,7 +1099,7 @@ j_1/2&  j_2/2&     1 \\\\  l_2&    l_1&   1/2
 ```
 are used in `kinetic_tb`, and the `d6j_int` will be used for harmonic oscillator brackets, HF, MBPT, IMSRG, etc.
 """
-function PreCalc6j(emax,only_halfinteger=false)
+function PreCalc6j(emax::Int,only_halfinteger=false)
     Jmax = maximum([4,2*emax+1]) 
     d6j = [ Dict{Int64,Float64}() for i=0:Jmax]
     d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]

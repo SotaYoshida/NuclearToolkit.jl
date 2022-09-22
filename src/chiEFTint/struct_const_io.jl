@@ -473,10 +473,9 @@ function select_io(MPIcomm,optimizer,nucs;use_stdout=false,fn="")
     if MPIcomm
         @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
         @assert nucs!=[] "nucs must not be empty if you set MPIcomm=true"
-        if !isdir("mpilog");run(`mkdir mpilog`);end
         MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-        io = open("./mpilog/log_rank"*string(myrank)*".dat","w")
+        io = open("./mpilog_rank"*string(myrank)*".dat","w")
     elseif fn !=""
         io = open(fn,"w")
     else

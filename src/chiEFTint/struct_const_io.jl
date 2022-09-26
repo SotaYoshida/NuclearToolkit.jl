@@ -1,9 +1,5 @@
 const chara_L = ["S","P","D","F","G","H","I","J","K","L","M","N"]
 const chara_l = ["s","p","d","f","g","h","i","j","k","l","m","n"]
-chara_SLJ(S,L,J) = "{}^"*ifelse(S==0,"1","3")*chara_L[L+1]*"_{"*string(J)*"}"
-delta(a,b) = ifelse(a==b,1.0,0.0)
-hat(a) = sqrt(2.0*a+1.0)
-
 const jmax = 6
 const lmax = jmax +1
 const lcmax = jmax + 1
@@ -12,7 +8,6 @@ const Mn = 939.565420
 const Mm = (Mp+Mn)/2
 const Ms = [Mp,Mm,Mn]
 const Lambchi = 500 # cutoff Lambda
-const itts = [-2,0,2]
 const hc = 197.327053
 const gA = -1.29
 const Fpi = 92.4
@@ -25,15 +20,21 @@ const mpis = [139.5702,134.9766,139.5702]
 const fsalpha = 7.2973525693* 1.e-3 #fine structure const. 
 const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
 const l2lnd =[[ wigner3j(Float64,l1,2,l2,0,0,0) for l2=0:8] for l1=0:8]
-
 const nuclist = [
      "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
     "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
     "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
     "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
-    "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og" ]
+    "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
+chara_SLJ(S,L,J) = "{}^"*ifelse(S==0,"1","3")*chara_L[L+1]*"_{"*string(J)*"}"
+delta(a,b) = ifelse(a==b,1.0,0.0)
+hat(a) = sqrt(2.0*a+1.0)
 
+"""
+    QLs
+second kind Legendre functions needed for pion exchange contributions
+"""
 struct QLs
     QL0s::Vector{Matrix{Float64}}
     QWL2s::Vector{Matrix{Float64}}
@@ -44,12 +45,20 @@ struct QLs
     ndQW2s::Vector{Vector{Matrix{Float64}}}
     QLdict::Vector{Dict{Float64,Float64}}
 end
+"""
+    Fis_2n3n
+Struct to store F-integrals for 2n3n contributions, Eqs.(A13)-(A16) in [Kohno2013].
+"""
 struct Fis_2n3n
     F0s::Vector{Float64}
     F1s::Vector{Float64}
     F2s::Vector{Float64}
     F3s::Vector{Float64}
 end
+"""
+    wsyms_j1_1or2
+Struct to store Wigner symbols with some special cases for 2n3n.
+"""
 struct wsyms_j1_1or2
     cg1s::Matrix{Float64}
     cg2s::Matrix{Float64}
@@ -58,12 +67,20 @@ struct wsyms_j1_1or2
     d6_222::Array{Float64,3}
     d9_12::Array{Float64,4}
 end
+"""
+    util_2n3n
+Struct to utilize `Fis_2n3n`,`QLs`,`wsyms_j1_1or2` structs.
+"""
 struct util_2n3n
     Fis::Fis_2n3n
     QWs::QLs
     wsyms::wsyms_j1_1or2
 end
-    
+"""
+    LECs
+Struct to store low energy constants (LECs).
+Since the vector-form is usuful for sampling, dictonaries `idxs`&`dLECs` are defined to get idx from string and vice versa.
+"""
 struct LECs
     vals::Vector{Float64}
     idxs::Dict{String,Int64}
@@ -266,9 +283,14 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
     if @isdefined(BetaCM); params.BetaCM = BetaCM; end
-    if params.pottype =="emn500n4lo"; @assert params.chi_order <=4 "chi_order must be <= 4 for pottype=emn500n4lo" ;end
-    if params.pottype =="emn500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=emn500n3lo" ;end
-    if params.pottype =="em500n3lo"; @assert params.chi_order <=3 "chi_order must be <= 3 for pottype=em500n3lo" ;end
+    if params.pottype =="emn500n4lo" && params.chi_order>4
+        params.chi_order=4
+        println("chi_order must be <= 4 for pottype=emn500n4lo, chi_order=4 will be used.") 
+    end
+    if (params.pottype =="emn500n3lo" || params.pottype =="em500n3lo") && params.chi_order > 3
+        println("chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
+        params.chi_order=4
+    end
     if io != nothing
         println(io,"--- chiEFTparameters used ---")
         for fieldname in fieldnames(typeof(params))                 
@@ -603,7 +625,7 @@ end
 """
 function write_vmom(xr,V12mom,tdict,pnrank,llpSJ_s;label="")
     tx1d=""
-    itt = itts[pnrank]    
+    itt = 2 *(pnrank -2)
     for i= 1:n_mesh
         x = xr[i]
         for j = 1:n_mesh
@@ -656,7 +678,7 @@ plot nn potential in partial wave over relative momentum space
 function momplot(xr,V12mom,tdict,pnrank,llpSJ_s;ctext="",fpath="")
     tfdat = []
     if fpath != ""; xf,yfs = compfdat(fpath); end    
-    itt = itts[pnrank]
+    itt = 2 *(pnrank -2)
     tv = zeros(Float64,n_mesh)
     for vidx = 1:7
         l,lp,S,J= llpSJ_s[vidx]

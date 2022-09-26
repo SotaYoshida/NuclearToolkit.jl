@@ -21,7 +21,7 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
         MN = Ms[pnrank];dwn = 1.0/MN;sq_dwn=dwn^2
         fff = pi / ((2*pi)^3 * MN^2)
         coeff = -(MN*gA/(2*Fpi))^2
-        itt = itts[pnrank]
+        itt = 2 *(pnrank -2)
         tllsj[1] = itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
@@ -261,7 +261,7 @@ function tpe(chiEFTobj,to)
         tmpLECs["r_d145"] = r_d145
         tmpLECs["r_e14"] = r_e14
         tmpLECs["r_e17"] = r_e17
-        itt = itts[pnrank]
+        itt = 2 *(pnrank -2)
         tllsj[1] = itt
         tllsj_para = [ deepcopy(tllsj) for i=1:nthre]
         LamSFR_nd = chiEFTobj.params.LambdaSFR * dwn

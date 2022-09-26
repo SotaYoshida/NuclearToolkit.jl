@@ -70,7 +70,7 @@ function SRG(chiEFTobj,to)
                 sH[i,i] += (x *hc)^2 / (2*rmass)
             end
             if norm(sH-sH',Inf) > 1.e-6; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
-            srg_tr(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
+            srg_RK4(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
             ## overwrite V12
             for (i,x) in enumerate(xr_fm)
                 for (j,y) in enumerate(xr_fm) 
@@ -94,7 +94,7 @@ function SRG(chiEFTobj,to)
                 T[i,i] = T[n_mesh+i,n_mesh+i] = (x *hc)^2 / (2*rmass)
             end
             H .= V;H .+= T
-            srg_tr(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
+            srg_RK4(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
             H .= V; H .-= T # Veff = H(s) - T # H is reused as Veff            
             for (i,x) in enumerate(xr_fm)
                 for (j,y) in enumerate(xr_fm)
@@ -144,12 +144,11 @@ function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
 end
 
 """
-    srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to; r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
+    srg_RK4(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to; r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
 
-to carry out SRG transformation
+to carry out SRG transformation with RK4
 """
-function srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;
-                r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
+function srg_RK4(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
     Hs .= Ho
     Ht .= Hs
     for it = 1:numit

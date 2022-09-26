@@ -77,7 +77,7 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
         #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
-        itt = itts[pnrank]
+        itt = 2 *(pnrank -2)
         @views tllsj[1:nthreads()][1] .= itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
@@ -132,8 +132,8 @@ end
 """ 
     prep_QWs(chiEFTobj,xr,ts,ws)
 
-returns struct `QWs`, second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
-Note that QWs.QLdict is also used in OPEP to avoid redundant calculations.
+returns struct `QLs`, second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
+Note that QLs.QLdict is also used in OPEP to avoid redundant calculations.
 Reference:  [Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
 """
 function prep_QWs(chiEFTobj,xr,ts,ws)

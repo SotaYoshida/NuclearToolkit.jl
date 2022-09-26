@@ -371,7 +371,7 @@ calc. NN-potential for momentum mesh points
 """
 function calc_Vmom!(params::chiEFTparams,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)
     n_mesh = params.n_mesh
-    itt = itts[pnrank]; MN = Ms[pnrank]; dwn = 1.0/MN
+    itt = 2 *(pnrank -2); MN = Ms[pnrank]; dwn = 1.0/MN
     V12idx = get(tdict,[itt,lp,l,S,J],-1)
     if V12idx == -1;return nothing;end
     V = V12mom[V12idx]

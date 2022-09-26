@@ -212,9 +212,6 @@ end
     make_sps_from_pnsps(p_sps,n_sps,Chan1b)
 
 construct `sps` from `p_sps` and `n_sps`
-
-It may be better to unify the rule whther sps to be constructed "referring" or "copying" p_sps/n_sps.
-(For now it does not matter.)
 """
 function make_sps_from_pnsps(p_sps,n_sps,Chan1b)
     dict_snt2ms = Chan1b.snt2ms; dict_ms2snt = Chan1b.ms2snt
@@ -449,7 +446,7 @@ function store_1b2b(sps,dicts1b::Dict1b,dicts,binfo)
         end
     end
     Chan1b = def_chan1b(dim1b,sps,dicts1b)
-    Chan2bD,Gamma,maxnpq,V2 = def_chan2b(binfo,dicts,sps,Chan1b)
+    Chan2bD,Gamma,maxnpq,V2 = def_chan2b(binfo,dicts,sps)
     dictsnt = dictSnt(dictTBMEs,dictMonopole)
     Hamil = Operator([0.0],[p1b,n1b],V2,true,false)
     return Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq
@@ -525,10 +522,10 @@ function def_chan1b(dim1b,sps,dicts1b)
 end
 
 """
-    def_chan2b(binfo,dicts,sps,Chan1b)
+    def_chan2b(binfo,dicts,sps)
 define two-body utils and returns them as `Chan2bD` struct 
 """
-function def_chan2b(binfo,dicts,sps,Chan1b)
+function def_chan2b(binfo,dicts,sps)
     Anum = binfo.nuc.Aref; emax = binfo.emax
     Jmax = 2*emax+1
     dim1b = div(length(sps),2)

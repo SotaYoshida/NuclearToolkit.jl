@@ -92,11 +92,11 @@ function s_wigner9j(j1,j3,j4,j6,j7,j8,j9)
 end
 
 """
-    TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;calc_relcm=false,writesnt=true)
+    TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;writesnt=true)
 
 Function to carry out Talmi-Mochinsky transformation for NN interaction in HO space and to write out an sinput file.
 """
-function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;calc_relcm=false,writesnt=true)
+function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
     params = chiEFTobj.params
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;

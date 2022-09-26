@@ -35,7 +35,7 @@ make_chiEFTint(;itnum=500,nucs=["O16"],optimizer="MCMC",MPIcomm=true)
 
 Then, you can run with, e.g., 20 nodes:
 ```
-mpirun -np 20 mpisample.jl
+mpirun -np 20 PATH_TO_JULIA/julia mpisample.jl
 ```
 
 When working on a working node w/o permissions to access `~/`, overwrite the `JULIA_DEPOT_PATH` by `export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"`.

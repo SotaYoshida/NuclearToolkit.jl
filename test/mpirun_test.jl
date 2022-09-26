@@ -1,6 +1,5 @@
-# import Pkg; Pkg.add("NuclearToolkit")
-# using NuclearToolkit
-include("../src/NuclearToolkit.jl")
+import Pkg; Pkg.add("NuclearToolkit")
+using NuclearToolkit
 using .NuclearToolkit
 using Test
 

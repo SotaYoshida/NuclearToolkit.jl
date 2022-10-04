@@ -88,11 +88,11 @@ nucs = ["Mg24"]
 sntf = "path_to_your.snt"
 
 #1). derivation of sd-shell interaction on top of the 16O core w/o target/ensemble normal ordering
-hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="core",valencespace=["sd-shell"])
+hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="core",valencespace=vspace)
 
 #2). derivation of sd-shell interaction on top of the 16O core w/ target/ensemble normal ordering
 nucs = ["Mg24"]
-hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nucl",valencespace=["sd-shell"])
+hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nucl",valencespace=vspace)
 ```
 
 ## valence shell-model calculations 

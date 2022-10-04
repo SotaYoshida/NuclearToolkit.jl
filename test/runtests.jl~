@@ -38,7 +38,7 @@ using Test
             Es = IMSRGobj.H.zerobody[1]
             @test abs(-4.06784128-Es[1]) < 1.e-6
         end
-        @testset "VSIMSRG results under bare EM500,hw20,e2,nmesh50" begin
+        @testset "VSIMSR results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
             @test abs(-4.06784128 - Es[1]) < 1.e-6

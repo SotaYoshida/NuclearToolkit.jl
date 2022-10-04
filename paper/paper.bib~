@@ -178,7 +178,7 @@ url={https://doi.org/10.1140/epja/i2003-10096-0}
   adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
-@article{BIGSTICK1,
+@article{BIGSTICK,
 title = {Factorization in large-scale many-body calculations},
 journal = {Computer Physics Communications},
 volume = {184},

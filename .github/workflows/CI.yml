@@ -56,7 +56,7 @@ jobs:
         uses: mpi4py/setup-mpi@v1
         with:
           mpi: ${{ matrix.mpi }}
-      - run: mpiexec -n 4 julia ./test/mpirun_test.jl
+      - run: mpiexec -n 4 julia --project="." ./test/mpirun_test.jl
   
   docs:
     name: Documentation

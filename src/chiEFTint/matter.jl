@@ -12,7 +12,7 @@ function calc_nuclearmatter_in_momspace(chiEFTobj::ChiralEFTobject,to)
     return nothing
 end
 
-function calc_EperA_HF(chiEFTobj,n_below_kF;verbose=false)
+function calc_EperA_HF(chiEFTobj,n_below_kF;verbose=true)
     V12mom = chiEFTobj.V12mom
     V12mom_2n3n = chiEFTobj.V12mom_2n3n
     pw_channels = chiEFTobj.pw_channels
@@ -20,6 +20,8 @@ function calc_EperA_HF(chiEFTobj,n_below_kF;verbose=false)
     wr = chiEFTobj.wr
     nthre = nthreads()
     sumarrs = zeros(Float64,nthre)
+    println("n_below_kF $n_below_kF")
+    println("xr $xr_fm")
     #@threads 
     for chidx in eachindex(V12mom)
         tV = V12mom[chidx]; tV_2n3n = V12mom_2n3n[chidx]

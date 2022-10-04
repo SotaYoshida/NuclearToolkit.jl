@@ -66,5 +66,5 @@ See the [Optional parameters](parameters) page for more details.
 
 NuclearToolkit.jl is designed to be an open-source software and to guarantee reproducibility and transparancy of the future works.
 Making issues and pull requests are fully welcome.
-If you would like to contribute to development of the package and want be an author of future versions of the paper, please do not hesitate to contact me (S.Yoshida).
+If you would like to contribute to development of the package, see the [Contributing](contributing) page and please do not hesitate to contact me (S.Yoshida).
 

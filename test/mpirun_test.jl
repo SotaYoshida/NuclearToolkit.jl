@@ -1,7 +1,7 @@
 import Pkg; Pkg.add("NuclearToolkit")
 using NuclearToolkit
-using .NuclearToolkit
-using Test
+#using .NuclearToolkit
+#using Test
 
 @testset "NuclearToolkit.jl" begin
     @testset "mpirun" begin

@@ -19,6 +19,7 @@ makedocs(;
         "HowToUse" => "howtouse.md",
         "FileFormat" => "fileformat.md",
         "Optional parameters" => "parameters.md",
+        "Contributing to NuclearToolkit" => "contributing.md",
         "References" => ["ChiEFTint" => "ChiEFTint.md","HartreeFock" => "HartreeFock.md","IMSRG" => "IMSRG.md","ShellModel" => "ShellModel.md"]
     ],
 )

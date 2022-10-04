@@ -1,7 +1,7 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
 authors = ["SotaYoshida <s.yoshida@nt.phys.s.u-tokyo.ac.jp> and contributors"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"

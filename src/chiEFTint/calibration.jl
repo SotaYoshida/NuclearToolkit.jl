@@ -2,7 +2,8 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
     @assert optimizer != "" "optimizer should be BayesOpt/LHS/MCMC"
     if !MPIcomm        
         for it = 1:itnum
-            add2n3n(chiEFTobj,to,it)
+            #add2n3n(chiEFTobj,to,it)
+            calc_vmom_3nf(chiEFTobj,1,to)
             @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
             @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators)
@@ -612,12 +613,14 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
 end
 
 """
+    sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},nstep::Integer, thinning::Integer,a::Float64=2.)
+
+Function to carry out a parameter sampling with Affince invariant MCMC method.
 
 Reference:
 Goodman & Weare, "Ensemble samplers with affine invariance", Communications in Applied Mathematics and Computational Science, DOI: 10.2140/camcos.2010.5.65, 2010.
 """
-function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64}, 
-                              nstep::Integer, thinning::Integer,a::Float64=2.)
+function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},nstep::Integer, thinning::Integer,a::Float64=2.)
 	@assert length(size(x0)) == 2
 	ndim = size(x0)[1]
     chain = zeros(Float64,ndim,numwalkers,nstep)    

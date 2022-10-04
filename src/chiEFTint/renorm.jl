@@ -69,7 +69,7 @@ function SRG(chiEFTobj,to)
                 sT[i,i] = (x *hc)^2 / (2*rmass)
                 sH[i,i] += (x *hc)^2 / (2*rmass)
             end
-            if norm(sH-sH',Inf) > 1.e-6; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
+            if norm(sH-sH',Inf) > 1.e-6; println("Tz ",@sprintf("%3i",iz)," L $l1 L' $l2 S $S J $J norm(sH-sH') ", norm(sH-sH',Inf));end
             srg_RK4(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
             ## overwrite V12
             for (i,x) in enumerate(xr_fm)

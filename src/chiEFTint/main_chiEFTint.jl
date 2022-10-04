@@ -26,10 +26,19 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
+
+    # QLdict = chiEFTobj.util_2n3n.QWs.QLdict
+    # println("keys QLdict[J=2] ",keys(QLdict[3]))
+
+    target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]];write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
+
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
+        ## not yet updated to seperate 2n3n from NN
         caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)        
     else # write out snt/snt.bin file
-        add2n3n(chiEFTobj,to)
+        calc_vmom_3nf(chiEFTobj,1,to)
+        if chiEFTobj.params.calc_EperA; calc_nuclearmatter_in_momspace(chiEFTobj,to);end
+        #add2n3n(chiEFTobj,to)
         @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
     end
     if io != stdout; close(io);end
@@ -50,7 +59,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     params = init_chiEFTparams(;io=io,fn_params=fn_params)
     #Next, prepare momentum/integral mesh, arrays, etc.
     ## Prep WignerSymbols
-    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax,!do2n3ncalib)
+    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax)
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
     pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)    
@@ -76,7 +85,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
+    @timeit to "util2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
@@ -87,8 +96,8 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
                             infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
                             V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
     # make Opt stuff    
-    OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
-    d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
+    @timeit to "OPTobj" OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
+    @timeit to "HOBs" d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
     return chiEFTobj,OPTobj,d9j,HOBs
 end
 
@@ -119,7 +128,7 @@ function updateLECs_in_chiEFTobj!(chiEFTobj::ChiralEFTobject,targetkeys,targets:
 end
 
 function add2n3n(chiEFTobj::ChiralEFTobject,to,it=1)
-    calc_vmom_3nf(chiEFTobj,it,to)
+    calc_vmom_3nf(chiEFTobj,1,to)
     add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)        
     return nothing
 end
@@ -190,29 +199,50 @@ end
 
 To calculate Legendre functions of second kind, which are needed for pion-exchange contributions, by Gauss-Legendre quadrature.
 """
-function QL(z,J::Int64,ts,ws,QLdict)
-    s = 0.0
-    if J==0
-        s = 0.5 * log( abs((1.0+z)/(1.0-z)) )
-    elseif J==1
-        s = 0.5 *z * log( abs((1.0+z)/(1.0-z)) ) -1.0
-    elseif J==2
-        s = 0.25 * (3.0*z^2 -1.0) * log( abs((1.0+z)/(1.0-z)) ) - 1.5*z
-    elseif J==3
-        s = 0.25 * (5.0*z^3 -3.0*z) * log( abs((1.0+z)/(1.0-z)) ) - 2.5*z^2 + 2.0/3.0
+function QL(z,J::Int64,ts,ws,QLdict;zthreshold=1.e+1)
+    if J < 0; return 0.0;end
+    if z > zthreshold 
+        return QL_numeric_dict(z,J,ts,ws,QLdict)
     else
-        if J >= 0
-            t = get(QLdict[J+1],z,0.0) 
-            if t == 0.0
-                @inbounds for (i,t) in enumerate(ts)
-                    s += ws[i] * (1.0-t*t)^J / (z-t)^(J+1) 
-                end 
-                s *= 1.0 / 2.0^(J+1)
-                QLdict[J+1][z] = s
-            else
-                return t
-            end
+        return QL_recursive(z,J)
+    end
+    return s
+end
+function QL_numeric_dict(z,J,ts,ws,QLdict)
+    ret = 0.0
+    tval = get(QLdict[J+1],z,0.0)
+    if tval == 0.0
+        ret = QL_numeric(z,J,ts,ws)
+        QLdict[J+1][z] = ret
+    else
+        ret = tval
+    end
+    return ret
+end
+function QL_numeric(z,J,ts,ws)
+    ret = 0.0
+    @inbounds for (i,t) in enumerate(ts)
+        ret += ws[i] * (1.0-t*t)^J / (2*(z-t))^(J+1)
+    end 
+    return ret
+end
+function QL_recursive(z,J)
+    s = 0.0
+    logpart = log( abs((1.0+z)/(1.0-z)) )
+    Q0 = 0.5 * logpart
+    Q1 = 0.5 * z * logpart -1.0
+    if J==0
+        s = Q0
+    elseif J==1
+        s = Q1 
+    else
+        QJ = Q1; QJm = Q0; tJ = 1
+        while tJ < J
+            tQ = ((2*tJ+1) * z * QJ - tJ * QJm ) /(tJ+1)
+            QJm = QJ; QJ = tQ
+            tJ += 1
         end
+        s = QJ
     end
     return s
 end
@@ -560,13 +590,14 @@ end
     Vrel(chiEFTobj::ChiralEFTobject,to) 
 To define V in two-particle HO basis.
 """
-function Vrel(chiEFTobj::ChiralEFTobject,to) 
-    V12mom = chiEFTobj.V12mom; pw_channels = chiEFTobj.pw_channels; Rnl = chiEFTobj.Rnl
+function Vrel(chiEFTobj::ChiralEFTobject,to;calc_2n3n=false) 
+    V12mom = ifelse(calc_2n3n,chiEFTobj.V12mom_2n3n,chiEFTobj.V12mom)
+    pw_channels = chiEFTobj.pw_channels; Rnl = chiEFTobj.Rnl
     xr_fm = chiEFTobj.xr_fm; wr = chiEFTobj.wr; n_mesh = chiEFTobj.params.n_mesh
     Nnmax= chiEFTobj.params.Nnmax; num2bch = length(pw_channels)
     V12ab = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
     Vcoulomb = [zeros(Float64,Nnmax+1,Nnmax+1) for i=1:num2bch]
-    if chiEFTobj.params.coulomb
+    if chiEFTobj.params.coulomb && !calc_2n3n 
         calc_coulomb(chiEFTobj.params,Vcoulomb,pw_channels,num2bch)
     end
     x = zeros(Float64,Nnmax+1,n_mesh)
@@ -599,9 +630,9 @@ function Vrel(chiEFTobj::ChiralEFTobject,to)
                 end
                 phase=(-1.0)^(n1+n2) 
                 t_vcoul = vcoul[n1+1,n2+1]
-                Vab[n1+1,n2+1]= phase * vsum + t_vcoul
+                Vab[n1+1,n2+1]= phase * vsum + ifelse(!calc_2n3n,t_vcoul,0.0)
             end
-        end        
+        end 
     end
     return V12ab
 end

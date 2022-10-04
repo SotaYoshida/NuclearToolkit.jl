@@ -27,6 +27,7 @@ include("chiEFTint/calibration.jl")
 include("chiEFTint/valence.jl")
 include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
+include("chiEFTint/matter.jl")
 export make_chiEFTint
 
 ### NuclData.jl

@@ -16,7 +16,7 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="")
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl")
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
@@ -30,7 +30,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         nuc = def_nuc(nucs[1],ref,corenuc)
         binfo = basedat(nuc,sntf,hw,emax_calc,ref)
         sps,dicts1b,dicts = tfunc(sntf,binfo,to)
-        Z = nuc.Z; N=nuc.N; A=nuc.A
+        A=nuc.A
         BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
 
@@ -74,7 +74,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;fn_params=fn_params)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
@@ -159,9 +159,9 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
                 tket .= ket
                 tHcm = Hcm[i,j]
                 nkey = get_nkey_from_abcdarr(tkey)
-                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vpp*hw,Hcm] ]
+                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Hcm] ]
                     if J != target[1];continue;end
-                    target[5] = tHcm
+                    target[6] = tHcm
                 end
             end
         end
@@ -187,7 +187,7 @@ function make_dicts_formem(nuc,dicts1b,dict_TM,sps,hw)
             key = zeros(Int64,4)
             for tmp in val
                 key[1] = ta; key[2] = tb; key[3] = tc; key[4] = td
-                totJ,V2bdum,Vjj,Vpp = tmp                                
+                totJ,V2bdum,Vjj,Vjj_2n3n,Vpp = tmp                                
                 phase_ab = (-1)^(div(ja+jb,2)+totJ+1)
                 phase_cd = (-1)^(div(jc+jd,2)+totJ+1)
                 flip_ab = ifelse(ta>tb,true,false)
@@ -200,15 +200,16 @@ function make_dicts_formem(nuc,dicts1b,dict_TM,sps,hw)
                     key[1] = k3; key[2] = k4; key[3] = k1; key[4] = k2
                 end
                 Vjj *= phase
+                Vjj_2n3n *= phase
                 Vpp *= phase
-                V2b = Vjj + Vpp*hw/A
+                V2b = Vjj + Vjj_2n3n + Vpp*hw/A                
                 nkey = get_nkey_from_abcdarr(key)
                 t = get(target_dict,nkey,false)
                 vcm = 0.0
                 if t==false
-                    target_dict[nkey] = [[totJ,V2b,Vjj,Vpp*hw,vcm]]
+                    target_dict[nkey] = [[totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,vcm]]
                 else
-                    push!(target_dict[nkey],[totJ,V2b,Vjj,Vpp*hw,vcm])
+                    push!(target_dict[nkey],[totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,vcm])
                 end
             end
         end
@@ -270,7 +271,8 @@ function recalc_v!(A,dicts)
         for tkey in keys(tdict)
             tmp = tdict[tkey]            
             for i in eachindex(tmp)
-                tmp[i][2] = tmp[i][3] + tmp[i][4]/A + tmp[i][5] *A
+                #V2b = V + V2n3n + Vpp *hw /A + HCM
+                tmp[i][2] = tmp[i][3] + tmp[i][4] + tmp[i][5]/A + tmp[i][6] *A
             end
         end 
     end
@@ -656,7 +658,7 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 - `Gamma:: Vector{Matrix{Float64}}` two-body int.
 """
 function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=100,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)
+                      itnum=300,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)
@@ -796,6 +798,7 @@ function update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
 end
 
 function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan1b;verbose=false)
+    symfac = 1.0/3
     dim1b = size(Vt_pp)[1]
     dict_pp = dictTBMEs[1];dict_pn = dictTBMEs[2];dict_nn = dictTBMEs[3]    
     Vt_pp .= 0.0; Vt_nn .= 0.0; Vt_pn .= 0.0;Vt_np .= 0.0
@@ -815,8 +818,8 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_p[idx_a,idx_b]
                     tkey[1] = i; tkey[3] = j;tkey[2] = a; tkey[4] = b
                     if a < i; tkey[2] = i; tkey[4] = j;tkey[1] = a; tkey[3] = b; end
-                    vmono = dict_pp[tkey]
-                    Vt_pp[idx_i,idx_j] += rho_ab * vmono
+                    vmono,vmono2n3n = dict_pp[tkey]
+                    Vt_pp[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n * symfac)
                     # if rho_ab != 0.0; println("pp: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     if a!=b
                         if a < i                       
@@ -824,8 +827,8 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                         else
                             tkey[4] = a; tkey[2] = b
                         end
-                        vmono = dict_pp[tkey]
-                        Vt_pp[idx_i,idx_j] += rho_ab * vmono
+                        vmono,vmono2n3n = dict_pp[tkey]
+                        Vt_pp[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n * symfac)
                         # if rho_ab !=0.0; println("pp: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     end
                 end
@@ -839,13 +842,13 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     if !(b in Chan1b_n[a]);continue;end
                     rho_ab = rho_n[idx_a,idx_b] 
                     tkey[1] = i;tkey[3] = j; tkey[2] = a; tkey[4] = b
-                    vmono = dict_pn[tkey]
-                    Vt_pn[idx_i,idx_j] += rho_ab * vmono
+                    vmono,vmono2n3n = dict_pn[tkey]
+                    Vt_pn[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n * symfac) 
                     #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     if a!=b
                         tkey[1] = i; tkey[3] = j; tkey[2] = b; tkey[4] = a
-                        vmono = dict_pn[tkey]
-                        Vt_pn[idx_i,idx_j] += rho_ab * vmono
+                        vmono,vmono2n3n = dict_pn[tkey]
+                        Vt_pn[idx_i,idx_j] += rho_ab *  (vmono + vmono2n3n* symfac)
                         #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
                     end
                 end
@@ -858,7 +861,6 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
         for idx_j = idx_i:dim1b
             j = 2*idx_j
             if !(j in Chan1b_n[i]);continue;end
-            #println("nnidx idx_i $idx_i idx_j $idx_j")
             ## tilde(Vn) from Vnn
             for idx_a = 1:dim1b
                 a = 2*idx_a 
@@ -868,16 +870,16 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_n[idx_a,idx_b]
                     tkey[1] = i; tkey[3] = j;tkey[2] = a; tkey[4] = b                    
                     if a < i; tkey[2] = i; tkey[4] = j;tkey[1] = a; tkey[3] = b; end
-                    vmono = dict_nn[tkey]
-                    Vt_nn[idx_i,idx_j] += rho_ab * vmono
+                    vmono,vmono2n3n = dict_nn[tkey]
+                    Vt_nn[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac) 
                     if a!=b
                         if a < i                       
                             tkey[3] = a; tkey[1] = b
                         else
                             tkey[4] = a; tkey[2] = b
                         end
-                        vmono = dict_nn[tkey]
-                        Vt_nn[idx_i,idx_j] += rho_ab * vmono
+                        vmono,vmono2n3n = dict_nn[tkey]
+                        Vt_nn[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac)
                     end
                 end
             end
@@ -891,13 +893,13 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_p[idx_a,idx_b] 
                     tkey[1] = a ; tkey[3] = b
                     tkey[2] = i; tkey[4] = j
-                    vmono = dict_pn[tkey]
-                    Vt_np[idx_i,idx_j] += rho_ab * vmono 
+                    vmono,vmono2n3n = dict_pn[tkey]
+                    Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac)
                     if a!=b
                         tkey[1] = b; tkey[3] = a
                         tkey[2] = i; tkey[4] = j
-                        vmono = dict_pn[tkey]
-                        Vt_np[idx_i,idx_j] += rho_ab * vmono
+                        vmono,vmono2n3n = dict_pn[tkey]
+                        Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac)
                     end
                 end
             end

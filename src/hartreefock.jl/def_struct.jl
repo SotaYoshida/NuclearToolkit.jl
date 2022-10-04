@@ -134,7 +134,7 @@ struct `dictTBMEs` contains dictionaries for TBME/monopole
 - `dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}` one can get monopole component of two-body interaction by `dictMonopole[pnrank][key]`, `key` to be ket array like `[1,1]`
 """
 struct dictSnt
-    dictTBMEs::Vector{Dict{Vector{Int64},Float64}}
+    dictTBMEs::Vector{Dict{Vector{Int64},Vector{Float64}}}
     dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}
 end
 

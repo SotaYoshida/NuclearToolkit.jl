@@ -85,7 +85,7 @@ end
 
 returns vector&dict. for EMN500N3LO: Entem-Machleidt-Nosyk interaction upto N3LO with 500 MeV cutoff 
 """
-function dict_emn500nlo()
+function dict_emn500n3lo()
     vals = Float64[ ]
     idxs=Dict{String,Int64}()
     dLECs=Dict{String,Float64}() 
@@ -118,10 +118,6 @@ function dict_emn500nlo()
     dLECs["D_3D2"] = -3.200942439
     dLECs["D_3PF2"]= 0.010519022
     dLECs["D_3D3"] = -1.3336602
-    ## N4LO con 10^4 GeV^-8
-    dLECs["E_3F2"] = 0.0
-    dLECs["E_1F3"] = 0.0
-    dLECs["E_3F4"] = 0.0
     ## For pion exchange contribution
     ## NNLO GeV^-1
     dLECs["c1_NNLO"] = -1.07
@@ -205,16 +201,16 @@ function dict_emn500n4lo()
     dLECs["c4_NNLO"] =  4.17
     ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
     dLECs["ct1_NNLO"] = -1.10
-    dLECs["ct3_NNLO"] = -4.7534
-    dLECs["ct4_NNLO"] = 4.0889
+    dLECs["ct3_NNLO"] = -4.4
+    dLECs["ct4_NNLO"] = 4.09
     dLECs["cD"] = -0.2766
     dLECs["cE"] = 0.8202
 
-    #dLECs["ct1_NNLO"] = -0.73
-    #dLECs["ct3_NNLO"] = -3.38
-    #dLECs["ct4_NNLO"] = 1.69
-    #dLECs["cD"] = 0.00
-    #dLECs["cE"] = 0.00
+    # dLECs["ct1_NNLO"] = -0.73
+    # dLECs["ct3_NNLO"] = -3.38
+    # dLECs["ct4_NNLO"] = 1.69
+    # dLECs["cD"] = 0.00
+    # dLECs["cE"] = 0.00
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18

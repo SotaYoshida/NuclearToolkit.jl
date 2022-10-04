@@ -54,7 +54,7 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     if !chiEFTobj.params.calc_3N; return nothing; end
     if it > 1; for i in eachindex(chiEFTobj.pw_channels); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr
-    V12mom = chiEFTobj.V12mom; dict_pwch = chiEFTobj.dict_pwch
+    V12mom = chiEFTobj.V12mom_2n3n; dict_pwch = chiEFTobj.dict_pwch
     util_2n3n = chiEFTobj.util_2n3n; lsjs = chiEFTobj.lsjs
     tmp_llsj = chiEFTobj.tllsj                    
     kF = chiEFTobj.params.kF
@@ -64,7 +64,6 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     nreg = 3
     mpi = sum(mpis)/3.0/hc; mpi2 = mpi^2
     bbf =  2.0/3.0 / (4.0 * pi^2)
-
     r_c1 = dLECs["ct1_NNLO"] *1.e-3 *gA^2 * mpi2  / ((Fpi/hc)^4) *hc^2
     r_c3 = dLECs["ct3_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
     r_c4 = dLECs["ct4_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2

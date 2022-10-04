@@ -94,10 +94,10 @@ function update_vsspace_chs!(HFobj,valencespace,Chan2b)
         kets = tbc.kets
         for (ik,ket) in enumerate(kets)
             i,j = ket
-            v_i = ifelse(i in valencespace,1,0)
-            v_j = ifelse(j in valencespace,1,0)
+            v_i = ifelse(sps[i].v,1,0)
+            v_j = ifelse(sps[j].v,1,0)            
             ## cc 
-            if sps[i].c && sps[j].c 
+            if sps[i].c && sps[j].c
                 add_ch_ket!(ch,ik,cc) 
             end
             ## vc or qc case
@@ -108,7 +108,7 @@ function update_vsspace_chs!(HFobj,valencespace,Chan2b)
                     add_ch_ket!(ch,ik,qc)
                 end
             end
-            ## ni+nj=0, vv,qv,qq
+            ## vv,qv,qq
             if v_i + v_j == 2 
                 # if you need additional truncations, specify here
                 add_ch_ket!(ch,ik,vv)

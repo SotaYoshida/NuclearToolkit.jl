@@ -20,7 +20,7 @@
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
-                    core_generator_type="atan",valence_generator_type="shell-model-atan")
+                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl")
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
     update_core_in_sps!(binfo,HFobj)
@@ -29,7 +29,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::Hamilt
 
     Chan2b = Chan2bD.Chan2b
     init_dictMonopole!(dictMono,Chan2b)
-    IMSRGobj = init_IMSRGobject(HFobj)    
+    IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
     
     IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to)
@@ -783,7 +783,7 @@ Constructor for IMSRGobject
 - `n_written_omega::Int` # of written Omega by splitting to solve IMSRGflow
 - `Ncomm::Vector{Int}` # of commutator evaluated during IMSRG flow
 """
-function init_IMSRGobject(HFobj;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_criterion=1.e-6,denominatorDelta=0.0,filename="optional_parameters.jl")
+function init_IMSRGobject(HFobj,filename;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_criterion=1.e-6,denominatorDelta=0.0)
     tf = isfile(filename)
     ds = min(dsmax,0.5)
     s = [0.0,ds] 

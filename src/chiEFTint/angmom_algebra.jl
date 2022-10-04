@@ -47,7 +47,7 @@ from pre-allocated dictionary `d6j_int`.
 Since `d6j_int` is prepared assuming some symmetries to reduce the redundancy,
 some rows and columns are to be swapped in this function.
 """
-function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int)
+function get_dict6jint_for9j(ja,jb,tJ,jc,jd,tJp,d6j_int;get_val=true)
     oja = ja; ojb = jb; oJ = tJ; ojc=jc;ojd=jd; oJp = tJp
     j1 = ja; j2 = jb; J = tJ; j3=jc;j4=jd; Jp = tJp
     flip_JJp = (tJ>tJp)
@@ -98,6 +98,7 @@ Function to carry out Talmi-Mochinsky transformation for NN interaction in HO sp
 """
 function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},to;writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
+    V12ab_2n3n = Vrel(chiEFTobj,to;calc_2n3n=true) 
     params = chiEFTobj.params
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr; wr = chiEFTobj.wr;
     xrP = chiEFTobj.xrP; wrP = chiEFTobj.wrP; Rnl = chiEFTobj.Rnl; RNL = chiEFTobj.RNL
@@ -150,25 +151,28 @@ function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64
         pnrank = Int(div(izz,2))+2
         izs = izs_ab[ich]
         vv = zeros(Float64,ndim,ndim)
+        vv_2n3n = zeros(Float64,ndim,ndim)
         @timeit to "vtrans" @inbounds @threads for i = 1:ndim
             t5v = t5vs[threadid()]
             iza,ia,izb,ib = izs[i]
             @inbounds for j = 1:i
                 izc,ic,izd,id= izs[j]
-                v12 = vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
+                v12,v12_2n3n = vtrans(chiEFTobj,HOBs,pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,V12ab_2n3n,t5v,to)
                 if chiEFTobj.params.v_chi_order >= 1
                     vvs = zeros(Float64,5)
                     NLOvs(params,dLECs,vvs,xr,wr,xrP,wrP,Rnl,RNL,cg1s,sp_P5_9j,nljsnt,pnrank,ip,
                           X9,U6,t5v,Jtot,iza,ia,izb,ib,izc,ic,izd,id,to)
                     for i=1:5; v12 += vvs[i]; end
                 end
-                vv[i, j] = v12; vv[j, i] = v12                
+                vv[i, j] = vv[j, i] = v12    
+                vv_2n3n[i, j] = vv_2n3n[j, i] = v12_2n3n    
+                #println("vv $v12 v12_2n3n $v12_2n3n")
             end
         end       
         if writesnt 
-            write_tbme(params,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=nofst)
+            write_tbme(params,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=nofst)
         else
-            set_tbme(chiEFTobj,tbmes[pnrank],ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=nofst)
+            set_tbme(chiEFTobj,tbmes[pnrank],ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,tkeys,key6j,to;ofst=nofst)
         end
     end
     if writesnt 
@@ -179,7 +183,7 @@ function TMtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64
     end
 end
 
-function set_tbme(chiEFTobj::ChiralEFTobject,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,key6j,to;ofst=0)
+function set_tbme(chiEFTobj::ChiralEFTobject,tbmes,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,tkeys,key6j,to;ofst=0)
     dict6j = chiEFTobj.dict6j
     d6j_nabla = chiEFTobj.d6j_nabla
     target_nlj = chiEFTobj.params.target_nlj
@@ -189,6 +193,7 @@ function set_tbme(chiEFTobj::ChiralEFTobject,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdi
         nb,lb,jb = nljsnt[ib]
         for j = 1:i
             tv = vv[i,j]
+            tv_2n3n = vv_2n3n[i,j]
             izc,ic,izd,id= izs[j]
             nc,lc,jc = nljsnt[ic]
             nd,ld,jd = nljsnt[id]
@@ -232,9 +237,9 @@ function set_tbme(chiEFTobj::ChiralEFTobject,tbmes,ndim,izs,Jtot,vv,nljsnt,nljdi
             owtkey!(tkeys[1],fa,fb,fc,fd)
             t = get(tbmes,tkeys[1],false)
             if t == false                           
-                tbmes[copy(tkeys[1])] = [ [1.0*Jtot, 0.0, tv, vpp] ]
+                tbmes[copy(tkeys[1])] = [ [1.0*Jtot, 0.0, tv, tv_2n3n, vpp] ]
             else
-                push!(tbmes[tkeys[1]], [1.0*Jtot, 0.0, tv, vpp])
+                push!(tbmes[tkeys[1]], [1.0*Jtot, 0.0, tv, tv_2n3n,vpp])
             end 
         end
     end
@@ -501,9 +506,9 @@ Function to calculate V in pn-formalism:
 \\langle n\\ell S J_\\mathrm{rel} T|V_\\mathrm{NN}|n'\\ell' S' J'_\\mathrm{rel} T\\rangle
 ```
 """
-function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,t5v,to)
+function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}},pnrank,izz,ip,Jtot,iza,ia,izb,ib,izc,ic,izd,id,nljsnt,V12ab,V12ab_2n3n,t5v,to)
     X9 = chiEFTobj.X9; U6 = chiEFTobj.U6; arr_pwch = chiEFTobj.arr_pwch
-    ret = 0.0
+    ret = ret_2n3n = 0.0
     na,la,jda = nljsnt[ia]; nb,lb,jdb = nljsnt[ib]
     nc,lc,jdc = nljsnt[ic]; nd,ld,jdd = nljsnt[id]
     lrmax = jmax + 1
@@ -515,7 +520,7 @@ function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}
     if (-1)^(la+lb) != ip || (-1)^(lc+ld) != ip; TF=true;end
     if (izz==2 || izz==-2) && ia==ib && (-1)^(Jtot)==-1; TF=true;end
     if (izz==2 || izz==-2) && ic==id && (-1)^(Jtot)==-1; TF=true;end
-    if TF; return ret;end   
+    if TF; return ret,ret_2n3n;end   
     U6_j = U6[Jtot+1]    
     for S=0:1
         tX9 = X9[S+1]
@@ -557,7 +562,7 @@ function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}
                                 kjmax=min(lr1+S,lr2+S,Jtot+Lcm,6)
                                 if kjmin > kjmax;continue;end
                                 U6_lr2 = U6_Lcm2[lr2+1]
-                                sumv=0.0
+                                sumv=sumv_2n3n=0.0
                                 @inbounds for Jrel=kjmin:kjmax
                                     zu1=U6_lr1[Jrel-abs(lr1-S)+1]
                                     if abs(zu1) < 1.e-10;continue;end
@@ -568,15 +573,18 @@ function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}
                                         izfac=1+(-1)^(lr1+S)
                                     end
                                     if izz==0;izfac=1;end
-                                    rv12=0.0
+                                    rv12=rv12_2n3n=0.0
                                     if izfac!=0
                                         num= tarr_pwch[Jrel+1][lr1-abs(Jrel-S)+1][lr2-abs(Jrel-S)+1]
                                         rv12=V12ab[num][nr1+1,nr2+1]
+                                        rv12_2n3n=V12ab_2n3n[num][nr1+1,nr2+1]
                                     end
                                     sumv += zu1*zu2*izfac*rv12
+                                    sumv_2n3n += zu1*zu2*izfac*rv12_2n3n
                                 end
                                 zxy=x1*x2*y1*y2
                                 ret += sumv*zxy
+                                ret_2n3n += sumv_2n3n*zxy
                             end
                         end
                     end
@@ -588,8 +596,9 @@ function vtrans(chiEFTobj::ChiralEFTobject,HOBs::Dict{Int64, Dict{Int64,Float64}
         Nab = Nfac_jj(na,la,jda,nb,lb,jdb)
         Ncd = Nfac_jj(nc,lc,jdc,nd,ld,jdd)
         ret *= Nab*Ncd
+        ret_2n3n *= Nab*Ncd
     end
-    return ret
+    return ret,ret_2n3n
 end
 
 """
@@ -934,116 +943,116 @@ function prep_wsyms(;lmax=7)
     return wsyms_j1_1or2(cg1s,cg2s,d6_121,d6_21,d6_222,d9_12)
 end
 
-function jj_std(sps,dictsps,dictTBMEs;fname="")
-    if fname=="";fname = "monopole"*fname*".dat"
-    else;fname = "monopole_"*fname*".dat";end
-    ln = length(sps)
-    nmax = maximum([sps[i][1] for i=1:ln])
-    nmin = minimum([sps[i][1] for i=1:ln])
-    lmax = maximum([sps[i][2] for i=1:ln])
-    lmin = minimum([sps[i][2] for i=1:ln])
-    jmax = maximum([sps[i][3] for i=1:ln])
-    jmin = minimum([sps[i][3] for i=1:ln])
-    emax = maximum( [ 2*sps[i][1]+sps[i][2] for i=1:length(sps)])
-    emin = minimum( [ 2*sps[i][1]+sps[i][2] for i=1:length(sps)])
-    Jmax = div(2*jmax+1,2)
-    Lmin = 0; Lmax = 2*lmax
-    monodict = Dict(["",""]=> [[0.0,[0.0]]]);delete!(monodict,["",""])
-    cpnrank=["pp","pn","nn"]
+# function jj_std(sps,dictsps,dictTBMEs;fname="")
+#     if fname=="";fname = "monopole"*fname*".dat"
+#     else;fname = "monopole_"*fname*".dat";end
+#     ln = length(sps)
+#     nmax = maximum([sps[i][1] for i=1:ln])
+#     nmin = minimum([sps[i][1] for i=1:ln])
+#     lmax = maximum([sps[i][2] for i=1:ln])
+#     lmin = minimum([sps[i][2] for i=1:ln])
+#     jmax = maximum([sps[i][3] for i=1:ln])
+#     jmin = minimum([sps[i][3] for i=1:ln])
+#     emax = maximum( [ 2*sps[i][1]+sps[i][2] for i=1:length(sps)])
+#     emin = minimum( [ 2*sps[i][1]+sps[i][2] for i=1:length(sps)])
+#     Jmax = div(2*jmax+1,2)
+#     Lmin = 0; Lmax = 2*lmax
+#     monodict = Dict(["",""]=> [[0.0,[0.0]]]);delete!(monodict,["",""])
+#     cpnrank=["pp","pn","nn"]
 
-    keya = [0,0,0,0]; keyb = [0,0,0,0];keyc=[0,0,0,0]; keyd=[0,0,0,0]   # nljtz
-    key_abcdJ = [0,0,0,0,0]
-    tvjj = zeros(Float64,5)
-    for pnrank =1:3
-        tdict = dictTBMEs[pnrank]
-        for tkey in keys(tdict)
-            a,b,c,d,J = tkey
-            na,la,ja2,iza = sps[a]; nb,lb,jb2,izb = sps[b]
-            nc,lc,jc2,izc = sps[c]; nd,ld,jd2,izd = sps[d]
-            keya[1]=na; keya[2]=la; keya[3]=ja2; keya[4]=iza
-            keyb[1]=nb; keyb[2]=lb; keyb[3]=jb2; keyb[4]=izb
-            keyc[1]=nc; keyc[2]=lc; keyc[3]=jc2; keyc[4]=izc
-            keyd[1]=nd; keyd[2]=ld; keyd[3]=jd2; keyd[4]=izd
-            v_target = tdict[tkey]            
-            tvjj .= 0.0
-            hats = (-1)^J * sqrt((ja2+1.0)*(jb2+1.0)*(jc2+1.0)*(jd2+1.0))
-            for L = abs(la-lb):la+lb
-                for S=0:1
-                    for Lp = abs(lc-ld):lc+ld
-                        for Sp = 0:1
-                            Jfac  = wigner9j(la,1//2,ja2//2,lb,1//2,jb2//2,L,S,J)
-                            Jfac *= wigner9j(lc,1//2,jc2//2,ld,1//2,jd2//2,Lp,Sp,J)
-                            for jpa2 = 2*la-1:2:2*la+1
-                                if jpa2 <=0;continue;end
-                                for jpb2 = 2*lb-1:2:2*lb+1
-                                    if jpb2 <=0;continue;end
-                                    for jpc2 = 2*lc-1:2:2*lc+1
-                                        if jpc2 <=0;continue;end
-                                        for jpd2 = 2*ld-1:2:2*ld+1
-                                            if jpd2 <=0;continue;end
-                                            hatps = sqrt((jpa2+1.0)*(jpb2+1.0)*(jpc2+1.0)*(jpd2+1.0))
-                                            LLSS = (2*L+1)*(2*Lp+1)*(2*S+1)*(2*Sp+1)
-                                            for Jp = max(abs(Lp-Sp),abs(L-S)):min(Lp+Sp,L+S)
-                                                d9j_ab = wigner9j(la,1//2,jpa2//2,lb,1//2,jpb2//2,L,S,Jp)
-                                                d9j_cd = wigner9j(lc,1//2,jpc2//2,ld,1//2,jpd2//2,Lp,Sp,Jp)
-                                                keya[3] = jpa2; keyb[3]=jpb2;keyc[3] = jpc2; keyd[3]=jpd2                                                
-                                                ap = dictsps[keya];bp = dictsps[keyb];cp = dictsps[keyc];dp = dictsps[keyd]
-                                                key_abcdJ[1] = ap;key_abcdJ[2] = bp
-                                                key_abcdJ[3] = cp;key_abcdJ[4] = dp;key_abcdJ[5] = Jp
-                                                ta=ap; tb=bp;tc=cp;td=dp
-                                                phase = 1.0
-                                                if ap > bp
-                                                    ta = bp; tb = ap
-                                                    phase *= (-1)^(div(sps[ap][3]+sps[bp][3],2)+Jp+1)
-                                                end
-                                                if cp > dp
-                                                    tc = dp; td = cp
-                                                    phase *= (-1)^(div(sps[cp][3]+sps[dp][3],2)+Jp+1)
-                                                end
-                                                fa=ta; fb=tb;fc=tc;fd=td
-                                                if fa > fc || (fa==fc && fb > fd)
-                                                    fa=tc;fb=td;fc=ta;fd=tb
-                                                end
-                                                key_abcdJ[1] = fa;key_abcdJ[2] = fb
-                                                key_abcdJ[3] = fc;key_abcdJ[4] = fd;key_abcdJ[5] = Jp
-                                                vjj = get(tdict,key_abcdJ,false)                                                
-                                                if vjj==false;continue; end
-                                                #println("abcd' $ap $bp $cp $dp J' $Jp $nvjj $vjj")
-                                                Jpfac = (-1)^Jp * (2*Jp+1) * d9j_ab * d9j_cd
-                                                for k = 0:2 
-                                                    tidx = k+1; if S==Sp && k==1;tidx=4;end                                                
-                                                    kfac = (2*k+1) * wigner6j(Float64,L,S,J,Sp,Lp,k) * wigner6j(Float64,L,S,Jp,Sp,Lp,k)
-                                                    tvjj[tidx] += hats*hatps*kfac*Jfac*Jpfac * LLSS * vjj *phase
-                                                end
-                                            end
-                                        end
-                                    end
-                                end                                
-                            end
-                        end
-                    end
-                end
-            end
-            tvjj[5] = sum( @views tvjj[1:4])
-            if abs(v_target-tvjj[5]) > 1.e-9
-                println("Error TBME(in jj) mismatch!: $tkey  v ",
-                        @sprintf("%12.4e",v_target),"; sum ", @sprintf("%12.4e",tvjj[5]))
-            end
-            if a==c && b==d && ( a <= b )
-                c = cpnrank[pnrank]
-                ca = string(na)*chara_l[la+1]*string(ja2)
-                cb = string(nb)*chara_l[lb+1]*string(jb2)
-                if get(monodict,[c,ca,cb],false) == false
-                    monodict[[c,ca,cb]] = [ [J*1.0,copy(tvjj)] ]
-                else
-                    push!(monodict[[c,ca,cb]],[J*1.0,copy(tvjj)])
-                end
-            end
-        end
-        monopole(monodict,fname)
-    end
-    return nothing
-end
+#     keya = [0,0,0,0]; keyb = [0,0,0,0];keyc=[0,0,0,0]; keyd=[0,0,0,0]   # nljtz
+#     key_abcdJ = [0,0,0,0,0]
+#     tvjj = zeros(Float64,5)
+#     for pnrank =1:3
+#         tdict = dictTBMEs[pnrank]
+#         for tkey in keys(tdict)
+#             a,b,c,d,J = tkey
+#             na,la,ja2,iza = sps[a]; nb,lb,jb2,izb = sps[b]
+#             nc,lc,jc2,izc = sps[c]; nd,ld,jd2,izd = sps[d]
+#             keya[1]=na; keya[2]=la; keya[3]=ja2; keya[4]=iza
+#             keyb[1]=nb; keyb[2]=lb; keyb[3]=jb2; keyb[4]=izb
+#             keyc[1]=nc; keyc[2]=lc; keyc[3]=jc2; keyc[4]=izc
+#             keyd[1]=nd; keyd[2]=ld; keyd[3]=jd2; keyd[4]=izd
+#             v_target = tdict[tkey]            
+#             tvjj .= 0.0
+#             hats = (-1)^J * sqrt((ja2+1.0)*(jb2+1.0)*(jc2+1.0)*(jd2+1.0))
+#             for L = abs(la-lb):la+lb
+#                 for S=0:1
+#                     for Lp = abs(lc-ld):lc+ld
+#                         for Sp = 0:1
+#                             Jfac  = wigner9j(la,1//2,ja2//2,lb,1//2,jb2//2,L,S,J)
+#                             Jfac *= wigner9j(lc,1//2,jc2//2,ld,1//2,jd2//2,Lp,Sp,J)
+#                             for jpa2 = 2*la-1:2:2*la+1
+#                                 if jpa2 <=0;continue;end
+#                                 for jpb2 = 2*lb-1:2:2*lb+1
+#                                     if jpb2 <=0;continue;end
+#                                     for jpc2 = 2*lc-1:2:2*lc+1
+#                                         if jpc2 <=0;continue;end
+#                                         for jpd2 = 2*ld-1:2:2*ld+1
+#                                             if jpd2 <=0;continue;end
+#                                             hatps = sqrt((jpa2+1.0)*(jpb2+1.0)*(jpc2+1.0)*(jpd2+1.0))
+#                                             LLSS = (2*L+1)*(2*Lp+1)*(2*S+1)*(2*Sp+1)
+#                                             for Jp = max(abs(Lp-Sp),abs(L-S)):min(Lp+Sp,L+S)
+#                                                 d9j_ab = wigner9j(la,1//2,jpa2//2,lb,1//2,jpb2//2,L,S,Jp)
+#                                                 d9j_cd = wigner9j(lc,1//2,jpc2//2,ld,1//2,jpd2//2,Lp,Sp,Jp)
+#                                                 keya[3] = jpa2; keyb[3]=jpb2;keyc[3] = jpc2; keyd[3]=jpd2                                                
+#                                                 ap = dictsps[keya];bp = dictsps[keyb];cp = dictsps[keyc];dp = dictsps[keyd]
+#                                                 key_abcdJ[1] = ap;key_abcdJ[2] = bp
+#                                                 key_abcdJ[3] = cp;key_abcdJ[4] = dp;key_abcdJ[5] = Jp
+#                                                 ta=ap; tb=bp;tc=cp;td=dp
+#                                                 phase = 1.0
+#                                                 if ap > bp
+#                                                     ta = bp; tb = ap
+#                                                     phase *= (-1)^(div(sps[ap][3]+sps[bp][3],2)+Jp+1)
+#                                                 end
+#                                                 if cp > dp
+#                                                     tc = dp; td = cp
+#                                                     phase *= (-1)^(div(sps[cp][3]+sps[dp][3],2)+Jp+1)
+#                                                 end
+#                                                 fa=ta; fb=tb;fc=tc;fd=td
+#                                                 if fa > fc || (fa==fc && fb > fd)
+#                                                     fa=tc;fb=td;fc=ta;fd=tb
+#                                                 end
+#                                                 key_abcdJ[1] = fa;key_abcdJ[2] = fb
+#                                                 key_abcdJ[3] = fc;key_abcdJ[4] = fd;key_abcdJ[5] = Jp
+#                                                 vjj = get(tdict,key_abcdJ,false)                                                
+#                                                 if vjj==false;continue; end
+#                                                 #println("abcd' $ap $bp $cp $dp J' $Jp $nvjj $vjj")
+#                                                 Jpfac = (-1)^Jp * (2*Jp+1) * d9j_ab * d9j_cd
+#                                                 for k = 0:2 
+#                                                     tidx = k+1; if S==Sp && k==1;tidx=4;end                                                
+#                                                     kfac = (2*k+1) * wigner6j(Float64,L,S,J,Sp,Lp,k) * wigner6j(Float64,L,S,Jp,Sp,Lp,k)
+#                                                     tvjj[tidx] += hats*hatps*kfac*Jfac*Jpfac * LLSS * vjj *phase
+#                                                 end
+#                                             end
+#                                         end
+#                                     end
+#                                 end                                
+#                             end
+#                         end
+#                     end
+#                 end
+#             end
+#             tvjj[5] = sum( @views tvjj[1:4])
+#             if abs(v_target-tvjj[5]) > 1.e-9
+#                 println("Error TBME(in jj) mismatch!: $tkey  v ",
+#                         @sprintf("%12.4e",v_target),"; sum ", @sprintf("%12.4e",tvjj[5]))
+#             end
+#             if a==c && b==d && ( a <= b )
+#                 c = cpnrank[pnrank]
+#                 ca = string(na)*chara_l[la+1]*string(ja2)
+#                 cb = string(nb)*chara_l[lb+1]*string(jb2)
+#                 if get(monodict,[c,ca,cb],false) == false
+#                     monodict[[c,ca,cb]] = [ [J*1.0,copy(tvjj)] ]
+#                 else
+#                     push!(monodict[[c,ca,cb]],[J*1.0,copy(tvjj)])
+#                 end
+#             end
+#         end
+#         monopole(monodict,fname)
+#     end
+#     return nothing
+# end
 
 function monopole(monodict,fname)
     io = open(fname,"w")
@@ -1100,7 +1109,7 @@ j_1/2&  j_2/2&     1 \\\\  l_2&    l_1&   1/2
 are used in `kinetic_tb`, and the `d6j_int` will be used for harmonic oscillator brackets, HF, MBPT, IMSRG, etc.
 """
 function PreCalc6j(emax::Int,only_halfinteger=false)
-    Jmax = maximum([4,2*emax+1]) 
+    Jmax = maximum([6,2*emax+1]) 
     d6j = [ Dict{Int64,Float64}() for i=0:Jmax]
     d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
     @threads for totJ = 0:Jmax
@@ -1143,7 +1152,6 @@ function PreCalc6j(emax::Int,only_halfinteger=false)
             end
         end
     end  
-
     d6j_nabla = Dict{Vector{Int64},Float64}() 
     totJ = 1
     for ja = 1:2:Jmax

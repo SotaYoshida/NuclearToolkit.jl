@@ -99,6 +99,7 @@ mutable struct to specify parameters for chiEFTint
 - `calc_NN::Bool` calculate NN potential or not
 - `calc_3N::Bool` calculate density-dependent 3NF (called 2n3n in this package) or not
 - `coulomb::Bool` calculate coulomb term or not
+- `calc_EperA::Bool` calculate E/A with HF(+MBPT) the kF below will be used for density
 - `hw::Float64` oscillator parameter in MeV
 - `srg::Bool` carrying out SRG or not
 - `srg_lambda::Float64` resolution scale for free space SRG in fm``{}^{-1}``
@@ -122,6 +123,7 @@ mutable struct chiEFTparams
     calc_NN::Bool
     calc_3N::Bool
     coulomb::Bool
+    calc_EperA::Bool
     hw::Float64
     srg::Bool
     srg_lambda::Float64
@@ -227,7 +229,8 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     hw = 20.0
     if use_hw_formula != 0; hw = hw_formula(Anum,use_hw_formula); end
     srg = true
-    srg_lambda = 2.0    
+    srg_lambda = 2.0
+    calc_EperA = false
     tx = "bare";if srg; tx ="srg"*string(srg_lambda);end;if calc_3N; tx="2n3n_"*tx;end
     tbme_fmt = "snt.bin"
     fn_tbme = "tbme_em500n3lo_"*tx*"hw"*string(round(Int64,hw))*"emax"*string(emax)*"."*tbme_fmt
@@ -240,7 +243,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     BetaCM = 0.0 
     kF = 1.35
     LambdaSFR = 0.0
-    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,
+    params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,calc_EperA,
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
@@ -274,6 +277,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if @isdefined(fn_tbme); params.fn_tbme = fn_tbme; end
     if @isdefined(pottype); params.pottype = pottype; end
     if @isdefined(coulomb); params.coulomb = coulomb; end
+    if @isdefined(calc_EperA); params.calc_EperA = calc_EperA; end
     if @isdefined(target_nlj); params.target_nlj = target_nlj; end
     if @isdefined(v_chi_order); params.v_chi_order = v_chi_order; end
     if @isdefined(n_mesh_P); params.n_mesh_P = n_mesh_P; end
@@ -289,7 +293,7 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     end
     if (params.pottype =="emn500n3lo" || params.pottype =="em500n3lo") && params.chi_order > 3
         println("chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
-        params.chi_order=4
+        params.chi_order=3
     end
     if io != nothing
         println(io,"--- chiEFTparameters used ---")
@@ -406,7 +410,7 @@ end
 
 write tbme in myg/snt(snt.bin) format
 """
-function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
+function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
     tbme_fmt = params.tbme_fmt
     target_nlj = params.target_nlj
     
@@ -426,10 +430,11 @@ function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkey
                 vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dict6j,d6j_nabla,key6j)
                 print(io,@sprintf("%4i", iza), @sprintf("%4i", ia), @sprintf("%4i", izb), @sprintf("%4i", ib))
                 print(io,@sprintf("%4i", izc), @sprintf("%4i", ic), @sprintf("%4i", izd), @sprintf("%4i", id))
-                print(io,@sprintf("%4i", Jtot),@sprintf("%20.10e", vv[i,j]))
+                print(io,@sprintf("%4i", Jtot),@sprintf("%20.10e", vv[i,j]),@sprintf("%20.10e", vv_2n3n[i,j]))
                 println(io,@sprintf("%20.10e", vpp))
             elseif tbme_fmt == "snt" ||  tbme_fmt == "snt.bin"
                 tv = vv[i,j]
+                tv2n3n = vv_2n3n[i,j]
                 a = ifelse(iza==-1,ia,ia+ofst)
                 b = ifelse(izb==-1,ib,ib+ofst)
                 c = ifelse(izc==-1,ic,ic+ofst)
@@ -469,16 +474,16 @@ function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkey
                 vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dict6j,d6j_nabla,key6j)
                 if tbme_fmt == "snt"
                     print(io,@sprintf("%5i", fa),@sprintf("%5i", fb),@sprintf("%5i", fc),@sprintf("%5i", fd))
-                    print(io,@sprintf("%6i", Jtot),@sprintf("%18.10f", tv))
+                    print(io,@sprintf("%6i", Jtot),@sprintf("%18.10f", tv),@sprintf("%18.10f", tv2n3n))
                     println(io,@sprintf("%20.10e", vpp))
                 elseif tbme_fmt == "snt.bin"
                     write(io,Int16(fa));write(io,Int16(fb))
                     write(io,Int16(fc));write(io,Int16(fd));write(io, Int16(Jtot))
-                    write(io,Float32(tv)); write(io,Float32(vpp))
+                    write(io,Float32(tv));write(io,Float32(tv2n3n)); write(io,Float32(vpp))
                 elseif tbme_fmt == "snt.bin64"
                     write(io,Int16(fa));write(io,Int16(fb))
                     write(io,Int16(fc));write(io,Int16(fd));write(io, Int16(Jtot))
-                    write(io,tv); write(io,vpp)        
+                    write(io,tv); write(io,tv2n3n);write(io,vpp)        
                 end
             end
         end
@@ -620,33 +625,34 @@ function write_spes(chiEFTobj::chiEFTparams,io,nljsnt,lp,nTBME,nljdict;bin=false
 end
 
 """ 
-    write_vmom(xr,V12mom,tdict,pnrank,llpSJ_s;label="")
+    write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int;label="")
 
 """
-function write_vmom(xr,V12mom,tdict,pnrank,llpSJ_s;label="")
+function write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int,target_LSJ;label="")
+    n_mesh = chiEFTobj.params.n_mesh
+    dict_pwch = chiEFTobj.dict_pwch[pnrank]
+    xr = chiEFTobj.xr_fm
+    V12mom = chiEFTobj.V12mom
     tx1d=""
     itt = 2 *(pnrank -2)
     for i= 1:n_mesh
         x = xr[i]
-        for j = 1:n_mesh
-            y = xr[j]
-            if y != x; continue;end
-            tx = @sprintf("%18.8e", x/hc)
-            for tmp in llpSJ_s
-                l,lp,S,J = tmp
-                V12idx = get(tdict,[itt,l,lp,S,J],-1)
-                if V12idx==-1
-                    tx *= @sprintf("%18.8e",0.0)
-                else
-                    v = V12mom[V12idx][i,j]
-                    tx *= @sprintf("%18.8e",v)
-                end
+        tx = @sprintf("%18.8e", x)
+        for tmp in target_LSJ
+            L,Lp,S,J = tmp
+            V12idx = get(dict_pwch,[itt,L,Lp,S,J],-1)
+            if V12idx==-1
+                tx *= @sprintf("%18.8e",0.0)
+            else
+                v = V12mom[V12idx][i,i]
+                tx *= @sprintf("%18.8e",v)
             end
-            tx *= "\n"
-            tx1d *= tx
         end
+        tx *= "\n"
+        tx1d *= tx    
     end        
     io = open("vmom_1d_"*label*".dat","w")
+    println(io,"\t\t\t   ",target_LSJ)
     println(io,rstrip(tx1d))
     close(io)
     return nothing

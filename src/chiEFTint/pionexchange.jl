@@ -18,34 +18,34 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
     mpipm = mpis[1]; mpipm2 = mpipm^2
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
-        MN = Ms[pnrank];dwn = 1.0/MN;sq_dwn=dwn^2
-        fff = pi / ((2*pi)^3 * MN^2)
+        MN = Ms[pnrank];dwn = 1.0/MN
+        fff = pi / ((2*pi)^3) * dwn^2
         coeff = -(MN*gA/(2*Fpi))^2
         itt = 2 *(pnrank -2)
         tllsj[1] = itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             f_idx = 6
-            if J==0; f_idx = 3;end                
+            if J==0; f_idx = 3;end         
             @inbounds for i= 1:n_mesh
                 x = xr[i];xdwn = x * dwn;sq_xdwn= xdwn^2
                 ex = sqrt(1.0+sq_xdwn)
                 @inbounds for j = 1:n_mesh
                     y = xr[j]; ydwn = y*dwn;sq_ydwn= ydwn^2
                     ey = sqrt(1.0+sq_ydwn)
-                    nfac = 1.0/(x* y* sq_dwn)
+                    nfac = 1.0 / (xdwn * ydwn)
                     ree = 1.0/sqrt(ex*ey) * freg(x,y,4)
                     f_sq!(opfs,xdwn,ydwn)
                     if pnrank != 2 ## pp/nn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs,QLdict)
+                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
                     else ## pn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,nfac,ts,ws,tVs,QLdict)
-                        cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs,QLdict;additive=true)
+                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
+                        cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict;additive=true)
                         #if pigamma
                         #    cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs,pigamma;additive=true)
                         #end
                     end
-                    t_fc = hc3 * fff * coeff * ree
+                    t_fc = fff * coeff * ree *hc3 * nfac                   
                     @inbounds for idx = 1:f_idx
                         @views tllsj[2:5] .= lsj[idx]
                         tl,tlp,tS,tJ = lsj[idx] 
@@ -53,7 +53,7 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
                         V12idx = get(tdict,tllsj,-1)
                         if V12idx == -1;continue;end                        
                         tfac = tVs[idx] * t_fc
-                        V12mom[V12idx][i,j] += tfac
+                        V12mom[V12idx][i,j] += tfac                        
                     end
                 end
             end
@@ -66,13 +66,17 @@ function fac_pig(beta,c5=0.0)
     return - (1.0-beta)^2 / (2*beta^2) * log(1+beta) +(1.0+beta)/(2*beta) -2.0*c5
 end
 
-function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamma=false;additive=false)
+"""
+
+Ref: R. Machleidt, Phys. Rev. C 63, 024001 (2001).
+"""
+function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false)
     x2 = x^2; y2 = y^2
     z = (mpi2+x2+y2) / (2.0*x*y)
     QJ = QJm1 = 0.0
-    nfac = facin
+    nfac = 1.0
     if pigamma
-        nfac = facin * fsalpha/pi
+        nfac = fsalpha/pi
         q2s = zeros(Float64,length(ts))
         for (i,t) in enumerate(ts)
             q2 = x2 + y2 -2.0*x*y*t
@@ -86,9 +90,9 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamm
         if J>0;QJm1=QL(z,J-1,ts,ws,QLdict);end
     end
     IJ0 = nfac * QJ
-    IJ1 = nfac * (z * QJ -delta(J,0)) #Eq. (B19)
-    IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) #Eq. (B20)
-    IJ3 = nfac * sqrt(J/(J+1)) * (z* QJ - QJm1) #Eq. (B21)
+    IJ1 = nfac * (z * QJ -delta(J,0)) #Eq. (B18)
+    IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) #Eq. (B19)
+    IJ3 = nfac * sqrt(J/(J+1)) * (z* QJ - QJm1) #Eq. (B20)
     #Eq. (B28)
     v1 = opfs[1] * IJ0 + opfs[2] *IJ1 
     v2 = opfs[3] * IJ0 + opfs[4] *IJ2
@@ -100,8 +104,8 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,facin,ts,ws,tVs,QLdict,pigamm
     if J%2==1 && pnrank!=2; v1 =0.0;end
     if J%2==0 && pnrank!=2; v2 =0.0;end
     if J%2!=0 && pnrank!=2; v3=v4=v5=v6=0.0;end
-    v34 = -sqrt(J*(J+1)) *(v3-v4)
-    v56 = sqrt(J*(J+1)) * (v5+v6)
+    v34 = -sqrt(J*(J+1)) * (v3-v4)
+    v56 =  sqrt(J*(J+1)) * (v5+v6)
     d2j1 = 1.0/(2*J+1)
     if nterm == 1
         phase = ifelse(pnrank==2,-1.0,1.0)         

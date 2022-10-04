@@ -27,7 +27,7 @@ It can therefore be difficult to familiarize oneself with the technical details 
 # Statement of need
 
 ``NuclearToolkit.jl`` provides self-contained codes for nuclear physics covering from nuclear forces to various nuclear many-body methods.
-Users can generate nucleon-nucleon (NN) potentials based on chiral effective field theory [@EMrev1;@EMrev2;@LENPICrev1;@LENPICrev2] and use them in many-body methods such as Hartree-Fock many-body perturbation theory (which is well known as Møller–Plesset method in the community of chemistry) [@ShavittBartlett2009], in-medium similarity renormalization group (IM-SRG) [@StrobergRev19], and valence shell model (configuration interaction method) [@BrownRev;@CourierRev;@OtsukaRev].
+Users can generate nucleon-nucleon (NN) potentials based on chiral effective field theory [@EMrev1;@EMrev2;@LENPICrev1;@LENPICrev2] and use them in many-body methods such as Hartree-Fock many-body perturbation theory (which is well known as Møller–Plesset method in the community of chemistry) [@ShavittBartlett2009], in-medium similarity renormalization group (IM-SRG) [@StrobergRev19], and valence shell model (configuration interaction method) [@BrownRev;@CaurierRev;@OtsukaRev].
 
 In nuclear physics community, many public codes are already available.
 Although it may not be possible to list them all, representative examples are ANTOINE [@ANTOINE], NuShellX [@NuShellX], BIGSTICK [@BIGSTICK1;@BIGSTICK2], and KSHELL [@KSHELL1;@KSHELL2] for valence shell-model and imsrg [@imsrgcode] for IM-SRG.

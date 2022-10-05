@@ -61,7 +61,7 @@ Please make sure to include any information necessary for us to reproduce the er
 
 You can propose modifications you made on the package through pull requests.
 
-* As stated above, plaease consider to make test codes matching to your modifications.
+* As stated above, please consider to make test codes matching to your modifications.
  
 * Please make sure to submit your PR to `develop` branch. The 'main' branch will be protected by 'github branch protection'.
 

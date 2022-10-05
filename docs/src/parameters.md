@@ -15,13 +15,15 @@ If you do not specify the optional argument `fn_params`, the pacakege tries to r
     - `chi_order::Int64`, order of chiral EFT potenteial (0:LO 1:NLO 2:NNLO 3:N3LO 4:N4LO)
     - `calc_NN::Bool`, calculate NN part
     - `calc_3N::Bool`, calculate eff2n (2n3n) part
-    - `hw::Float64` hbaromega
+    - `coulomb::Bool`, calculate Coulomb term    
+    - `calc_EperA::Bool`, calculate E/A
+    - `hw::Float64` hbar omega in MeV
     - `srg::Bool`, SRG transformation (NN-only)
     - `srg_lambda::Float64`, resolution scale for SRG in ``fm^{-1}``
     - `tbme_fmt::String` "snt" or "snt.bin" is supported
     - `fn_tbme::String` file name of output interaction
     - `pottype::String` potential type (em500n3lo,emn500n3lo,emn500n4lo) 
-    - `kF::Float64` Fermi momentum for 2n3n
+    - `kF::Float64` Fermi momentum for 2n3n in fm``^{-1}``
 * For IMSRG
     - `smax::Float64` max flow parameter `s`
     - `dsmax::Float64` maximum step size for IMSRG flow

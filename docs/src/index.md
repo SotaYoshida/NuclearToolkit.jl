@@ -18,21 +18,20 @@ julia>]up NuclearToolkit
 
 You can try the package by 1. or 2.:
 
-1. clone the repository and run `sample_script.jl` in the repository
- 
-  ```bash
-  julia -t 8 sample_script.jl
-  ```
+1. clone the repository and run `sample_script.jl` in the repository like 
 
-  This performs:
-  - calculating NN potential by Chiral EFT
-  - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
-  - shell-model calculations with the effective interaction derived by VS-IMSRG
+    ```bash
+        julia -t 8 sample_script.jl
+    ```
 
+    This performs:
+      - calculating NN potential by Chiral EFT
+      - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
+      - shell-model calculations with the effective interaction derived by VS-IMSRG
 2. Try sample codes in [HowToUse](howtouse) page.
 
 
-## Package features and building blocks
+## Package features 
 
 NuclearToolkit.jl provides a self-contained set of nuclear structure calculation codes covering from nuclear force to many-body methods (HF/HFMBPT, IM-SRG/VS-IMSRG, shell model, etc.).
 
@@ -42,6 +41,8 @@ In the author's personal opinion, it would be too difficult for students (especi
 
 The author thought the Julia language can be a game changer to this situation with its high readbility, portabillity, and performance. Since all the source code in NuclearToolkit.jl is a pure Julia implementation, there is no more need to prepare different Makefiles for different environments, worry about library dependencies, homemade Python scripts to run the Fortran/C++ codes. The code can be easily executed on either a laptop or a supercomputer.
 While NuclearToolkit covers a wide range of methods, the overall code length is still in a few tens of thousands, including "docstring" to generate the document.
+
+## Building blocks
 
 - [ChiEFTint](ChiEFTint): NN interaction from Chiral EFT ~ 6,500 lines.
   - EM (Entem & Machleidt) N3L0
@@ -57,7 +58,8 @@ While NuclearToolkit covers a wide range of methods, the overall code length is 
   - Valence-space IMSRG (VS-IMSRG)
     - derive effective interaction for shell-model calculations
     - consistent VSIMSRG flow to get effective operators 
-- [ShellModel.jl](ShellModel) ~ 5,000 lines.
+- [ShellModel.jl](ShellModel): valence shell model code ~ 5,000 lines.  
+
   This was originally developed as [an independent package] (https://github.com/SotaYoshida/ShellModel.jl).
   - shell model calculations
   - construct approximate wavefunctions with eigenvector continuation 

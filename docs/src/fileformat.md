@@ -37,7 +37,7 @@ Here is an example of w.snt. The comments are not written in the outputs of Nucl
 1 1 1 1 2 -0.06650
 ```
 
-For free space interactions, output of `chiEFTint`, have V2n3n and Vpp terms in addition to the VNN term:
+For free space interactions, output of `chiEFTint`, they have V2n3n and Vpp terms in addition to the VNN term:
 ```
 ...
 ! i j k l J <i,j| VNN | k,l>_J <i,j| V2n3n | k,l>_J <i,j| Vpp | k,l>_J

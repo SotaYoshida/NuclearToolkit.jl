@@ -47,9 +47,8 @@ They checks
 - shell-model results with the derived effective interaction by VS-IMSRG
 - MPI and sampling stuffs are runnable
 
-If you submit a major change to the code and it brings the changes in the results by many-body methods,
-it is recommended to contact the main author(s). Otherwise, we appreciate it if you could propose updated test codes.
-
+!!! note
+    If you submit a major change to the code, please consider to update the test codes mathing to your modifications.
 
 ## Reporting bugs by opening a new issue
 
@@ -91,12 +90,13 @@ function Show_EigenStates!(H::Hamiltonian,ψ::WaveFunction,n::Int64)
 end
 ```
 
-When you want to add a new API to the package, which can be called in Julia REPL, you need to export it at `src/NuclearToolkit.jl`.
+!!! note
+    When you want to add a new API to the package, which can be called in Julia REPL, you need to export it at `src/NuclearToolkit.jl`.
 
 
 ## LICENSE
 
-Any contribution from you will be under the MIT License, as well as the package itself.
+Any contribution from you will be under the [MIT License](https://opensource.org/licenses/MIT), as well as the package itself.
 Feel free to contact to @SotaYoshida if that's a concern.
 
 

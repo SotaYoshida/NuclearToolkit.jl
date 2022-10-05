@@ -20,9 +20,9 @@ We use the GitHub to host the package, to track issues/pull requests.
 
 The document is built using [Documenter.jl](https://juliadocs.github.io/Documenter.jl/stable/),
 which is a package for building documentation from docstrings and markdown files.
-It is automized to build and deploy the document by GitHub Actions.
+It is automized to build and deploy the document using GitHub Actions.
 
-A typical workfklow is the following:
+A typical workfklow of code development is the following:
 
 1. clone or folk the repository and modify the code and/or document locally
 
@@ -98,5 +98,3 @@ end
 
 Any contribution from you will be under the [MIT License](https://opensource.org/licenses/MIT), as well as the package itself.
 Feel free to contact to @SotaYoshida if that's a concern.
-
-

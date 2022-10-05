@@ -26,7 +26,7 @@ A typical workfklow is the following:
 
 1. clone or folk the repository and modify the code and/or document locally
 
-2. propose modifications through a pull request (PR) to **'dev' branch**
+2. propose modifications through a pull request (PR) to **`develop` branch**
 
 3. if the PR passes the automated tests, it will be merged 
 
@@ -40,7 +40,7 @@ When some changes are submitted through a pull request, the test codes are run t
 
 The test jobs are specified in yml files like `.github/workflows/CI.yml` and one can find the test code in `test/` of the repository.
 
-They checks
+The current test codes check
 - Generating a nucleon-nucleon potential, i.e., input for nuclear many-body methods
 - HFMBPT results with the NN-potential
 - IMSRG/VSIMSRG results the NN-potential

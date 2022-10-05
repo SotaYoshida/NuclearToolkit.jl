@@ -91,7 +91,7 @@ function Show_EigenStates!(H::Hamiltonian,ψ::WaveFunction,n::Int64)
 end
 ```
 
-When you want to add a new API to the package, which can be called in Julia REPL, you need to export it `src/NuclearToolkit.jl`.
+When you want to add a new API to the package, which can be called in Julia REPL, you need to export it at `src/NuclearToolkit.jl`.
 
 
 ## LICENSE

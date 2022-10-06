@@ -33,7 +33,8 @@ In nuclear physics community, many public codes are already available.
 Although it may not be possible to list them all, representative examples are ANTOINE [@ANTOINE], NuShellX [@NuShellX], BIGSTICK [@BIGSTICK1;@BIGSTICK2], and KSHELL [@KSHELL1;@KSHELL2] for valence shell-model and imsrg [@imsrgcode] for IM-SRG.
 People are using those various codes, which are typically written in FORTRAN/Fortran, C++, etc., and call them in their homemade shell or Python scripts.
 `NuclearToolkit.jl`, which is not a wrapper of those existing codes, provides
-a new interface that combines these various methods into one and works on both laptops and supercomputers in almost the same way. That is achieved by high readability and portability of Julia language[@Bezanson2012].
+a new interface that combines these various methods into one and works on both laptops and supercomputers in almost the same way.
+That is achieved by high readability and portability of Julia language[@Bezanson2012].
 
 This code has been used in previous works [@PTEPSY;@SY2n3n]
 

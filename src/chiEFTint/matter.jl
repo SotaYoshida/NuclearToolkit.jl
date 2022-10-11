@@ -1,13 +1,16 @@
 """
 Reference: K.Hebeler & A.Schwenk, Phys. Rev. C 82, 014314 (2010).
 """
-function calc_nuclearmatter_in_momspace(chiEFTobj::ChiralEFTobject,to)      
+function calc_nuclearmatter_in_momspace(chiEFTobj::ChiralEFTobject,to,io)      
     n_below_kF = get_n_below_kF(chiEFTobj)
-    TperA = 3*hc^2 *chiEFTobj.params.kF^2 /(5*2* (Mp+Mn)/2)
+    kF = chiEFTobj.params.kF
+    rho = (2 *kF^3 )/ (3*pi^2)
+    println(io,"kF (fm^-1) $kF rho (fm^-3) $rho n_below_kF $n_below_kF")
+    TperA = 3*hc^2 *kF^2 /(5*2* (Mp+Mn)/2)
     EHF  = calc_EperA_HF(chiEFTobj,n_below_kF)
-    @timeit to "EPT2-matter" EPT2 = calc_EperA_PT2(chiEFTobj,n_below_kF,to)
+    EPT2 = calc_EperA_PT2(chiEFTobj,n_below_kF,to)
     E = TperA + EHF + EPT2
-    println("kinetic ",@sprintf("%10.3f",TperA)," EHF/A ",@sprintf("%10.3f",EHF)," EPT2/A ",@sprintf("%15.8f",EPT2),
+    println(io,"kinetic ",@sprintf("%10.3f",TperA)," EHF/A ",@sprintf("%10.3f",EHF)," EPT2/A ",@sprintf("%15.8f",EPT2),
     "   E(1) ", @sprintf("%10.3f",E-EPT2)," E(1+2) ",@sprintf("%10.3f",E))
     return nothing
 end
@@ -131,8 +134,6 @@ function get_n_below_kF(chiEFTobj;verbose=true)
     for i = 1:length(xr_fm)
         if xr_fm[i] > kF; break; end
         n_below_kF = i
-    end
-    rho = (2 *kF^3 )/ (3*pi^2)
-    if verbose;println("kF (fm^-1) $kF rho (fm^-3) $rho");end
+    end    
     return n_below_kF 
 end

@@ -1,17 +1,16 @@
 """
-    OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
+    OPEP(chiEFTobj,to;pigamma=false)
 
 calc. One-pion exchange potential in the momentum-space
 
 Reference: R. Machleidt, Phys. Rev. C 63 024001 (2001).
 """
-function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
+function OPEP(chiEFTobj,to;pigamma=false)
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr; V12mom = chiEFTobj.V12mom
     dict_pwch = chiEFTobj.dict_pwch; 
     lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj
     opfs = chiEFTobj.opfs; QLdict = chiEFTobj.util_2n3n.QWs.QLdict
     n_mesh = chiEFTobj.params.n_mesh
-    hc3 = hc^3
     tVs = zeros(Float64,6)
     opfs = zeros(Float64,8)
     mpi0 = mpis[2]; mpi02 = mpi0^2
@@ -19,14 +18,13 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
         MN = Ms[pnrank];dwn = 1.0/MN
-        fff = pi / ((2*pi)^3) * dwn^2
-        coeff = -(MN*gA/(2*Fpi))^2
+        fff = - gA2 *  pi / ((2*Fpi)^2 * (2*pi)^3)
         itt = 2 *(pnrank -2)
         tllsj[1] = itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             f_idx = 6
-            if J==0; f_idx = 3;end         
+            if J==0; f_idx = 3;end 
             @inbounds for i= 1:n_mesh
                 x = xr[i];xdwn = x * dwn;sq_xdwn= xdwn^2
                 ex = sqrt(1.0+sq_xdwn)
@@ -34,26 +32,25 @@ function OPEP(chiEFTobj,to;pigamma=true,debugmode=false)
                     y = xr[j]; ydwn = y*dwn;sq_ydwn= ydwn^2
                     ey = sqrt(1.0+sq_ydwn)
                     nfac = 1.0 / (xdwn * ydwn)
-                    ree = 1.0/sqrt(ex*ey) * freg(x,y,4)
+                    ree =  1.0 /sqrt(ex*ey) *freg(x,y,4)
                     f_sq!(opfs,xdwn,ydwn)
-                    if pnrank != 2 ## pp/nn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
-                    else ## pn
-                        cib_lsj_opep(opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
-                        cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict;additive=true)
-                        #if pigamma
-                        #    cib_lsj_opep(opfs,x,y,mpipm2,2,J,pnrank,nfac,ts,ws,tVs,pigamma;additive=true)
-                        #end
+                    t_fc = fff * ree *hc3 * nfac
+                    tVs .= 0.0
+                    cib_lsj_opep(t_fc,opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
+                    if pnrank == 2 ## pp/nn
+                        cib_lsj_opep(t_fc,opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict;additive=true)
+                        if pigamma
+                            t_fc_pig = t_fc 
+                            cib_lsj_opep(t_fc,opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict,pigamma;additive=true,factor_pig=t_fc_pig)
+                        end
                     end
-                    t_fc = fff * coeff * ree *hc3 * nfac                   
                     @inbounds for idx = 1:f_idx
                         @views tllsj[2:5] .= lsj[idx]
-                        tl,tlp,tS,tJ = lsj[idx] 
-                        if pnrank%2 == 1 && (tl+tS+1)%2 != 1;continue;end
+                        tl,tlp,S,tJ = lsj[idx] 
+                        if pnrank%2 == 1 && (tl+S+1)%2 != 1;continue;end
                         V12idx = get(tdict,tllsj,-1)
                         if V12idx == -1;continue;end                        
-                        tfac = tVs[idx] * t_fc
-                        V12mom[V12idx][i,j] += tfac                        
+                        V12mom[V12idx][i,j] += tVs[idx]
                     end
                 end
             end
@@ -67,39 +64,35 @@ function fac_pig(beta,c5=0.0)
 end
 
 """
-
 Ref: R. Machleidt, Phys. Rev. C 63, 024001 (2001).
 """
-function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false)
-    x2 = x^2; y2 = y^2
-    z = (mpi2+x2+y2) / (2.0*x*y)
-    QJ = QJm1 = 0.0
-    nfac = 1.0
+function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false,factor_pig=1.0)
+    x2 = x^2; y2 = y^2; z = (mpi2+x2+y2) / (2*x*y)
+    QJm1 = 0.0
+    nfac = fac_in
+    q2s = Float64[ ]
     if pigamma
-        nfac = fsalpha/pi
-        q2s = zeros(Float64,length(ts))
+        q2s = zeros(Float64,length(ts))        
+        nfac = ifelse(J==0,0.0,factor_pig)
         for (i,t) in enumerate(ts)
             q2 = x2 + y2 -2.0*x*y*t
-            beta = q2/mpi2
-            q2s[i] = fac_pig(beta) * t
+            beta = q2 / mpi2
+            q2s[i] = (fsalpha/pi) * fac_pig(beta)
         end
-        QJ = QL(z,J,q2s,ws,QLdict) 
-        if J>0;QJm1=QL(z,J-1,q2s,ws,QLdict);end
-    else
-        QJ = QL(z,J,ts,ws,QLdict)
-        if J>0;QJm1=QL(z,J-1,ts,ws,QLdict);end
     end
+    QJ = QL(z,J,ts,ws,QLdict;factor_vec=q2s)
+    if J>0;QJm1=QL(z,J-1,ts,ws,QLdict;factor_vec=q2s);end
     IJ0 = nfac * QJ
     IJ1 = nfac * (z * QJ -delta(J,0)) #Eq. (B18)
     IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) #Eq. (B19)
     IJ3 = nfac * sqrt(J/(J+1)) * (z* QJ - QJm1) #Eq. (B20)
     #Eq. (B28)
-    v1 = opfs[1] * IJ0 + opfs[2] *IJ1 
+    v1 = opfs[1] * IJ0 + opfs[2] *IJ1
     v2 = opfs[3] * IJ0 + opfs[4] *IJ2
     v3 = opfs[5] * IJ0 + opfs[6] *IJ1
     v4 = opfs[4] * IJ0 + opfs[3] *IJ2
     v5 = opfs[7] * IJ3
-    v6 = -v5                        
+    v6 = -v5
     if J==0; v2=v4=v5=v6=0.0;end
     if J%2==1 && pnrank!=2; v1 =0.0;end
     if J%2==0 && pnrank!=2; v2 =0.0;end
@@ -108,7 +101,7 @@ function cib_lsj_opep(opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=fals
     v56 =  sqrt(J*(J+1)) * (v5+v6)
     d2j1 = 1.0/(2*J+1)
     if nterm == 1
-        phase = ifelse(pnrank==2,-1.0,1.0)         
+        phase = ifelse(pnrank==2,-1.0,1.0)
         tVs[1] = additive_sum(additive,tVs[1],v1 *phase)
         tVs[2] = additive_sum(additive,tVs[2],v2 *phase)
         tVs[3] = additive_sum(additive,tVs[3],d2j1 * ((J+1)* v3 + J*v4-v56)*phase)
@@ -241,8 +234,7 @@ function tpe(chiEFTobj,to)
 
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
-        MN = Ms[pnrank];dwn = 1.0/MN
-        fff = pi / ((2*pi)^3 * MN^2)
+        MN = Ms[pnrank]
         nd_mpi = mmpi/MN        
         Fpi2 = (Fpi/MN)^2
         c1 = c1_NNLO * MN * 1.e-3
@@ -268,7 +260,7 @@ function tpe(chiEFTobj,to)
         itt = 2 *(pnrank -2)
         tllsj[1] = itt
         tllsj_para = [ deepcopy(tllsj) for i=1:nthre]
-        LamSFR_nd = chiEFTobj.params.LambdaSFR * dwn
+        LamSFR_nd = chiEFTobj.params.LambdaSFR / MN
         LoopObjects = precalc_2loop_integrals(chiEFTobj,LamSFR_nd,nd_mpi,Fpi2,c1,c2,c3,c4,r_d12,r_d3,r_d5,r_d145,r_e14,r_e17)
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
@@ -277,7 +269,7 @@ function tpe(chiEFTobj,to)
             set_pjs!(J,pjs,ts)
             for i=1:nthre; pjs_para[i] .= pjs;end
             tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
-                            J,pnrank,fff,dwn,nd_mpi,pjs_para,gis_para,opfs_para,
+                            J,pnrank,nd_mpi,pjs_para,gis_para,opfs_para,
                             f_idx,tVs_para,lsj,tllsj_para,tdict,tmpsum,to)
         end
     end
@@ -368,13 +360,13 @@ function Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
             if chi_order >= 3
                 tmp_s += (5*nd_mpi^2 + 2* q2) * Aq * f_NNLO_Vt
             end
-        else
+        else 
             it_pi = (nd_mpi + w2 * Aq) ##nd_mpi term is different from EMN
             tmp_s += (3*tw2Aq +it_pi) * f_NNLO_Vt/2 
         end
     end
     # N3LO
-    if chi_order >= 3 
+    if  chi_order >= 3 
         if !EMN
             ## EM eq.(D.11)
             f_N3LO_Vt = gA4 / (32.0 * pi^2 * Fpi4) 
@@ -393,10 +385,36 @@ function Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
     return tmp_s
 end
 
-function Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,calc_TPE_separately=false)
+function Wt_OPEP_T1(tz,q2,Fpi2)
+    Mnuc = ifelse(tz==-2,Mp,Mn)
+    mpi2 = (mpis[2]/Mnuc)^2 #mpis[2] = mpi0
+    return - gA2 / ( 4* Fpi2 * (mpi2 + q2) ) 
+end
+function Wt_OPEP_pn(T,q2,Fpi2;pigamma=true)
+    mpi02 = (mpis[2]/Mm)^2 ; mpipm2 = (mpis[1]/Mm)^2
+    Vmpi0 = - gA2 / ( 4*Fpi2 * (mpi02 + q2) ) 
+    Vmpm2 = - gA2 / ( 4*Fpi2 * (mpipm2 + q2) )
+    if false #pigamma 
+        beta = q2/mpipm2
+        Vmpm2 += - gA2 / ( 4*Fpi2 * mpipm2) *fac_pig(beta)
+    end
+    return - Vmpi0 + 2* Vmpm2
+end
+
+function Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2,tllsj;EMN=false,calc_TPE_separately=false,calcOPEPhere=false)
     Fpi4 = Fpi2^2; Fpi6 = Fpi2^3; w2 = w^2; w2Aq = w2 * Aq
     nd_mpi2 = nd_mpi^2; nd_mpi4 = nd_mpi2^2
     tmp_s = 0.0
+    if calcOPEPhere
+        tz,L,Lp,S,J = tllsj
+        if tz != 0
+            tmp_s += Wt_OPEP_T1(tz,q2,Fpi2)
+        else
+            T = (Lp+S) % 2 
+            tmp_s += Wt_OPEP_pn(T,q2,Fpi2)
+        end
+        return tmp_s
+    end
     if chi_order >=2
         #NNLO
         fac_NNLO = - gA2 / (32.0 * pi * Fpi4)
@@ -464,7 +482,9 @@ function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
         else
             f_N3LO_Vs = gA4 / (32.0 * pi^2 * Fpi4)
             f_N3LO_2l_Vs = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)            
-            tmp_s += Lq * (k2 +3.0/8.0 *q2 + nd_mpi4 /w2) *f_N3LO_Vs
+            # There is type in EM review (D.11) 5/8 -> 3/8.
+            # See also N. Kaiser, Phys. Rev. C 65 (2002) 017001.
+            tmp_s += Lq * (k2 + 3.0*q2/8.0 + nd_mpi4 /w2) *f_N3LO_Vs
             tmp_s += w2 * Lq * f_N3LO_2l_Vs
         end
     end
@@ -568,7 +588,8 @@ function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=f
             tmp_s +=  (term1+term2+it_pi) * f_NNLO_Vc
         end
     end
-    if chi_order >= 3 
+    if  chi_order >= 3 
+        ## EM Eq(D.1)
         f_N3LO_f1_Vc = 3.0/ (16.0 * pi^2 * Fpi4)
         brak1  = ((c2*w2)/6.0 + c3*tw2 -4.0*c1*nd_mpi2)^2 + (c2^2 *w2^2)/45.0
         tmp_s += Lq * brak1 * f_N3LO_f1_Vc                    
@@ -581,11 +602,11 @@ function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=f
         if EMN 
            obj = LoopObjects.n3lo; ImV = obj.ImVc; tmp_s += Integral_ImV(obj.mudomain,q2,obj,ImV)
         else
-            f_N3LO_2l_Vc = 3.0 * gA4 /(1024.0 *pi^2 * Fpi6)
             ## EM eq.(D.9)
             Mm2cor = Lq *(2.0*nd_mpi2^4 / w^4 + 8.0*nd_mpi2^3 / w2 -q2^2 -2.0*nd_mpi2^2 ) + nd_mpi2^3 /(2.0 *w2)
             tmp_s +=  f_N3LO_f6_Vc *gA2 *Mm2cor
             ## EM eq.(D.18)
+            f_N3LO_2l_Vc = 3.0 * gA4 /(1024.0 *pi^2 * Fpi6)            
             tmp_s += f_N3LO_2l_Vc * tw2Aq * ((nd_mpi2 + 2.0 * q2)*(2.0*nd_mpi + tw2Aq) +4.0*gA2 * nd_mpi *tw2)
         end
     end
@@ -635,15 +656,15 @@ function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_
         end
     end
     ## N3LO
-    if chi_order >= 3 
+    if  chi_order >= 3 
         #a: ci/Mn term,  EM eq.(D.5), EMN eq.(2.20)
         f_N3LO_a_Wc = -c4 / (192.0 * pi^2 * Fpi4)
         tmp_s += f_N3LO_a_Wc * (gA2 *(8*nd_mpi2+5*q2) +w2) * q2 * Lq        
         if EMN 
-            # 2-loop correction EKMN eq.(D4)
+            ## 2-loop correction EKMN eq.(D4)
             obj = LoopObjects.n3lo; tmp_s += Integral_ImV(obj.mudomain,q2,obj,obj.ImWc)
         else
-            # #b: 1/Mn^2 term, EM eq.(D.10)
+            ## b: 1/Mn^2 term, EM eq.(D.10)
             f_N3LO_b_Wc = -1.0 / (768.0 * pi^2 * Fpi4)
             brak1 = Lq * ( 8.0*gA2 * (11.0/4.0 *q2^2 +5.0*nd_mpi2*q2
                                     + 3.0*nd_mpi2^2 -6.0*nd_mpi2^3 /w2
@@ -654,7 +675,7 @@ function Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_
                         +(q2-4.0*k2)*w2)
             brak2 =  16.0*gA4 *nd_mpi2^3 / w2
             tmp_s += (brak1 + brak2) * f_N3LO_b_Wc
-            # 2l: two-loop correction EM eq.(D.20)
+            ## 2l: two-loop correction EM eq.(D.20)
             f_N3LO_2l_Wc= 1.0/(18432.0 * pi^4 * Fpi6)
             term1 = 192.0* pi^2 *Fpi2*w2*r_d3* (2.0*gA2*tw2 -3.0/5.0 *(gA2-1.0) *w2)
             brak = 384.0 * pi^2 *Fpi2 * (tw2 * r_d12 + 4.0*nd_mpi2 * r_d5)
@@ -686,7 +707,7 @@ function Vls_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=false)
             tmp_s += tw2Aq * f_NNLO_Vls
         end
     end
-    if chi_order >= 3
+    if  chi_order >= 3
         f_N3LO_a_Vls = c2 *gA2 /(8.0* pi^2 * Fpi4)
         tmp_s += f_N3LO_a_Vls * w2 * Lq
         f_N3LO_b_Vls = gA4 /(4.0* pi^2 * Fpi4)
@@ -707,7 +728,7 @@ function Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false)
             tmp_s += w2Aq * f_NNLO_Wls
         end
     end
-    if chi_order >= 3
+    if  chi_order >= 3
         f_N3LO_a_Wls = -c4 /(48.0*pi^2 * Fpi4)
         f_N3LO_b_Wls = 1.0 /(256.0*pi^2 * Fpi4) 
         tmp_s += f_N3LO_a_Wls*Lq * (gA2 *(8.0*nd_mpi2 + 5.0*q2) + w2)
@@ -722,7 +743,7 @@ end
 function Vsl_term(chi_order,Lq,Fpi2;EMN=false)
     Fpi4 = Fpi2^2
     tmp_s = 0.0
-    if chi_order >=3 && !EMN
+    if  chi_order >=3 && !EMN
         f_N3LO = gA4 /(32.0* pi^2 * Fpi4)
         tmp_s += f_N3LO * Lq
     end
@@ -736,8 +757,10 @@ end
 Calculating TPE contribution in a given momentum mesh point.
 """
 function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
-                 J,pnrank,fff,dwn,nd_mpi,pjs_para,gis_para,opfs_para,
+                 J,pnrank,nd_mpi,pjs_para,gis_para,opfs_para,
                  f_idx,tVs_para,lsj,tllsj_para,tdict,tmpsum,to;calc_TPE_sep=true)
+    MN = Ms[pnrank];dwn = 1.0/MN
+    fff = pi / ((2*pi)^3 * MN^2)
     params = chiEFTobj.params
     LamSFR_nd = dwn * params.LambdaSFR
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr
@@ -747,26 +770,23 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
     r_d12 = tmpLECs["r_d12"]; r_d3 = tmpLECs["r_d3"]; r_d5 = tmpLECs["r_d5"]
     r_d145 = tmpLECs["r_d145"]; r_e14 = tmpLECs["r_e14"]; r_e17 = tmpLECs["r_e17"]
     nd_mpi2 = nd_mpi^2
-    hc3 = hc^3
     n_mesh = length(xr)
     usingSFR = ifelse(LamSFR_nd!=0.0,true,false)
-
     @inbounds @threads for V_i= 1:n_mesh
-        x = xr[V_i]; xdwn = x*dwn; xdwn2 = xdwn^2       
-        ex = sqrt(1.0+xdwn2)  
+        x = xr[V_i]; xdwn = x*dwn; xdwn2 = xdwn^2; ex = sqrt(1.0+xdwn2)  
         tid = threadid()        
         gis = gis_para[tid]
-        tllsj = tllsj_para[tid]#; tllsj .= org_tllsj      
+        tllsj = tllsj_para[tid]#; tllsj .= org_tllsj
         target = tmpsum[tid]
         tVs = tVs_para[tid]
         f_T,f_SS,f_C,f_LS,f_SL = opfs_para[tid]
         @inbounds for V_j = 1:n_mesh
-            y = xr[V_j]; ydwn = y*dwn; ydwn2=ydwn^2
+            y = xr[V_j]; ydwn = y*dwn; ydwn2=ydwn^2; ey = sqrt(1.0+ydwn2)
             f_sq!(f_T,xdwn,ydwn);f_ls!(f_LS,xdwn,ydwn);f_sl!(f_SL,xdwn,ydwn)
-            ey = sqrt(1.0+ydwn2)
+            
             k2=0.5*(xdwn2 + ydwn2)
-            ree = 1.0/sqrt(ex*ey)
-            fc = fff * hc3 * freg(x,y,2) * ree
+            ree = 1.0 /sqrt(ex*ey)
+            fc = fff * hc3 * ree * freg(x,y,2)
             for i in eachindex(gis); gis[i] .= 0.0; end #gis [1:7][1:9] 
             @inbounds for n in eachindex(ts)
                 tpj = @view pjs_para[tid][n,:] 
@@ -779,7 +799,7 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                 tmp_s = Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[1])
                 ## Tensor term: Wt
-                tmp_s = Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2,tllsj;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[2])
                 ## sigma-sigma term: Vs
                 tmp_s = Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
@@ -804,8 +824,7 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                 axpy!(tmp_s*int_w,tpj,target[9])        
                 if !calc_TPE_sep            
                     n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)
-                end
-                   
+                end                  
             end        
 
             for ch =1:9
@@ -908,9 +927,8 @@ function calc_IJ_V(J,pnrank,gi,opf,fc,f_idx,tVs,lsj,tllsj,tdict,V12mom,V_i,V_j,t
     @inbounds for idx = 1:f_idx
         @views tllsj[2:5] .= lsj[idx]
         V12idx = get(tdict,tllsj,-1)
-        if V12idx == -1;continue;end
-        tfac = tVs[idx] * fc
-        V12mom[V12idx][V_i,V_j] += tfac
+        if V12idx == -1;continue;end        
+        V12mom[V12idx][V_i,V_j] += tVs[idx] * fc
     end
     return nothing
 end

@@ -1,5 +1,5 @@
 """
-    make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[])
+    make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false)
 
 The interface function in chiEFTint.
 This generates NN-potential in momentum space and then transforms it in HO basis to give inputs for many-body calculations.
@@ -13,8 +13,10 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `optimizer::String` method for LECs calibration. "MCMC","LHS","BayesOpt" are available
 - `MPIcomm::Bool`, to carry out LECs sampling with HF-MBPT and affine inveriant MCMC
 - `Operators::Vector{String}` specifies operators you need to use in LECs calibrations
+- `fn_params::String` path to file specifying the optional parameters
+- `write_vmom::Bool` to write out in vmom partial wave channels
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl")
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false)
     to = TimerOutput()
     do2n3ncalib=false
     if (optimizer!="" && nucs != []) || MPIcomm
@@ -23,21 +25,21 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     io = select_io(MPIcomm,optimizer,nucs)
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
-    @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to)
+    @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to;io=io)
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
 
-    # QLdict = chiEFTobj.util_2n3n.QWs.QLdict
-    # println("keys QLdict[J=2] ",keys(QLdict[3]))
-
-    target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]];write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
+    if write_vmom
+        target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]]
+        write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
+    end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
         ## not yet updated to seperate 2n3n from NN
         caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)        
     else # write out snt/snt.bin file
         calc_vmom_3nf(chiEFTobj,1,to)
-        if chiEFTobj.params.calc_EperA; calc_nuclearmatter_in_momspace(chiEFTobj,to);end
+        if chiEFTobj.params.calc_EperA; calc_nuclearmatter_in_momspace(chiEFTobj,to,io);end
         #add2n3n(chiEFTobj,to)
         @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
     end
@@ -62,7 +64,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax)
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
-    pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)    
+    pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)
     V12mom = [ zeros(Float64,params.n_mesh,params.n_mesh) for i in eachindex(pw_channels)]
     V12mom_2n3n = [ zeros(Float64,params.n_mesh,params.n_mesh)  for i in eachindex(pw_channels)]    
     ## prep. radial functions
@@ -80,7 +82,8 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms 
     f_ss!(opfs[2]);f_c!(opfs[3])
     ## prep. Gauss point for integrals
-    ts, ws = Gauss_Legendre(-1,1,96)
+    #ts, ws = Gauss_Legendre(-1,1,96)
+    ts, ws = Gauss_Legendre(-1,1,40)
     ## prep. for TBMEs        
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
@@ -199,21 +202,35 @@ end
 
 To calculate Legendre functions of second kind, which are needed for pion-exchange contributions, by Gauss-Legendre quadrature.
 """
-function QL(z,J::Int64,ts,ws,QLdict;zthreshold=1.e+1)
+function QL(z,J::Int64,ts,ws,QLdict;zthreshold=1.0,factor_vec=Float64[])
     if J < 0; return 0.0;end
+    if length(factor_vec) != 0
+        QL_numefac = QL_numeric_fac(z,J,ts,ws,factor_vec)
+        # QL_numedic_fac = QL_numeric_dict(z,J,ts,ws,QLdict) * factor_vec[1]
+
+        # if abs(QL_numefac-QL_numedic_fac) > 1.e-6
+        #     println("J $J QLcheck numefac $QL_numefac numedic $QL_numedic_fac")
+        # end
+        return QL_numefac 
+    end
+
+    return QL_numeric_dict(z,J,ts,ws,QLdict)
+
     if z > zthreshold 
         return QL_numeric_dict(z,J,ts,ws,QLdict)
     else
         return QL_recursive(z,J)
     end
-    return s
 end
-function QL_numeric_dict(z,J,ts,ws,QLdict)
+function QL_numeric_dict(z,J,ts,ws,QLdict,factor_vec=Float64[])
     ret = 0.0
     tval = get(QLdict[J+1],z,0.0)
     if tval == 0.0
         ret = QL_numeric(z,J,ts,ws)
         QLdict[J+1][z] = ret
+        if length(factor_vec) != 0
+            ret = QL_numeric_fac(z,J,ts,ws,factor_vec)
+        end
     else
         ret = tval
     end
@@ -223,6 +240,13 @@ function QL_numeric(z,J,ts,ws)
     ret = 0.0
     @inbounds for (i,t) in enumerate(ts)
         ret += ws[i] * (1.0-t*t)^J / (2*(z-t))^(J+1)
+    end 
+    return ret
+end
+function QL_numeric_fac(z,J,ts,ws,factor_vec::Vector{Float64})
+    ret = 0.0
+    @inbounds for (i,t) in enumerate(ts)
+        ret += factor_vec[i] * ws[i] * (1.0-t*t)^J / (2*(z-t))^(J+1) 
     end 
     return ret
 end
@@ -675,7 +699,7 @@ function Calc_Deuteron(chiEFTobj::ChiralEFTobject,to;io=stdout)
     H_d .+= T_d
     evals,evecs = eigen(H_d)
     E_d = minimum(evals)
-    println(io,"Deuteron energy:",@sprintf("%10.5f",E_d)," MeV")
+    #println(stdout,"Deuteron energy:",@sprintf("%12.6f",E_d)," MeV")
     return E_d
 end
 

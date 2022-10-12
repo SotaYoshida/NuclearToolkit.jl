@@ -26,14 +26,15 @@ make_chiEFTint(;itnum=5,nucs=["O16"],optimizer="MCMC")
 
 ### Working on a super-computer
 
+You can also run Julia codes on a super-computer.
+Pkg (Julia's builtin package manager) intalls the Julia packages in `$JULIA_DEPOT_PATH`, which is `~/.julia` by default.
+When working on a working node (w/o permissions to access `~/`), overwrite the `JULIA_DEPOT_PATH` by `export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"`.
 
-In NuclearToolkit.jl, many-nodes calculation utilizing MPI.jl is supported for LECs calibration with HF-MBPT.
-
-!!! note
+!!! note  
     For now, utilizing MPI is limited to LECs calibration with HF-MBPT & MCMC. One cannot benefit from many-node parallelization for most of many-body methods in the package. If you have feature requests on it or are willing to contribute along this line, please make an issue.
 
-
-A sample script, let's call `mpisample.jl`, can be something like this:
+In NuclearToolkit.jl, many-nodes calculation utilizing MPI.jl is supported for LECs calibration with HF-MBPT.
+A sample script for that, let's call `mpisample.jl`, can be something like
 ```julia
 using NuclearToolkit
 make_chiEFTint(;itnum=500,nucs=["O16"],optimizer="MCMC",MPIcomm=true)
@@ -43,8 +44,6 @@ Then, you can run with, e.g., 20 nodes:
 ```
 mpirun -np 20 PATH_TO_JULIA/julia mpisample.jl
 ```
-
-When working on a working node w/o permissions to access `~/`, overwrite the `JULIA_DEPOT_PATH` by `export JULIA_DEPOT_PATH="PATH_TO_JULIA_DEPOT"`.
 
 
 ## HF-MBPT calculations 

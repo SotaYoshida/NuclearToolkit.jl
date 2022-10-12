@@ -26,15 +26,14 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1
 end
 
 """
-    BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
-dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
+    BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
 
 returns ``Z``  to satisfy: ``e^Z = e^X e^Y``.
 
 ``Z`` is calculated with Baker–Campbell–Hausdorff (BCH) formula:
 ``Z = X + Y + 1/2[X, Y]  + 1/12 [X,[X,Y]] + 1/12 [Y,[Y,X]] -1/24 [Y,[X,[X,Y]]] -1/720 [Y,[Y,[Y,[Y,X]]]] -1/720 [X,[X,[X,[X,Y]]]] +...``
 
-For IMSRG flow of ``H(s)``, ``X=\\eta(s)*ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)`` 
+For IMSRG flow of ``H(s)``, ``X=\\eta(s) ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)`` 
 """
 function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
                      dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
@@ -85,8 +84,6 @@ end
     BCH_Transform(Omega,O0,Hs,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to;tol=1.e-9,maxit=50,verbose=false)   
 
 Update ``B`` (assumed to be ``H`` or ``O``) via ``e^ABe^{-A} =B+[A,B]+1/2![A,[A,B]]+1/3![A,[A,[A,B]]]+...``
-
-It needs 3 copy to store (k-1)-th adj./k-th adj./ret.
 
 Note that the `ret` and `tOp` are also overwritten.
 `BCH_Transform(nOmega,H0,IMSRGObj,tmpOp,norms,Chan2b)`

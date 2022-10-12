@@ -163,7 +163,6 @@ where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_
 - `wrP::Vector{Float64}` "valence" counter part of `wr` (usually not used)
 - `RNL::Array{Float64,3}` "valence" counter part of `Rnl` (usually not used)
 - `lsjs::Vector{Vector{Vector{Int64}}}`
-- `llpSJ_s::Vector{Vector{Int64}}`
 - `tllsj::Vector{Int64}`
 - `opfs::Vector{Vector{Float64}}`
 - `ts::Vector{Float64}` mesh points for angular integrals in pion-exchange terms
@@ -195,7 +194,6 @@ struct ChiralEFTobject
     wrP::Vector{Float64}
     RNL::Array{Float64,3}
     lsjs::Vector{Vector{Vector{Int64}}}
-    llpSJ_s::Vector{Vector{Int64}}
     tllsj::Vector{Int64}
     opfs::Vector{Vector{Float64}}
     ts::Vector{Float64}

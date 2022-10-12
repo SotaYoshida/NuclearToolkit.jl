@@ -20,7 +20,7 @@ If you do not specify the optional argument `fn_params`, the pacakege tries to r
     - `hw::Float64` hbar omega in MeV
     - `srg::Bool`, SRG transformation (NN-only)
     - `srg_lambda::Float64`, resolution scale for SRG in ``fm^{-1}``
-    - `tbme_fmt::String` "snt" or "snt.bin" is supported
+    - `tbme_fmt::String` file format of matrix-elements of free-space interaction. "snt" or "snt.bin" is supported
     - `fn_tbme::String` file name of output interaction
     - `pottype::String` potential type (em500n3lo,emn500n3lo,emn500n4lo) 
     - `kF::Float64` Fermi momentum for 2n3n in fm``^{-1}``

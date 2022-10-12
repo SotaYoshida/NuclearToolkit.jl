@@ -6,14 +6,15 @@ const lcmax = jmax + 1
 const Mp = 938.272088 
 const Mn = 939.565420 
 const Mm = (Mp+Mn)/2
+const Mred = 2*Mp*Mn/(Mp+Mn)
 const Ms = [Mp,Mm,Mn]
-const Lambchi = 500 # cutoff Lambda
+const Lambchi = 500.0
 const hc = 197.327053
-const gA = -1.29
 const Fpi = 92.4
 const hc2 = hc^2
 const hc3 = hc^3
 const hc4 = hc^4
+const gA = -1.29
 const gA2 = gA^2
 const gA4 = gA^4
 const mpis = [139.5702,134.9766,139.5702]
@@ -27,7 +28,7 @@ const nuclist = [
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
     "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
     "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
-chara_SLJ(S,L,J) = "{}^"*ifelse(S==0,"1","3")*chara_L[L+1]*"_{"*string(J)*"}"
+chara_SLJ(S,L,J) = "{}^"*string(Int(2*S+1))*chara_L[L+1]*"_{"*string(J)*"}"
 delta(a,b) = ifelse(a==b,1.0,0.0)
 hat(a) = sqrt(2.0*a+1.0)
 
@@ -652,7 +653,13 @@ function write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int,target_LSJ;la
         tx1d *= tx    
     end        
     io = open("vmom_1d_"*label*".dat","w")
-    println(io,"\t\t\t   ",target_LSJ)
+    print(io,"                  ")
+    for tmp in target_LSJ
+        L,Lp,S,J = tmp
+        ctext = string(2*S+1) * chara_L[L+1] * string(J) 
+        print(io,"   "*ctext,tmp)
+    end
+    println(io,"")
     println(io,rstrip(tx1d))
     close(io)
     return nothing

@@ -14,10 +14,10 @@ using Test
         sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
         ## HF-MBPT from snt/snt.bin
         @testset "HFMBPT results under bare EM500,hw20,e2,nmesh50" begin
-            Eref = [1.47561,-5.80114,0.39324]       
+            Eref = [1.477089, -5.801167, 0.393417]  
             HFobj1 = hf_main(nucs,sntf,hw,emax;return_obj=true)
             Es1 = [HFobj1.E0, HFobj1.EMP2, HFobj1.EMP3]
-            @testset "HF" begin                
+            @testset "HF" begin
                 @test  (Es1[1] - Eref[1])^2 < 1.e-4
             end
             @testset "EMP2" begin
@@ -36,17 +36,17 @@ using Test
         @testset "IMSRG results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
-            @test abs(-4.06784128-Es[1]) < 1.e-6
+            @test abs(-4.06623902-Es[1]) < 1.e-6
         end
         @testset "VSIMSRG results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
-            @test abs(-4.06784128 - Es[1]) < 1.e-6
+            @test abs(-4.06623902 - Es[1]) < 1.e-6
         end
         @testset "shell model calculation" begin
             vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
             Ens = main_sm(vs_sntf,"Be8",n_eigen,targetJ)
-            @test ((-10.740-Ens[1])^2 + (-8.428 - Ens[2])^2) < 1.e-6
+            @test ((-10.737-Ens[1])^2 + (-8.426 - Ens[2])^2) < 1.e-6
         end
     end
 

@@ -26,7 +26,12 @@ make_chiEFTint(;itnum=5,nucs=["O16"],optimizer="MCMC")
 
 ### Working on a super-computer
 
+
 In NuclearToolkit.jl, many-nodes calculation utilizing MPI.jl is supported for LECs calibration with HF-MBPT.
+
+!!! note
+    For now, utilizing MPI is limited to LECs calibration with HF-MBPT & MCMC. One cannot benefit from many-node parallelization for most of many-body methods in the package. If you have feature requests on it or are willing to contribute along this line, please make an issue.
+
 
 A sample script, let's call `mpisample.jl`, can be something like this:
 ```julia
@@ -98,6 +103,8 @@ hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="core",valencespace=vspa
 nucs = ["Mg24"]
 hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nucl",valencespace=vspace)
 ```
+
+The output of VS-IMSRG is always in ".snt" format, which can be used in shell-model part of the package or [KSHELL](https://sites.google.com/alumni.tsukuba.ac.jp/kshell-nuclear/).
 
 ## valence shell-model calculations 
 

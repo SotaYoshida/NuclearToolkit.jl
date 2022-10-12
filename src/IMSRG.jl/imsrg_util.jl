@@ -636,12 +636,8 @@ end
 Function to write temporary binary files of Operator matrix elements, when spliting the flow.
 """
 function write_omega_bin(binfo::basedat,n_written::Int,Omega::Operator)
-    if isdir("flowOmega") 
-        if n_written==0
-            rm.(glob("flowOmega/*bin"))
-        end
-    else
-        if n_written==0;run(`mkdir flowOmega`);end
+    if !isdir("flowOmega")  && n_written==0
+        run(`mkdir flowOmega`)
     end    
     pid = getpid()
     nw = n_written + 1

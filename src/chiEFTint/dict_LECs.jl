@@ -22,7 +22,7 @@ function dict_em500n3lo()
     dLECs=Dict{String,Float64}() 
     ## LO con  10^4 GeV^-2
     dLECs["C0_1S0"]  = -0.147167
-    dLECs["C0_3S1"]  = -0.11897839697675265
+    dLECs["C0_3S1"]  = -0.118972496
     dLECs["C_CSB"] = 0.00049950
     dLECs["C_CIB"] = 0.00069075
     ## NLO con 10^4 GeV^-4
@@ -182,7 +182,7 @@ function dict_emn500n4lo()
     dLECs["D_3P2"] =   5.342585336
     dLECs["hD_3S1"] = -2.949089421
     dLECs["D_3S1"] = -20.793199632
-    dLECs["hD_3SD1"] = 1.345478412
+    dLECs["hD_3SD1"] = 1.3545478412
     dLECs["D_3SD1"] = 2.176852098
     dLECs["D_3D1"] = -6.01826561
     dLECs["D_1D2"] = -1.545851484
@@ -201,10 +201,10 @@ function dict_emn500n4lo()
     dLECs["c4_NNLO"] =  4.17
     ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
     dLECs["ct1_NNLO"] = -1.10
-    dLECs["ct3_NNLO"] = -4.4
-    dLECs["ct4_NNLO"] = 4.09
-    dLECs["cD"] = -0.2766
-    dLECs["cE"] = 0.8202
+    dLECs["ct3_NNLO"] = -5.44 
+    dLECs["ct4_NNLO"] = 4.12
+    dLECs["cD"] = -0.286
+    dLECs["cE"] = 0.452
 
     # dLECs["ct1_NNLO"] = -0.73
     # dLECs["ct3_NNLO"] = -3.38

@@ -20,12 +20,12 @@ You can try the package by 1. or 2.:
 
 1. clone the repository and run `sample_script.jl` in the repository like 
 
-    ```bash
-        julia -t 8 sample_script.jl
+    ```
+      $ julia -t 8 sample_script.jl
     ```
 
     This performs:
-      - calculating NN potential by Chiral EFT
+      - calculating NN potential from Chiral EFT
       - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
       - shell-model calculations with the effective interaction derived by VS-IMSRG
 2. Try sample codes in [HowToUse](howtouse) page.

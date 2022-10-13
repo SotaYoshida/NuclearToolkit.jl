@@ -28,9 +28,15 @@ const nuclist = [
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
     "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
     "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
-chara_SLJ(S,L,J) = "{}^"*string(Int(2*S+1))*chara_L[L+1]*"_{"*string(J)*"}"
 delta(a,b) = ifelse(a==b,1.0,0.0)
 hat(a) = sqrt(2.0*a+1.0)
+function chara_SLJ(S,L,Lp,J) 
+    if L==Lp
+        return string(Int(2*S+1))*chara_L[L+1]*string(J)
+    else
+        return string(Int(2*S+1))*chara_L[L+1]*"-"*chara_L[Lp+1]*string(J)
+    end
+end
 
 """
     QLs
@@ -621,6 +627,32 @@ function write_spes(chiEFTobj::chiEFTparams,io,nljsnt,lp,nTBME,nljdict;bin=false
         println(io,@sprintf("%5i",nTBME)*@sprintf("%5i",10)*@sprintf("%8.3f", hw))
     end       
     return nothing   
+end
+
+function svd_vmom(chiEFTobj::ChiralEFTobject,target_LSJ;pnrank=2,verbose=false,truncation_rank=20)   
+    dict_pwch = chiEFTobj.dict_pwch[pnrank]
+    V12mom = chiEFTobj.V12mom
+    itt = 2 *(pnrank -2)
+    for tmp in target_LSJ
+        L,Lp,S,J = tmp
+        V12idx = get(dict_pwch,[itt,L,Lp,S,J],-1)
+        vmat = V12mom[V12idx]
+        fullrank = rank(vmat)
+        tx = chara_SLJ(S,L,Lp,J) 
+        SVD = LinearAlgebra.svd(vmat)
+        U = SVD.U; Sig = SVD.S; Vt = SVD.Vt
+        Sig[truncation_rank+1:end] .= 0.0
+        SV = Diagonal(Sig)* Vt
+        Vtilde = BLAS.gemm('N','N',1.0,U,SV)
+        if verbose 
+            println("Tz $itt $tx rank ",fullrank)
+            for trank = 1:fullrank
+                println("rank=",@sprintf("%4i",trank), " sval ",Sig[trank])
+            end
+            println("norm V-V' ",norm(vmat-Vtilde,2))
+        end
+        vmat .= Vtilde
+    end
 end
 
 """ 

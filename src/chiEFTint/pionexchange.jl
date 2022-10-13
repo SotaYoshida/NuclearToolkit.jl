@@ -68,7 +68,7 @@ Ref: R. Machleidt, Phys. Rev. C 63, 024001 (2001).
 """
 function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false,factor_pig=1.0)
     x2 = x^2; y2 = y^2; z = (mpi2+x2+y2) / (2*x*y)
-    QJm1 = 0.0
+    QJ = QJm1 = 0.0
     nfac = fac_in
     q2s = Float64[ ]
     if pigamma
@@ -79,9 +79,12 @@ function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigam
             beta = q2 / mpi2
             q2s[i] = (fsalpha/pi) * fac_pig(beta)
         end
+        QJ = QL_numeric_fac(z,J,ts,ws,q2s)
+        if J>0;QJm1=QL_numeric_fac(z,J-1,ts,ws,q2s);end    
+    else
+        QJ = QL(z,J,ts,ws,QLdict)
+        if J>0;QJm1=QL(z,J-1,ts,ws,QLdict);end
     end
-    QJ = QL(z,J,ts,ws,QLdict;factor_vec=q2s)
-    if J>0;QJm1=QL(z,J-1,ts,ws,QLdict;factor_vec=q2s);end
     IJ0 = nfac * QJ
     IJ1 = nfac * (z * QJ -delta(J,0)) #Eq. (B18)
     IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) #Eq. (B19)

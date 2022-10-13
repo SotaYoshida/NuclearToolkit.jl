@@ -1,5 +1,5 @@
 """
-    make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false)
+    make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false,do_svd=false)
 
 The interface function in chiEFTint.
 This generates NN-potential in momentum space and then transforms it in HO basis to give inputs for many-body calculations.
@@ -16,7 +16,7 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `fn_params::String` path to file specifying the optional parameters
 - `write_vmom::Bool` to write out in vmom partial wave channels
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false)
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false,do_svd=false)
     to = TimerOutput()
     do2n3ncalib=false
     if (optimizer!="" && nucs != []) || MPIcomm
@@ -29,9 +29,15 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     @timeit to "renorm." SRG(chiEFTobj,to)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
 
+    if do_svd 
+        target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]
+        svd_vmom(chiEFTobj,target_LSJ)
+    end
+
     if write_vmom
         target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]]
-        write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
+        #write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
+        write_onshell_vmom(chiEFTobj,3,target_LSJ;label="nn")
     end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
@@ -87,7 +93,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")
     ## prep. integrals for 2n3n
-    @timeit to "util2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws)
+    @timeit to "util2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws,to)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
@@ -201,37 +207,22 @@ end
 
 To calculate Legendre functions of second kind, which are needed for pion-exchange contributions, by Gauss-Legendre quadrature.
 """
-function QL(z,J::Int64,ts,ws,QLdict;zthreshold=1.0,factor_vec=Float64[])
+function QL(z,J::Int64,ts,ws,QLdict;zthreshold=1.0)
     if J < 0; return 0.0;end
-    if length(factor_vec) != 0
-        QL_numefac = QL_numeric_fac(z,J,ts,ws,factor_vec)
-        # QL_numedic_fac = QL_numeric_dict(z,J,ts,ws,QLdict) * factor_vec[1]
-
-        # if abs(QL_numefac-QL_numedic_fac) > 1.e-6
-        #     println("J $J QLcheck numefac $QL_numefac numedic $QL_numedic_fac")
-        # end
-        return QL_numefac 
-    end
-
-    return QL_numeric_dict(z,J,ts,ws,QLdict)
-
+    val = 0.0
     if z > zthreshold 
-        return QL_numeric_dict(z,J,ts,ws,QLdict)
+        val =  QL_numeric_dict(z,J,ts,ws,QLdict)
     else
-        return QL_recursive(z,J)
+        println("z $z J $J recursive read")
+        val = QL_recursive(z,J)
     end
+    return val
 end
-function QL_numeric_dict(z,J,ts,ws,QLdict,factor_vec=Float64[])
-    ret = 0.0
-    tval = get(QLdict[J+1],z,0.0)
-    if tval == 0.0
+function QL_numeric_dict(z,J,ts,ws,QLdict)
+    ret = get(QLdict[J+1],z,0.0)
+    if ret == 0.0
         ret = QL_numeric(z,J,ts,ws)
         QLdict[J+1][z] = ret
-        if length(factor_vec) != 0
-            ret = QL_numeric_fac(z,J,ts,ws,factor_vec)
-        end
-    else
-        ret = tval
     end
     return ret
 end

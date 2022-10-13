@@ -29,7 +29,7 @@ function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
 end
 
 """
-    prep_integrals_for2n3n(chiEFTobj)
+    prep_integrals_for2n3n(chiEFTobj,xr,ts,ws,to)
 
 preparing integrals and Wigner symbols for density-dependent 3NFs:
 - `Fis::Fis_2n3n` vectors {F0s,F1s,F2s,F3s}, Eqs.(A13)-(A16) in [Kohno2013].
@@ -39,7 +39,7 @@ preparing integrals and Wigner symbols for density-dependent 3NFs:
 Reference:  
 [Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
 """
-function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
+function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws,to)
     calc_3N = chiEFTobj.calc_3N
     n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
     F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
@@ -148,11 +148,10 @@ function prep_QWs(chiEFTobj,xr,ts,ws)
     ndQW1s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
     ndQW2s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
     QLdict = [ Dict{Float64,Float64}() for ell=0:dim+1]
-    for i = 1:n_mesh #for (i,x) in enumerate(xr)
-        x = xr[i]
-        x_fm = x/hc
-        for (j,y) in enumerate(xr)
-            y_fm = y/hc
+    for i in eachindex(xr)
+        x = xr[i]; x_fm = x/hc
+        for j in eachindex(xr)
+            y = xr[j]; y_fm = y/hc
             z = (x^2 + y^2 + mpi2*hc^2) / (2.0 * x*y)
             for ell = 0:lmax+1
                 QL0s[ell+1][i,j] = QL(z,ell,ts,ws,QLdict)
@@ -920,7 +919,7 @@ function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2,QLdict;is_xmul=true)
         deno *= (k*kp)^div(p,2)
     elseif p==1 
         if is_xmul 
-            deno *= kp  
+            deno *= kp
         else    
             deno *= k
         end 

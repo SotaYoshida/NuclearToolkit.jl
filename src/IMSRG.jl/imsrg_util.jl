@@ -366,6 +366,32 @@ function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
     return sorted_ns,ns_addinv,sortedChan2b,dict_ch2ich
 end 
 
+function prep_nab_bar_matrices(HFobj::HamiltonianNormalOrdered,Chan2bD::Chan2bD)
+    Chan2b = Chan2bD.Chan2b
+    MS = HFobj.modelspace; sps = MS.sps
+    nch = length(Chan2b)
+    mats_nab = Matrix{Float64}[ ]
+    mats_nab_bar = Matrix{Float64}[ ]
+    for ch = 1:nch
+        tkets = Chan2b[ch].kets
+        nket = length(tkets)
+        mat_nab = zeros(Float64,nket,nket)
+        mat_nab_bar = zeros(Float64,nket,nket)
+        @inbounds for idx_ab = 1:nket
+            a,b = tkets[idx_ab]
+            na = sps[a].occ
+            nb = sps[b].occ
+            nab = 1.0 * (na * nb)
+            nab_bar = 1.0 * (1-na)*(1-nb)
+            mat_nab[idx_ab,idx_ab] = nab
+            mat_nab_bar[idx_ab,idx_ab] = nab_bar
+        end
+        push!(mats_nab,mat_nab)
+        push!(mats_nab_bar,mat_nab_bar)
+    end 
+    return mats_nab,mats_nab_bar
+end
+
 """
 constructor of utils for Pandya transformation and others
 numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya) 
@@ -425,15 +451,17 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
             target[tkey] = idx
         end 
     end
-
     nthre = nthreads()
+    dim1b = length(MS.p_sps)
+    copy_1bmat = [ zeros(Float64,dim1b,dim1b) for i=1:2*nthre]
     XYbars =  [ [zeros(Float64,dimmax,dimmax),zeros(Float64,dimmax,dimmax)] for i=1:nthre]
     tMat = [ zeros(Float64,2*dimmax,2*dimmax) for i=1:nthre]
     keys6j = [zeros(Int64,5) for i=1:nthreads()]
-
+    ## for 221
+    mats_nab,mats_nab_bar = prep_nab_bar_matrices(HFobj,Chan2bD)
     ### to prep. 122 util such as intermediate matrix
     util122 = prep122(HFobj,Chan1b,Chan2bD)
-    return PandyaObject(numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,phkets,                
+    return PandyaObject(numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,phkets,copy_1bmat,mats_nab,mats_nab_bar,
                         dict_ich_idx_from_ketcc,XYbars,Zbars,PhaseMats,tMat,dict_ch2ich,keys6j,util122,Mats_hh,Mats_pp,Mats_ph)
 end
 

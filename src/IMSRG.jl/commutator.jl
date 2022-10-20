@@ -341,15 +341,11 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
         XnY = @view tMat[1:nket,nket+1:2*nket]
         YnX = @view tMat[nket+1:2*nket,1:nket]    
 
-        BLAS.gemm!('N','N',1.0,mat_nab,y2,0.0,XnY)
-        BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XY)
-        BLAS.gemm!('N','N',1.0,mat_nab,x2,0.0,YnX)
-        BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XY)
+        BLAS.gemm!('N','N',1.0,mat_nab,y2,0.0,XnY);  BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XY)
+        BLAS.gemm!('N','N',1.0,mat_nab,x2,0.0,YnX);  BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XY)
 
-        BLAS.gemm!('N','N',1.0,mat_nab_bar,y2,0.0,XnY)
-        BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XYbar)
-        BLAS.gemm!('N','N',1.0,mat_nab_bar,x2,0.0,YnX)
-        BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XYbar)
+        BLAS.gemm!('N','N',1.0,mat_nab_bar,y2,0.0,XnY); BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XYbar)
+        BLAS.gemm!('N','N',1.0,mat_nab_bar,x2,0.0,YnX); BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XYbar)
 
         for c = 1:2*dim1b
             oc = sps[c]; jc = oc.j; nc = oc.occ; nbar_c = 1-nc
@@ -408,7 +404,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
                     sqfac = sqfac_ci*sqfac_cj
                     v_1 = nbar_c * XY[i_ci,i_cj]
                     v_2 = nc * XYbar[i_ci,i_cj]
-                    tmat[idx_i,idx_j] += phase_ci * phase_cj * 0.5 * sqfac* jdeno * NJ * (v_1 + v_2)
+                    tmat[idx_i,idx_j] += phase_ci * phase_cj *sqfac* jdeno * NJ * (v_1 + v_2)
                     if idx_i != idx_j; tmat[idx_j,idx_i] = hZ * tmat[idx_i,idx_j];end
                 end
             end
@@ -416,7 +412,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
     end
     for i = 1:2*nthre
         pn_ij = ifelse(i<=nthre,1,2)
-        t1b = m1bs[pn_ij]
+        t1b = m1bs[pn_ij]        
         axpy!(1.0,PandyaObj.copy_1bmat[i],t1b)
     end
     return nothing

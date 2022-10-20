@@ -199,18 +199,25 @@ function dict_emn500n4lo()
     dLECs["c2_NNLO"] =  3.57
     dLECs["c3_NNLO"] = -5.54
     dLECs["c4_NNLO"] =  4.17
-    ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
-    dLECs["ct1_NNLO"] = -1.10
-    dLECs["ct3_NNLO"] = -5.44 
-    dLECs["ct4_NNLO"] = 4.12
-    dLECs["cD"] = -0.286
-    dLECs["cE"] = 0.452
+    # for density-dependent NN, c1,c3,c4 can be different from genuine NN part
+    ## EMN effective c's 
+    dLECs["ct1_NNLO"] = -0.73
+    dLECs["ct3_NNLO"] = -3.38
+    dLECs["ct4_NNLO"] = 1.69
+    ## NN sector
+    dLECs["ct1_NNLO"] = dLECs["c1_NNLO"]
+    dLECs["ct3_NNLO"] = dLECs["c3_NNLO"]
+    dLECs["ct4_NNLO"] = dLECs["c4_NNLO"]
 
-    # dLECs["ct1_NNLO"] = -0.73
-    # dLECs["ct3_NNLO"] = -3.38
-    # dLECs["ct4_NNLO"] = 1.69
-    # dLECs["cD"] = 0.00
-    # dLECs["cE"] = 0.00
+    dLECs["cD"] =  0.0
+    dLECs["cE"] =  -1.0
+
+    ## old MAP
+    dLECs["ct1_NNLO"] = -1.10
+    dLECs["ct3_NNLO"] = -4.753
+    dLECs["ct4_NNLO"] = 4.089
+    dLECs["cD"] = -0.277
+    dLECs["cE"] = 0.820
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18

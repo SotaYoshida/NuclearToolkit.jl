@@ -30,8 +30,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
 
     if do_svd 
-        target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]
-        svd_vmom(chiEFTobj,target_LSJ)
+        target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]; svd_vmom(chiEFTobj,target_LSJ)
     end
 
     if write_vmom
@@ -46,7 +45,6 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     else # write out snt/snt.bin file
         calc_vmom_3nf(chiEFTobj,1,to)
         if chiEFTobj.params.calc_EperA; calc_nuclearmatter_in_momspace(chiEFTobj,to,io);end
-        #add2n3n(chiEFTobj,to)
         @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
     end
     if io != stdout; close(io);end

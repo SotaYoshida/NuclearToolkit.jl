@@ -256,8 +256,6 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
         println("You can specify the parameters with optional argument, fn_params like make_chiEFTint(;fn_params=\"PATH_TO_YOUR_FILE\").")
     else
         read_chiEFT_parameter!(fn_params,params;io=io)
-        tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
-        params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
     end
     return params
 end
@@ -300,6 +298,8 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
         println("chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
         params.chi_order=3
     end
+    tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
+    params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
     if io != nothing
         println(io,"--- chiEFTparameters used ---")
         for fieldname in fieldnames(typeof(params))                 

@@ -700,6 +700,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
 
         if HF_conv_check(EHFs;tol=HFtol)
             #print("HF converged @ $it  \t")
+            printEHF(EHFs[1])
             valsp,vecsp = eigen(h_p); valsn,vecsn = eigen(h_n)
             e1b_p .= valsp;e1b_n .= valsn; Cp .= vecsp; Cn .= vecsn
             ReorderHFSPS!(h_p,h_n,Cp,Cn,e1b_p,e1b_n,Chan1b)
@@ -894,12 +895,12 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     tkey[1] = a ; tkey[3] = b
                     tkey[2] = i; tkey[4] = j
                     vmono,vmono2n3n = dict_pn[tkey]
-                    Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac)
+                    Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n*symfac)
                     if a!=b
                         tkey[1] = b; tkey[3] = a
                         tkey[2] = i; tkey[4] = j
                         vmono,vmono2n3n = dict_pn[tkey]
-                        Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac)
+                        Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n*symfac)
                     end
                 end
             end

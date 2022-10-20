@@ -16,8 +16,9 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1
     end    
     ## one-body pieces
     @timeit to "comm111" comm111ss!(X,Y,ret)
-    @timeit to "comm121" comm121ss!(X,Y,ret,HFobj,Chan1b,dictMono,PandyaObj)
+    @timeit to "comm121" comm121ss!(X,Y,ret,HFobj,Chan1b,dictMono,PandyaObj)    
     @timeit to "comm221" comm221ss!(X,Y,ret,HFobj,Chan1b,Chan2bD,PandyaObj)
+ 
     ## two-body pieces
     @timeit to "comm122" comm122ss!(X,Y,ret,Chan2b,PandyaObj,to)
     @timeit to "comm222pphh" comm222_pphh_ss!(X,Y,ret,HFobj,Chan2bD,PandyaObj,to)
@@ -280,7 +281,6 @@ function single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
             r_ajbi += tmp
         end
     end
-
     ## aibj term
     r_aibj = 0.0
     flip_ai = flip_bj = false
@@ -315,90 +315,109 @@ returns ``[X_2,Y_2]_1 - [Y_2,X_2]_1``, whose elements are given as
 """
 function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD,PandyaObj::PandyaObject) where Op<:Operator
     Chan2b = Chan2bD.Chan2b
+    mats_nab = PandyaObj.mats_nab
+    mats_nab_bar = PandyaObj.mats_nab_bar
+    tMats = PandyaObj.tMat
     hZ = ifelse(ret.hermite,1.0,-1.0)
     x2bs = X.twobody; y2bs = Y.twobody; m1bs = ret.onebody
     sps = HFobj.modelspace.sps
-    holes = HFobj.modelspace.holes
-    particles = HFobj.modelspace.particles
     dim1b = size(m1bs[1])[1]; nchan = length(Chan2b)
     Dict_chidx_from_ketJ = Chan2bD.dict_ch_idx_from_ket
     key6js = PandyaObj.keys6j
-    for pn_ij = 1:2
-        t1b = m1bs[pn_ij]
-        chan1b = Chan1b.chs1b[pn_ij]
-        @threads for idx_i = 1:dim1b
-            i = 2*(idx_i-1) + pn_ij
-            oi = sps[i]; ji = oi.j; ni = oi.occ
-            jdeno = 1.0/(ji+1)
-            tkey = key6js[threadid()]
-            tkey = @view tkey[1:2]
-            for j in chan1b[i]
-                idx_j = div(j,2) + j%2
-                jj = sps[j].j; nj = sps[j].occ  
-                for ch = 1:nchan
-                    tbc = Chan2b[ch]; x2 = x2bs[ch]; y2 = y2bs[ch]
-                    J = tbc.J; Tz = tbc.Tz; tkets = tbc.kets;nkets=length(tkets)
-                    NJ = 2*J+1
+    nthre = nthreads()
+    for i=1:2*nthre; PandyaObj.copy_1bmat[i] .= 0.0;end
+    @threads for ch = 1:nchan
+        tbc = Chan2b[ch]; x2 = x2bs[ch]; y2 = y2bs[ch]
+        J = tbc.J; Tz = tbc.Tz; tkets = tbc.kets; nket = length(tkets)
+        NJ = 2*J+1
+        tkey = key6js[threadid()]
+        tkey = @view tkey[1:2]
+        mat_nab = mats_nab[ch]
+        mat_nab_bar = mats_nab_bar[ch]
+
+        tMat =tMats[threadid()]
+        XY  = @view tMat[1:nket,1:nket]
+        XYbar = @view tMat[nket+1:2*nket,nket+1:2*nket]
+        XnY = @view tMat[1:nket,nket+1:2*nket]
+        YnX = @view tMat[nket+1:2*nket,1:nket]    
+
+        BLAS.gemm!('N','N',1.0,mat_nab,y2,0.0,XnY)
+        BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XY)
+        BLAS.gemm!('N','N',1.0,mat_nab,x2,0.0,YnX)
+        BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XY)
+
+        BLAS.gemm!('N','N',1.0,mat_nab_bar,y2,0.0,XnY)
+        BLAS.gemm!('N','N',1.0,x2,XnY,0.0,XYbar)
+        BLAS.gemm!('N','N',1.0,mat_nab_bar,x2,0.0,YnX)
+        BLAS.gemm!('N','N',-1.0,y2,YnX,1.0,XYbar)
+
+        for c = 1:2*dim1b
+            oc = sps[c]; jc = oc.j; nc = oc.occ; nbar_c = 1-nc
+            pn_ij = 0
+            if Tz==0 
+                pn_ij = ifelse(oc.tz==-1,2,1)
+            else 
+                pn_ij = ifelse(oc.tz==-1,1,2)
+            end
+            tmat = PandyaObj.copy_1bmat[(pn_ij-1)*nthre+threadid()]
+            chan1b = Chan1b.chs1b[pn_ij]
+            for idx_i = 1:dim1b
+                i = 2*(idx_i-1) + pn_ij
+                oi = sps[i]; ji = oi.j
+                if Tz != sps[i].tz + sps[c].tz; continue;end
+                if !tri_check(jc,ji,2*J);continue;end
+                jdeno = 1.0/(ji+1)
+                for j in chan1b[i]
+                    idx_j = div(j,2) + j%2 
+                    jj = sps[j].j
+                    if Tz != sps[j].tz + sps[c].tz; continue;end            
+                    if !tri_check(jc,jj,2*J);continue;end
+                    if abs(Tz) ==2 && J%2 == 1 && (c==i||c==j);continue;end
                     tdict = Dict_chidx_from_ketJ[2+div(Tz,2)][J+1]
-                    for i_ab =1:nkets
-                        a,b = tkets[i_ab]
-                        na = sps[a].occ
-                        nb = sps[b].occ
-                        n_ab = na * nb 
-                        nbar_ab = (1-na)*(1-nb)
-                        sqfac_ab = ifelse(a==b,sqrt(2.0),1.0)                            
-                        for idx_cspace = 1:2
-                            c_space = ifelse(idx_cspace==1,holes,particles)
-                            for pn_c = 1:2
-                                for c in c_space[pn_c]
-                                    jc = sps[c].j; nc = sps[c].occ; nbar_c = 1-nc
-                                    if Tz != sps[j].tz + sps[c].tz; continue;end
-                                    if Tz != sps[i].tz + sps[c].tz; continue;end
-                                    if !tri_check(jc,ji,2*J);continue;end
-                                    if !tri_check(jc,jj,2*J);continue;end
-                                    if abs(Tz) ==2 && J%2 == 1 && (c == i || c==j);continue;end
-                                    fflip_ci = (-1)^(div(ji+jc,2)+J+1)
-                                    fflip_cj = (-1)^(div(jj+jc,2)+J+1)
-                                    phase_ci = ifelse(c>i,fflip_ci,1.0)
-                                    phase_cj = ifelse(c>j,fflip_cj,1.0)
-                                    i_ci = i_cj = 0
-                                    if c<=i
-                                        tkey[1] = c; tkey[2] = i
-                                    else    
-                                        tkey[1] = i; tkey[2] = c
-                                    end
-                                    for tmp in tdict[tkey]
-                                        if tmp[1] == ch
-                                            i_ci =  tmp[2]
-                                            break
-                                        end
-                                    end
-                                    if i_ci == 0; continue; end
-                                    if c<=j
-                                        tkey[1] = c; tkey[2] = j
-                                    else
-                                        tkey[1] = j; tkey[2] = c
-                                    end
-                                    for tmp in tdict[tkey]
-                                        if tmp[1] == ch
-                                            i_cj =  tmp[2]
-                                            break
-                                        end
-                                    end
-                                    if i_cj == 0; continue; end   
-                                    sqfac_ci = ifelse(c==i,sqrt(2.0),1.0)
-                                    sqfac_cj = ifelse(c==j,sqrt(2.0),1.0)
-                                    sqfac = sqfac_ci*sqfac_cj #* sqfac_ab^2 
-                                    x2y2 = (x2[i_ci,i_ab] * y2[i_ab,i_cj] - y2[i_ci,i_ab] * x2[i_ab,i_cj]) * sqfac * (nbar_ab*nc + n_ab*nbar_c)
-                                    t1b[idx_i,idx_j] += phase_ci * phase_cj * jdeno * x2y2  * NJ
-                                end
-                            end
+                    fflip_ci = (-1)^(div(ji+jc,2)+J+1)
+                    fflip_cj = (-1)^(div(jj+jc,2)+J+1)
+                    phase_ci = ifelse(c>i,fflip_ci,1.0)
+                    phase_cj = ifelse(c>j,fflip_cj,1.0)
+                    i_ci = i_cj = 0
+                    if c<=i
+                        tkey[1] = c; tkey[2] = i
+                    else    
+                        tkey[1] = i; tkey[2] = c
+                    end
+                    for tmp in tdict[tkey]
+                        if tmp[1] == ch
+                            i_ci =  tmp[2]
+                            break
                         end
-                    end                
+                    end
+                    if i_ci == 0; continue; end                   
+                    if c<=j
+                        tkey[1] = c; tkey[2] = j
+                    else
+                        tkey[1] = j; tkey[2] = c
+                    end
+                    for tmp in tdict[tkey]
+                        if tmp[1] == ch
+                            i_cj =  tmp[2]
+                            break
+                        end
+                    end
+                    if i_cj == 0; continue; end   
+                    sqfac_ci = ifelse(c==i,sqrt(2.0),1.0)
+                    sqfac_cj = ifelse(c==j,sqrt(2.0),1.0)
+                    sqfac = sqfac_ci*sqfac_cj
+                    v_1 = nbar_c * XY[i_ci,i_cj]
+                    v_2 = nc * XYbar[i_ci,i_cj]
+                    tmat[idx_i,idx_j] += phase_ci * phase_cj * 0.5 * sqfac* jdeno * NJ * (v_1 + v_2)
+                    if idx_i != idx_j; tmat[idx_j,idx_i] = hZ * tmat[idx_i,idx_j];end
                 end
-                if idx_i != idx_j; t1b[idx_j,idx_i] = hZ * t1b[idx_i,idx_j];end
             end
         end
+    end
+    for i = 1:2*nthre
+        pn_ij = ifelse(i<=nthre,1,2)
+        t1b = m1bs[pn_ij]
+        axpy!(1.0,PandyaObj.copy_1bmat[i],t1b)
     end
     return nothing
 end
@@ -483,89 +502,90 @@ function AddInvPandya!(Zbars::Vector{Matrix{Float64}},ret::Operator,Chan2bD::Cha
         ch = numbers_addinv[ich][1]
         tbc = Chan2b[ch]; tkets = tbc.kets; J = tbc.J
         nKets = length(tkets)
-        if nKets != 0
-            key6j = PandyaObj.keys6j[threadid()]
-            Z2b = ret.twobody[ch]
-            tdict = dict6j[J+1]
-            @inbounds for ibra = 1:nKets
-                i,j = tkets[ibra]
-                li = sps[i].l; tzi = sps[i].tz
-                ji = sps[i].j; jj = sps[j].j
-                ketmin = ifelse(hermite,ibra,ibra+1)            
-                @inbounds for iket = ketmin:nKets
-                    k,l = tkets[iket]
-                    lk = sps[k].l; jk = sps[k].j; tzk = sps[k].tz
-                    ll = sps[l].l; jl = sps[l].j; tzl = sps[l].tz
-                    commij = commji = 0.0 
-                    prty_cc = (-1)^((li+ll)%2)
-                    aTz_cc = abs(tzi+tzl)
-                    Jpmin = max(abs(div(ji-jl,2)),abs(div(jk-jj,2)))
-                    Jpmax = min(div(ji+jl,2), div(jk+jj,2))
-                    for Jpr = Jpmin:Jpmax
-                        nkey = get_nkey_from_key6j(ji,jj,jk,jl,Jpr;ofst_unit=ofst1)
+        if nKets == 0; continue;end
+        key6j = PandyaObj.keys6j[threadid()]
+        Z2b = ret.twobody[ch]
+        tdict = dict6j[J+1]
+        @inbounds for ibra = 1:nKets
+            i,j = tkets[ibra]
+            li = sps[i].l; tzi = sps[i].tz
+            ji = sps[i].j; jj = sps[j].j
+            ketmin = ifelse(hermite,ibra,ibra+1)            
+            @inbounds for iket = ketmin:nKets
+                k,l = tkets[iket]
+                lk = sps[k].l; jk = sps[k].j; tzk = sps[k].tz
+                ll = sps[l].l; jl = sps[l].j; tzl = sps[l].tz
+                commij = commji = 0.0 
+                prty_cc = (-1)^((li+ll)%2)
+                aTz_cc = abs(tzi+tzl)
+                Jpmin = max(abs(div(ji-jl,2)),abs(div(jk-jj,2)))
+                Jpmax = min(div(ji+jl,2), div(jk+jj,2))
+                for Jpr = Jpmin:Jpmax
+                    nkey = get_nkey_from_key6j(ji,jj,jk,jl,Jpr;ofst_unit=ofst1)
+                    sixj = tdict[nkey]
+                    if abs(sixj) < 1.e-8;continue;end
+                    key_JPT = @view key6j[1:3]
+                    key_JPT[1] = aTz_cc; key_JPT[2] = prty_cc; key_JPT[3] = Jpr
+                    ich_cc = dict_ch2ich[ dict_2b_ch[key_JPT].Vch ]
+                    nketcc = length(Chan2b_Pandya[ich_cc].kets)
+                    flipil = ifelse(i>l,true,false); flipkj = ifelse(k>j,true,false)
+                    tkey_il = @view key6j[1:2]; tkey_kj = @view key6j[3:4] 
+                    update_key!(i,l,flipil,tkey_il)
+                    update_key!(k,j,flipkj,tkey_kj)
+                    
+                    idx_il = tdict_ichidx[ich_cc][tkey_il[1] * ofst1 + tkey_il[2]]
+                    idx_kj = tdict_ichidx[ich_cc][tkey_kj[1] * ofst1 + tkey_kj[2]] + ifelse(k>j,nketcc,0)
+
+                    phaseil = (-1)^( div(ji+jl,2)+Jpr+1 )
+                    phase = ifelse(flipil,phaseil,1.0)
+                    me1 = Zbars[ich_cc][idx_il,idx_kj] 
+                    commij -= (2*Jpr+1) * sixj * me1 *phase
+                end
+            
+                if k==l
+                    commji = commij
+                elseif i==j
+                    commji = (-1)^((div(ji+jj,2)+div(jk+jl,2))%2) *commij
+                else
+                    prty_cc = (-1)^((li+lk)%2)
+                    aTz_cc = abs(tzi+tzk)
+                    Jpmin = max( abs(div(jj-jl,2)), abs(div(jk-ji,2)))
+                    Jpmax = min( div(jj+jl,2), div(jk+ji,2))
+                    for Jpr = Jpmin:Jpmax                            
+                        nkey = get_nkey_from_key6j(jj,ji,jk,jl,Jpr;ofst_unit=ofst1)
                         sixj = tdict[nkey]
+
                         if abs(sixj) < 1.e-8;continue;end
+                      
                         key_JPT = @view key6j[1:3]
                         key_JPT[1] = aTz_cc; key_JPT[2] = prty_cc; key_JPT[3] = Jpr
-                        ich_cc = dict_ch2ich[ dict_2b_ch[key_JPT].Vch ]
+                        ch_cc = dict_2b_ch[key_JPT].Vch
+                        ich_cc = dict_ch2ich[ch_cc]   
                         nketcc = length(Chan2b_Pandya[ich_cc].kets)
-                        flipil = ifelse(i>l,true,false); flipkj = ifelse(k>j,true,false)
-                        tkey_il = @view key6j[1:2]; tkey_kj = @view key6j[3:4] 
-                        update_key!(i,l,flipil,tkey_il)
-                        update_key!(k,j,flipkj,tkey_kj)
-                        
-                        idx_il = tdict_ichidx[ich_cc][tkey_il[1] * ofst1 + tkey_il[2]]
-                        idx_kj = tdict_ichidx[ich_cc][tkey_kj[1] * ofst1 + tkey_kj[2]] + ifelse(k>j,nketcc,0)
+                        flipik = ifelse(i>k,true,false); fliplj = ifelse(l>j,true,false)
+                        tkey_ik = @view key6j[1:2]; tkey_lj = @view key6j[3:4] 
+                        update_key!(i,k,flipik,tkey_ik)
+                        update_key!(l,j,fliplj,tkey_lj)
 
-                        phaseil = (-1)^( div(ji+jl,2)+Jpr+1 )
-                        phase = ifelse(flipil,phaseil,1.0)
-                        me1 = Zbars[ich_cc][idx_il,idx_kj] 
-                        commij -= (2*Jpr+1) * sixj * me1 *phase                       
-                    end
-                    if k==l
-                        commji = commij
-                    elseif i==j
-                        commji = (-1)^((div(ji+jj,2)+div(jk+jl,2))%2) *commij
-                    else
-                        prty_cc = (-1)^((li+lk)%2)
-                        aTz_cc = abs(tzi+tzk)
-                        Jpmin = max( abs(div(jj-jl,2)), abs(div(jk-ji,2)))
-                        Jpmax = min( div(jj+jl,2), div(jk+ji,2))
-                        for Jpr = Jpmin:Jpmax                            
-                            nkey = get_nkey_from_key6j(jj,ji,jk,jl,Jpr;ofst_unit=ofst1)
-                            sixj = tdict[nkey]
+                        idx_ik = tdict_ichidx[ich_cc][tkey_ik[1]*ofst1+tkey_ik[2]] 
+                        idx_lj = tdict_ichidx[ich_cc][tkey_lj[1]*ofst1+tkey_lj[2]]+ ifelse(l>j,nketcc,0)                        
 
-                            if abs(sixj) < 1.e-8;continue;end
-                            key_JPT = @view key6j[1:3]
-                            key_JPT[1] = aTz_cc; key_JPT[2] = prty_cc; key_JPT[3] = Jpr
-                            ch_cc = dict_2b_ch[key_JPT].Vch
-                            ich_cc = dict_ch2ich[ch_cc]   
-                            nketcc = length(Chan2b_Pandya[ich_cc].kets)
-                            flipik = ifelse(i>k,true,false); fliplj = ifelse(l>j,true,false)
-                            tkey_ik = @view key6j[1:2]; tkey_lj = @view key6j[3:4] 
-                            update_key!(i,k,flipik,tkey_ik)
-                            update_key!(l,j,fliplj,tkey_lj)
-
-                            idx_ik = tdict_ichidx[ich_cc][tkey_ik[1]*ofst1+tkey_ik[2]] 
-                            idx_lj = tdict_ichidx[ich_cc][tkey_lj[1]*ofst1+tkey_lj[2]]+ ifelse(l>j,nketcc,0)                        
-
-                            phaseik = (-1)^( div(ji+jk,2)+Jpr+1 )
-                            phase = ifelse(flipik,phaseik,1.0)
-                            me1 = Zbars[ich_cc][idx_ik,idx_lj] * phase 
-                            commji -= (2*Jpr+1) * sixj * me1
-                        end
-                    end
-                    d_ij = delta(i,j);d_kl = delta(k,l)
-                    tnorm = ifelse(d_ij==d_kl, 1.0+delta(i,j),sqrt(2.0))
-                    phase = (-1)^(div(jk+jl,2)-J)
-                    Z2b[ibra,iket] -= (commij - phase * commji) /tnorm
-                    if hermite 
-                        Z2b[iket,ibra] = Z2b[ibra,iket]
-                    elseif iket != ibra 
-                        Z2b[iket,ibra] = -Z2b[ibra,iket]
-                    end
-                end 
-            end
+                        phaseik = (-1)^( div(ji+jk,2)+Jpr+1)
+                        phase = ifelse(flipik,phaseik,1.0)
+                        me1 = Zbars[ich_cc][idx_ik,idx_lj] * phase 
+                        commji -= (2*Jpr+1) * sixj * me1
+                    end                
+                end
+                d_ij = delta(i,j);d_kl = delta(k,l)
+                tnorm = ifelse(d_ij==d_kl, 1.0+delta(i,j),sqrt(2.0))
+                phase = (-1)^(div(jk+jl,2)-J)
+                Z2b[ibra,iket] -= (commij - phase * commji) /tnorm
+                if hermite 
+                    Z2b[iket,ibra] = Z2b[ibra,iket]
+                elseif iket != ibra 
+                    Z2b[iket,ibra] = -Z2b[ibra,iket]
+                end
+            end 
         end
     end
     return nothing
@@ -769,7 +789,7 @@ function comm222_pphh_ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Ch
             Mhh_2 = @view tmpMat[1:nkets,nhh+1:2*nhh] 
             tM = @view tmpMat[nkets+1:2*nkets,1:nhh]
             Mhh_1 .= XhhL; Mhh_2 .= YhhR' ; BLAS.gemm!('N','N',-1.0,Mhh_1,Mathh-Matpp,0.0,tM); BLAS.gemm!('N','T',1.0,tM,Mhh_2,1.0,z2)
-            Mhh_1 .= YhhL; Mhh_2 .= XhhR' ; BLAS.gemm!('N','N', 1.0,Mhh_1,Mathh-Matpp,0.0,tM); BLAS.gemm!('N','T',1.0,tM,Mhh_2,1.0,z2)       
+            Mhh_1 .= YhhL; Mhh_2 .= XhhR' ; BLAS.gemm!('N','N', 1.0,Mhh_1,Mathh-Matpp,0.0,tM); BLAS.gemm!('N','T',1.0,tM,Mhh_2,1.0,z2)    
         end
     end
     return nothing

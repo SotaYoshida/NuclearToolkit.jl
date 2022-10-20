@@ -109,6 +109,9 @@ struct PandyaObject
     numbers_addinv::Vector{Vector{Int64}}
     Chan2b::Vector{chan2b}
     phkets::Vector{Vector{Int64}}
+    copy_1bmat::Vector{Matrix{Float64}}
+    mats_nab::Vector{Matrix{Float64}}
+    mats_nab_bar::Vector{Matrix{Float64}}
     dict_ich_idx_from_ketcc::Vector{Dict{Int64,Int64}}
     XYbars::Vector{Vector{Matrix{Float64}}}
     Zbars::Vector{Matrix{Float64}}

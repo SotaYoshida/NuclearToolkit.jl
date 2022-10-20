@@ -74,7 +74,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
             end
         end
     end
-    if verbose
+    if true # verbose
         println(io,"EMP2 ",@sprintf("%12.5f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
                 " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
     end
@@ -239,9 +239,9 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     end
     EMP3_ph = sum(Ethreads)
     EMP3 = EMP3_pp + EMP3_hh + EMP3_ph 
-    if verbose
-        println(io,"pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
-                " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%12.5f",EMP3))
+    if  true # verbose
+        println(io,"EMP3 ",@sprintf("%12.5f",EMP3), 
+                " pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh)," ph ",@sprintf("%9.3f",EMP3_ph),)
     end 
     return EMP3
 end

@@ -1,0 +1,31 @@
+name: SampleResults
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags: '*'
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
+    name: deproy_results_of_samplescript
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: x64
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1
+      - run: julia --project="@." -4 ../sample_script.jl > sample_results.txt
+      - uses: actions/upload-artifact@v1
+      with: 
+        name: sample_results
+        path: sample_results.txt

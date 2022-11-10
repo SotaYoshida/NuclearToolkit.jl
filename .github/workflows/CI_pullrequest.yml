@@ -83,7 +83,7 @@ jobs:
           echo git_hash $git_hash         
           echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
           julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
-          echo git branch below
+          echo running on branch ${GITHUB_REF##*/}
           git branch 
           git add examples/log_sample_script.txt
       - name: commit changed logfile

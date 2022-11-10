@@ -76,12 +76,12 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1 
-      if: ${{ branches == 'develop' }}
       - run: | 
           git_hash=$(git rev-parse --short "$GITHUB_SHA")
           echo git_hash $git_hash
           echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
           julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
+      - if: ${{ branches == 'develop' }}
       - name: commit changed files
         uses: stefanzweifel/git-auto-commit-action@v4.2.0
         with:

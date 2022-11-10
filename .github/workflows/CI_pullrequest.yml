@@ -80,11 +80,10 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1 
       - run: | 
           git_hash=$(git rev-parse --short "$GITHUB_SHA")
-          echo git_hash $git_hash         
+          echo git_hash $git_hash     
+          echo running on branch ${GITHUB_REF##*/}    
           echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
           julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
-          echo running on branch ${GITHUB_REF##*/}
-          git branch 
           git add examples/log_sample_script.txt
       - name: commit changed logfile
         uses: stefanzweifel/git-auto-commit-action@v4.2.0

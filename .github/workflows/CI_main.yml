@@ -2,10 +2,8 @@ name: CI
 on:
   push:
     branches:
-      - develop
-    tags: '*'
-    exclude: "log_sample_script.txt"
-
+      - main
+     tags: '*'
   pull_request:
 concurrency:
   # Skip intermediate builds: always.
@@ -66,24 +64,6 @@ jobs:
       matrix:
         include:
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
-    name: Run sample_script.jl
-    steps:     
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: ${{ matrix.version }}
-          arch: x64
-      - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1 
-      - run: | 
-          git_hash=$(git rev-parse --short "$GITHUB_SHA")
-          echo git_hash $git_hash
-          echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
-          julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
-      - name: commit changed files
-        uses: stefanzweifel/git-auto-commit-action@v4.2.0
-        with:
-          commit_message: Update log_sample_script.txt
   
   docs:
     name: Documentation

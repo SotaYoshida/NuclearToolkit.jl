@@ -13,9 +13,9 @@ julia>]add NuclearToolkit
 
 You can try the package by 1. or 2.:
 
-1. clone the repository and run `test/sample_script.jl` in the repository like  
+1. clone the repository and run `example/sample_script.jl` in the repository like  
     ```
-      $ julia -t 8 sample_script.jl
+      $ julia -t 8 example/sample_script.jl
     ```
     This performs:
       - calculating NN potential from Chiral EFT

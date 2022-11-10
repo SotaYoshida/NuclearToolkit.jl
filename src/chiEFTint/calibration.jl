@@ -506,7 +506,6 @@ function fPhi(Z)
     return  0.5 * erfc(-(Z/sqrt(2.0)))
 end
 
-
 """
 function used for proposals in Affine invariant MCMC
 """

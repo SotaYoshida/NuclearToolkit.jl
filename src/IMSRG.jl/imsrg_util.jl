@@ -18,9 +18,10 @@
 - `core_generator_type` only the "atan" is available
 - `valence_generator_type` only the "shell-model-atan" is available
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
+- `debugmode::Int` 2: sample HF/IMSRG files
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
-                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl")
+                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2)
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
     update_core_in_sps!(binfo,HFobj)
@@ -32,7 +33,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::Hamilt
     IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
     
-    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to)
+    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;debugmode=debugmode)
 
     if vsIMSRG
         IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;valenceflow=true)
@@ -567,7 +568,7 @@ function get_nkey_from_key6j(ji,jj,jk,jl,Jp;ofst_unit=1000)
 end
 
 function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dict6j,
-                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split")        
+                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split") 
     Chan2b = Chan2bD.Chan2b
     ncomm = IMSRGobj.Ncomm    
     s,ds = IMSRGobj.s
@@ -595,7 +596,8 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         else
             println("valence_generator=$valence_generator is not supported now");exit()
         end
-    end 
+    end
+    if debugmode == 2; write_omega_bin(binfo,Chan2b,0,H0;Oplabel="HF");end
     set_dictMonopole!(dictMono,HFobj,Hs.twobody)
     func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
     tmpOp = deepcopy(IMSRGobj.Omega)
@@ -609,12 +611,11 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
     	s += ds
         IMSRGobj.s[1] = s; IMSRGobj.s[2] = ds
         #debug_print(debugmode,Hs,Omega,eta,"s")
-    
         ## OmegaCheck
-        if magnusmethod == "huntergather"
+        if magnusmethod == "huntergather" 
             GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,
                         ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to)
-        elseif magnusmethod == "split" # not implemented
+        elseif magnusmethod == "split" 
             NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
         elseif magnusmethod == "" || magnusmethod == "NS"
             aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
@@ -623,10 +624,10 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         end
         # Eta * ds for Euler step (assuming Magnus expansion) 
         aOp!(eta,ds) 
-        ## Calc Omega(s+ds) 
+        ## Calc. Omega(s+ds) 
         BCH_Product(eta,Omega,nOmega,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)
 
-        ## IMSRGobj H(s+ds) updated 
+        ## IMSRGobj.H updated to H(s+ds)
         BCH_Transform(nOmega,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to) 
 
         #debug_print(debugmode,Hs,nOmega,eta,"s+ds")
@@ -637,8 +638,9 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         if s >= smax;break;end
     end
     aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
-    write_omega_bin(binfo,IMSRGobj.n_written_omega[1],nOmega)
+    write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega)
     IMSRGobj.n_written_omega[1] += 1
+    if debugmode == 2; write_omega_bin(binfo,Chan2b,0,Hs;Oplabel="Hs");end
     return nothing
 end   
 function NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
@@ -647,7 +649,7 @@ function NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
     Chan2b = Chan2bD.Chan2b
     dim1b = size(Omega.onebody[1])[1]
     if getNorm(nOmega,p_sps,n_sps,Chan2b) >= maxnormOmega  
-        write_omega_bin(binfo,IMSRGobj.n_written_omega[1],nOmega)
+        write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega)
         IMSRGobj.n_written_omega[1] += 1
         aOp!(Omega,0.0)
         H0 = IMSRGobj.H0
@@ -663,19 +665,24 @@ end
     write_omega_bin(binfo,n_written,Omega)
 Function to write temporary binary files of Operator matrix elements, when spliting the flow.
 """
-function write_omega_bin(binfo::basedat,n_written::Int,Omega::Operator)
+function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Omega::Operator;Oplabel="Omega")
     if !isdir("flowOmega")  && n_written==0
         run(`mkdir flowOmega`)
     end    
     pid = getpid()
     nw = n_written + 1
-    fname = "flowOmega/Omega_$pid"*binfo.nuc.cnuc*"_$nw.bin"
+    fname = "flowOmega/$(Oplabel)_$pid"*binfo.nuc.cnuc*"_$nw.bin"
     dim1b = size(Omega.onebody[1])[1]
     nch = length(Omega.twobody)
     dims = Int64[]
+    JPTzs = Vector{Int64}[ ]
     for ch = 1:nch
         dim = size(Omega.twobody[ch])[1]
         push!(dims,dim)
+        J = Chan2b[ch].J
+        P = Chan2b[ch].prty
+        Tz = Chan2b[ch].Tz
+        push!(JPTzs,[J,P,Tz])
     end
     io = open(fname,"w")
     write(io,Int64(dim1b))
@@ -691,6 +698,11 @@ function write_omega_bin(binfo::basedat,n_written::Int,Omega::Operator)
     end
     write(io,Int64(nch))
     write(io,dims)
+    for ch = 1:nch
+        for n = 1:3
+            write(io,JPTzs[ch][1])
+        end
+    end
     for ch = 1:nch
         dim = dims[ch]
         O2b = Omega.twobody[ch]
@@ -709,9 +721,9 @@ end
 
 read written Omega file and update ```Op::Operator```
 """
-function read_omega_bin!(binfo::basedat,nw::Int,Op::Operator,verbose=false)
+function read_omega_bin!(binfo::basedat,Chan2b::Vector{chan2b},nw::Int,Op::Operator,verbose=false;Oplabel="Omega")
     pid = getpid()
-    fn = "flowOmega/Omega_$pid"*binfo.nuc.cnuc*"_$nw.bin"
+    fn = "flowOmega/$(Oplabel)_$pid"*binfo.nuc.cnuc*"_$nw.bin"
     io = open(fn,"r")
     dim1b = read(io,Int64)
     for i = 1:dim1b
@@ -726,6 +738,7 @@ function read_omega_bin!(binfo::basedat,nw::Int,Op::Operator,verbose=false)
     end
     nch = read(io,Int64)
     dims = [read(io,Int64) for ch=1:nch]
+    JPTz = [ [read(io,Int64),read(io,Int64),read(io,Int64)] for ch=1:nch]
     for ch = 1:nch
         dim2b = dims[ch]
         O2b = Op.twobody[ch]
@@ -928,60 +941,4 @@ function set_sps_to_modelspace!(binfo,HFobj)
         n_sps[i].occ = sps[2*i].occ = cn
     end
     return nothing
-end
-
-###
-### Followings will be removed
-###
-function need_check(tbc_bra_cc, tbc_ket_cc, li,ji,tzi, lj,jj,tzj, lk,jk,tzk, ll,jl,tzl)
-    tf = false
-    twoJ_bra_cc = tbc_bra_cc.J * 2
-    twoJ_ket_cc = tbc_ket_cc.J * 2
-    par_bra = tbc_bra_cc.prty
-    par_ket = tbc_ket_cc.prty
-    Tz_bra  = tbc_bra_cc.Tz
-    Tz_ket  = tbc_ket_cc.Tz
-    ## i-l & j-k
-    j3min = abs(ji-jl); j3max = ji+jl
-    j4min = abs(jk-jj); j4max = jk+jj
-    if ( ((-1)^(li+ll) == par_bra) && 
-         ((-1)^(lj+lk) == par_ket) && 
-         (abs(tzi+tzl) == Tz_bra) && 
-         (abs(tzj+tzk) == Tz_ket) && 
-         j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
-         j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @1");end
-        return true
-    end
-    if (((-1)^(li+ll) == par_ket) && 
-        ((-1)^(lj+lk) == par_bra) && 
-        (abs(tzi+tzl) == Tz_ket)   && 
-        (abs(tzj+tzk) == Tz_bra)   && 
-        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
-        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @2");end
-       return true
-   end
-   ##i-k j-l
-   j3min = abs(jj-jl); j3max = jj+jl
-   j4min = abs(ji-jk); j4max = ji+jk
-   if (((-1)^(lj+ll) == par_bra) && 
-       ((-1)^(li+lk) == par_ket) && 
-       (abs(tzj+tzl) == Tz_bra)   && 
-       (abs(tzi+tzk) == Tz_ket)   && 
-        j3min<=twoJ_bra_cc && twoJ_bra_cc<=j3max &&
-        j4min<=twoJ_ket_cc && twoJ_ket_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @3");end
-        return true
-   end
-   if (((-1)^(lj+ll) == par_ket) && 
-       ((-1)^(li+lk) == par_bra) && 
-       (abs(tzj+tzl) == Tz_ket)   && 
-       (abs(tzi+tzk) == Tz_bra)   && 
-        j3min<=twoJ_ket_cc && twoJ_ket_cc<=j3max &&
-        j4min<=twoJ_bra_cc && twoJ_bra_cc<=j4max )
-        #if ch_bra_cc == ch_ket_cc == 1; println("hit @4");end
-        return true
-   end
-   return tf
 end

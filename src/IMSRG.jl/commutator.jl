@@ -45,7 +45,7 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
     ## comm0 term: X+Y -> Z
     Ncomm = 0
     aOp1_p_bOp2_Op3!(X,Y,Z,1.0,1.0,0.0)
-    ## comm1 term: 1/2[X,Y]
+    ## comm1 term: 1/2[X,Y] * 2
     ## norm check to determine whther to go further or not 
     Ncomm +=1  
     aOp!(Nested,0.0) ## clear old history
@@ -63,7 +63,7 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
         aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
     end
     k=1
-    while getNorm(Nested,p_sps,n_sps,Chan2b) > tol && k < 3
+    while getNorm(Nested,p_sps,n_sps,Chan2b) > tol #&& k < 3
         if k<=2 || k%2==1
             aOp1_p_bOp2!(Nested,Z,berfac[k],1.0)
         end
@@ -82,16 +82,15 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
 end
 
 """
-    BCH_Transform(Omega,O0,Hs,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to;tol=1.e-9,maxit=50,verbose=false)   
+    BCH_Transform(Omega,O0,Os,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to;tol=1.e-9,maxit=50,verbose=false)   
 
-Update ``B`` (assumed to be ``H`` or ``O``) via ``e^ABe^{-A} =B+[A,B]+1/2![A,[A,B]]+1/3![A,[A,[A,B]]]+...``
+Update ``Os`` via ``e^ABe^{-A} =B+[A,B]+1/2![A,[A,B]]+1/3![A,[A,[A,B]]]+...``
 
-Note that the `ret` and `tOp` are also overwritten.
-`BCH_Transform(nOmega,H0,IMSRGObj,tmpOp,norms,Chan2b)`
-e.g.,
-`Omega`: ``\\Omega(s+ds)``, `H0`: ``H(s=0)`` or ``O(s=0)``, and `ret`: ``H(s+ds)``
+- `Omega`: ``\\Omega(s+ds)``
+- `O0`: ``O(s=0)``
+- `Os`: ``O(s+ds)``
 """
-function BCH_Transform(Omega::Op,O0::Op,Hs::Op,tOp::Op,Nested::Op,ncomm,norms,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
+function BCH_Transform(Omega::Op,O0::Op,Os::Op,tOp::Op,Nested::Op,ncomm,norms,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,
                        dictMono,dict6j,PandyaObj::PandyaObject,to;tol=1.e-9,maxit=100,verbose=false) where Op<:Operator
     if Omega.hermite && O0.hermite; tOp.hermite=false; tOp.antihermite=true
     elseif Omega.hermite && O0.antihermite; tOp.hermite=true;tOp.antihermite=false
@@ -101,8 +100,8 @@ function BCH_Transform(Omega::Op,O0::Op,Hs::Op,tOp::Op,Nested::Op,ncomm,norms,Ch
     
     MS = HFobj.modelspace; p_sps = MS.p_sps; n_sps = MS.n_sps
     Chan2b = Chan2bD.Chan2b
-    aOp1_p_bOp2!(O0,Nested,1.0,0.0) # B -> Nested
-    aOp1_p_bOp2!(Nested,Hs,1.0,0.0) # Os = O0
+    aOp1_p_bOp2!(O0,Nested,1.0,0.0) # O0 -> Nested
+    aOp1_p_bOp2!(Nested,Os,1.0,0.0) # Os = O0
 
     nx = getNorm(O0,p_sps,n_sps,Chan2b)
     ny = getNorm(Omega,p_sps,n_sps,Chan2b)
@@ -114,7 +113,7 @@ function BCH_Transform(Omega::Op,O0::Op,Hs::Op,tOp::Op,Nested::Op,ncomm,norms,Ch
         @timeit to "comm." OpCommutator!(Omega,Nested,tOp,HFobj,Chan1b,Chan2bD,dictMono,dict6j,PandyaObj,to)
         ncomm[1] += 1
         aOp1_p_bOp2!(tOp,Nested,1.0,0.0)
-        aOp1_p_bOp2!(Nested,Hs,factor_kth,1.0)
+        aOp1_p_bOp2!(Nested,Os,factor_kth,1.0)
         epsilon *= iter+1
         normNest = getNorm(Nested,p_sps,n_sps,Chan2b)
         if normNest < epsilon; break;end

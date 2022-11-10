@@ -16,27 +16,21 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `fn_params::String` path to file specifying the optional parameters
 - `write_vmom::Bool` to write out in vmom partial wave channels
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false,do_svd=false)
-    to = TimerOutput()
-    do2n3ncalib=false
-    if (optimizer!="" && nucs != []) || MPIcomm
-        do2n3ncalib=true; writesnt=false
-    end
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false,do_svd=false,do2n3ncalib=false)
+    to = TimerOutput()    
+    if (optimizer!="" && nucs != []) || MPIcomm; do2n3ncalib=true; writesnt=false; end
     io = select_io(MPIcomm,optimizer,nucs)
     @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to;io=io)
     @timeit to "renorm." SRG(chiEFTobj,to)
-    HFdata = prepHFdata(nucs,ref,["E"],corenuc) 
+    HFdata = prepHFdata(nucs,ref,["E"],corenuc)
 
-    if do_svd 
-        target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]; svd_vmom(chiEFTobj,target_LSJ)
-    end
+    if do_svd; target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]; svd_vmom(chiEFTobj,target_LSJ); end
 
     if write_vmom
         target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]]
-        #write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn")
-        write_onshell_vmom(chiEFTobj,3,target_LSJ;label="nn")
+        write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn"); write_onshell_vmom(chiEFTobj,3,target_LSJ;label="nn")
     end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
@@ -53,6 +47,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
 end
 
 """
+    construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
 
 It returns 
 - `chiEFTobj::ChiralEFTobject` parameters and arrays to generate NN (+2n3n) potentials. See also struct `ChiralEFoObject`.
@@ -85,7 +80,6 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms 
     f_ss!(opfs[2]);f_c!(opfs[3])
     ## prep. Gauss point for integrals
-    #ts, ws = Gauss_Legendre(-1,1,96)
     ts, ws = Gauss_Legendre(-1,1,40)
     ## prep. for TBMEs        
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
@@ -95,7 +89,6 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
     ## 9j&6j symbols for 2n (2n3n) interaction
-
     X9,U6 = prepareX9U6(2*params.emax)
     chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
                             xrP_fm,xrP,wrP,RNL,lsjs,tllsj,opfs,ts,ws,
@@ -190,13 +183,14 @@ function Gauss_Legendre(xmin,xmax,n;eps=3.e-16)
             z1 = z
             z -= p1/pp
             if abs(z-z1) < eps; break;end
-            if hit > 100; println("warn! in Gausse_Legendre");exit();end
+            if hit > 100; println("warn! in Gauss_Legendre");exit();end
         end
         x[i]=xm-xl*z
         x[n+1-i]=xm+xl*z
         w[i]=2.0*xl/( (1.0-z^2) * pp^2)
         w[n+1-i]=w[i]
     end
+    @assert abs(sum(w) - (xmax-xmin)) < 1.e-8 "GL integral $(sum(w)) not match xmax-xmin $(xmax-xmin)"
     return x,w
 end
 

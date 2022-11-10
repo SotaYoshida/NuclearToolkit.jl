@@ -210,14 +210,14 @@ function dict_emn500n4lo()
     dLECs["ct4_NNLO"] = dLECs["c4_NNLO"]
 
     dLECs["cD"] =  0.0
-    dLECs["cE"] =  -1.0
+    dLECs["cE"] =  0.0
 
-    ## old MAP
-    dLECs["ct1_NNLO"] = -1.10
-    dLECs["ct3_NNLO"] = -4.753
-    dLECs["ct4_NNLO"] = 4.089
-    dLECs["cD"] = -0.277
-    dLECs["cE"] = 0.820
+    # ## old MAP
+    # dLECs["ct1_NNLO"] = -1.10
+    # dLECs["ct3_NNLO"] = -4.753
+    # dLECs["ct4_NNLO"] = 4.089
+    # dLECs["cD"] = -0.277
+    # dLECs["cE"] = 0.820
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18

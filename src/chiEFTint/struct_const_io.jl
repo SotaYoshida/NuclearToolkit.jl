@@ -6,6 +6,7 @@ const lcmax = jmax + 1
 const Mp = 938.272088 
 const Mn = 939.565420 
 const Mm = (Mp+Mn)/2
+const Me = 0.51099895
 const Mred = 2*Mp*Mn/(Mp+Mn)
 const Ms = [Mp,Mm,Mn]
 const Lambchi = 500.0

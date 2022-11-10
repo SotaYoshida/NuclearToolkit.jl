@@ -33,10 +33,10 @@ function calc_EperA_HF(chiEFTobj,n_below_kF;verbose=false)
         tsum = 0.0
         afac = ifelse(Tz==0,sqrt(2.0),LSTfac/sqrt(2.0))
         for i = 1:n_below_kF
-	    k = xr_fm[i]; k2 = k^2
+	        k = xr_fm[i]; k2 = k^2
             w = wr[i]
             v2 = tV[i,i]; v2n3n = tV_2n3n[i,i]
-            tsum  += k2 * (1-1.5*(k/kF)+ 0.5 * (k/kF)^3 ) * w * Jfac * (v2* afac^2 + v2n3n/3)
+            tsum  += k2 * (1-1.5*(k/kF)+ 0.5 * (k/kF)^3 ) * w * Jfac *  afac^2 * (v2 + v2n3n/2)
         end
         sumarrs[threadid()] += tsum
         if verbose && abs(tsum) >  1.0                                                                        
@@ -60,8 +60,10 @@ function calc_EperA_PT2(chiEFTobj::ChiralEFTobject,to)
         Tz,tLp,tL,S,J = pw_channels[idx1]
         v1Mat = V12mom[idx1]; v1Mat_2n3n = V12mom_2n3n[idx1]
         LSfac1 = 1 - (-1)^(tL+S+1)   
+        LSfac2 = 1 - (-1)^(tLp+S+1)   
         afac1 = ifelse(Tz==0,sqrt(2.0),LSfac1/sqrt(2.0))
-        afac1 = afac1^2
+        afac2 = ifelse(Tz==0,sqrt(2.0),LSfac2/sqrt(2.0))
+        afac = afac1 * afac2
         coeff = (2*J+1) / (16*kF^3)
         for iK = 1:nKmesh
             K = Ks[iK]; K2 = K^2
@@ -73,7 +75,7 @@ function calc_EperA_PT2(chiEFTobj::ChiralEFTobject,to)
                 for j = 1:n_mesh                    
                     kj = xr_fm[j]; wj = wr[j]
                     if kj <= Ksq;continue;end
-                    v1 = afac1 * v1Mat[i,j] + v1Mat_2n3n[i,j]
+                    v1 = afac * (v1Mat[i,j] + v1Mat_2n3n[i,j])
                     momfac = (ki^2) *(kj^2)* wi *wj
                     edeno = get_spe_denominator(Tz,ki,kj,K)
                     EPT2 += coeff * momfac/edeno * v1^2 * Kfac

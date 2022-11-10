@@ -68,8 +68,14 @@ jobs:
         include:
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
     name: Run sample_script.jl
-    steps:
-      - run: rm -rf example/log_sample_script.txt
+    steps:     
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: x64
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1 
       - name: Run sample_script.jl
         run: julia --project="@." -t 4 ./example/sample_script.jl > ./example/log_sample_script.txt
       - name: commit changed files

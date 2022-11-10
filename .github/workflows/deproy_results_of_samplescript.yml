@@ -24,7 +24,7 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - run: julia --project="@." -4 ../sample_script.jl > sample_results.txt
+      - run: julia --project="@." -t 4 ../sample_script.jl > sample_results.txt
       - uses: actions/upload-artifact@v1
         with: 
           name: sample_results

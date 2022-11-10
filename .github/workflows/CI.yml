@@ -80,3 +80,24 @@ jobs:
             using NuclearToolkit
             DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
             doctest(NuclearToolkit)'
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run sample_script.jl
+      run: julia --project="@." sample_script.jl > log_sample_script.txt
+    - name: switching from HTTPS to SSH
+      run: git remote set-url origin ${{ secrets.ssh }}
+    - name: stage changed files
+      run: git add log_sample_script.txt
+    - name: commit changed files
+      run: git commit -m "update log_sample_script.txt"
+    - name: push code to develop
+      run: git push origin develop

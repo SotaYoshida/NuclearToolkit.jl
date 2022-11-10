@@ -59,7 +59,6 @@ jobs:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
 
-
   build2:    
     runs-on: ubuntu-latest
     strategy:
@@ -85,10 +84,10 @@ jobs:
           echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
           julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
           git add example/log_sample_script.txt
-      - name: commit changed logfile
-        uses: stefanzweifel/git-auto-commit-action@v4.2.0
-        with:
-          commit_message: Update log_sample_script.txt  
+      # - name: commit changed logfile
+      #   uses: stefanzweifel/git-auto-commit-action@v4.2.0
+      #   with:
+      #     commit_message: Update log_sample_script.txt  
   docs:
     name: Documentation
     runs-on: ubuntu-latest

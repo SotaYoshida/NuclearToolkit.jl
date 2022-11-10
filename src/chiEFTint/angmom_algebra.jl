@@ -712,7 +712,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
     dWS = dWS2n(dtri,dcgm0,keycg)
 
     #### 9j with {la 1/2 ja; lb 1/2 jb; L S J} structure
-    num9js = zeros{Int64,nthreads()}
+    num9js = zeros(Int64,nthreads())
     dict9j = [ [ [ [ [ [ [ 0.0 for L=0:Lmax] for lb=0:lmax] for jb=1:2:jmax2] for la=0:lmax] for ja=1:2:jmax2] for S=0:1] for J=0:Jmax]
     @threads for J = 0:Jmax
         tJ = dict9j[J+1]

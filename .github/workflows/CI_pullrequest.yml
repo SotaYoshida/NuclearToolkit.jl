@@ -58,6 +58,11 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
+  build2:    
+    runs-on: ubuntu-latest
+    steps:     
+      - uses: actions/checkout@v2
+      - run: git checkout develop example/log_sample_script.txt .
   docs:
     name: Documentation
     runs-on: ubuntu-latest

@@ -65,7 +65,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
+          - {version: '1.7',   os: ubuntu-latest}
     name: Run sample_script.jl
     steps:     
       - uses: julia-actions/setup-julia@v1

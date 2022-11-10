@@ -734,7 +734,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                                 if !tri_check(L,S,J);continue;end
                                 t9j = wigner9j(la,1//2,ja//2,lb,1//2,jb//2,L,S,J)
                                 tlb[L+1] = t9j
-                                num9js[tid] +=1
+                                num9js[tid] += 1
                             end
                         end
                     end                

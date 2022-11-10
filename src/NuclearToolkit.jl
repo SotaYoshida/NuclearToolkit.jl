@@ -28,7 +28,9 @@ include("chiEFTint/valence.jl")
 include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
 include("chiEFTint/matter.jl")
+include("chiEFTint/nn_sampling.jl")
 export make_chiEFTint
+export nn_IMSRG_sampling
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")
@@ -53,9 +55,13 @@ include("ShellModel/lanczos_methods.jl")
 include("ShellModel/transit.jl")
 include("ShellModel/input_int_snt.jl")
 include("ShellModel/eigenvector_continuation.jl")
+include("ShellModel/KSHELL.jl")
+include("ShellModel/betadecay.jl")
 export main_sm,samplerun_sm # from shellmodel.
 export prepEC,solveEC,solveEC_UQ # from eigenvector_continuation.jl
 export transit_main # from transit.jl
+export read_kshell_summary
+export eval_betadecay_from_kshell_log
 
 end
 

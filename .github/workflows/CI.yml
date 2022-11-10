@@ -70,8 +70,6 @@ jobs:
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
     name: Run sample_script.jl
     steps:     
-      - run: git branch
-      - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}

@@ -105,9 +105,10 @@ jobs:
     steps:
     - uses: actions/checkout@v1  
     - name: Cleanup
+      working-directory: ./doc
       run: rm -rf log_sample_script.txt
     - name: Run sample_script.jl
-      run: julia --project="@." -t4 sample_script.jl > log_sample_script.txt
+      run: julia --project="@." -t 4 ./example/sample_script.jl > ./example/log_sample_script.txt
     - name: commit changed files
       uses: stefanzweifel/git-auto-commit-action@v4.2.0
       with:

@@ -67,9 +67,10 @@ jobs:
           - {os: ubuntu-latest}
     name: Run sample_script.jl
     steps:     
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
       with:
           fetch-depth: 0 
+    - run: git checkout develop example/log_sample_script.txt .
   docs:
     name: Documentation
     runs-on: ubuntu-latest

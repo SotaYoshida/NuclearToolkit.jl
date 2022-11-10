@@ -60,9 +60,16 @@ jobs:
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
   build2:    
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest}
+    name: Run sample_script.jl
     steps:     
       - uses: actions/checkout@v2
-      - run: git checkout develop example/log_sample_script.txt .
+      with:
+          fetch-depth: 0 
   docs:
     name: Documentation
     runs-on: ubuntu-latest

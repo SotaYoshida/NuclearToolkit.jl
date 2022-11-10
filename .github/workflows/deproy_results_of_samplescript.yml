@@ -26,6 +26,6 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - run: julia --project="@." -4 ../sample_script.jl > sample_results.txt
       - uses: actions/upload-artifact@v1
-      with: 
-        name: sample_results
-        path: sample_results.txt
+        with: 
+          name: sample_results
+          path: sample_results.txt

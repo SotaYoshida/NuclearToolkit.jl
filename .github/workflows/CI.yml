@@ -2,7 +2,6 @@ name: CI
 on:
   push:
     branches:
-      - main
       - develop
     tags: '*'
     exclude: "log_sample_script.txt"

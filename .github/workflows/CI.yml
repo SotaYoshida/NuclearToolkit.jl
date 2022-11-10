@@ -5,6 +5,8 @@ on:
       - main
       - develop
     tags: '*'
+    exclude: "log_sample_script.txt"
+
   pull_request:
 concurrency:
   # Skip intermediate builds: always.

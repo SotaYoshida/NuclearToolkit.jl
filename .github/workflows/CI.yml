@@ -61,7 +61,7 @@ jobs:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
   build2:
-    if: ${{ branches == 'develop' }}
+    if: contains(github.head_ref, 'develop'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

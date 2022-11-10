@@ -60,7 +60,14 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
-      
+  test2:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
+    name: deploy results of Sample script
       - name: Cleanup
         working-directory: ./doc
         run: rm -rf log_sample_script.txt

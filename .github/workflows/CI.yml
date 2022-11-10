@@ -92,6 +92,8 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run sample_script.jl
+      run: echo "" > log_sample_script.txt
+      run: rm log_sample_script.txt
       run: julia --project="@." sample_script.jl > log_sample_script.txt
     - name: switching from HTTPS to SSH
       run: git remote set-url origin ${{ secrets.ssh }}

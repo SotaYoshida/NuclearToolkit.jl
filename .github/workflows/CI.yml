@@ -80,7 +80,16 @@ jobs:
             using NuclearToolkit
             DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
             doctest(NuclearToolkit)'
-
+      
+      - name: Cleanup
+        working-directory: ./doc
+        run: rm -rf log_sample_script.txt
+      - name: Run sample_script.jl
+        run: julia --project="@." -t 4 ./example/sample_script.jl > ./example/log_sample_script.txt
+      - name: commit changed files
+        uses: stefanzweifel/git-auto-commit-action@v4.2.0
+        with:
+          commit_message: Update log_sample_script.txt
 
     steps:
       - uses: actions/checkout@v2
@@ -91,25 +100,4 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
-  
 
-jobs:
-  test:
-    name:  Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
-    steps:
-    - uses: actions/checkout@v1  
-    - name: Cleanup
-      working-directory: ./doc
-      run: rm -rf log_sample_script.txt
-    - name: Run sample_script.jl
-      run: julia --project="@." -t 4 ./example/sample_script.jl > ./example/log_sample_script.txt
-    - name: commit changed files
-      uses: stefanzweifel/git-auto-commit-action@v4.2.0
-      with:
-        commit_message: Update log_sample_script.txt

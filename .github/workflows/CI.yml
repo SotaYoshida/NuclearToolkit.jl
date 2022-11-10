@@ -6,8 +6,8 @@ on:
       - develop
     tags: '*'
     exclude: "log_sample_script.txt"
-
   pull_request:
+
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
@@ -70,6 +70,7 @@ jobs:
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
     name: Run sample_script.jl
     steps:     
+      - run: git branch
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:

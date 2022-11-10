@@ -77,7 +77,7 @@ jobs:
       - run: | 
           git_hash=$(git rev-parse --short "$GITHUB_SHA")
           echo git_hash $git_hash          
-          julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
+          julia --project="@." ./example/sample_script.jl >> ./example/log_sample_script.txt
       - name: commit changed logfile
         uses: stefanzweifel/git-auto-commit-action@v4.2.0
         with:

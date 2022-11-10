@@ -27,12 +27,12 @@ When working on a working node (w/o permissions to access ```~/```), overwrite t
 
 ## How to START
 
-Execute `sample_script.jl` like
+Execute `example/sample_script.jl` like
 ```
-julia -t 10 sample_script.jl
+julia -t 10 example/sample_script.jl
 ```
 
-This sample script performs
+This sample script performs:
  - generating NN potential with hw=20, emax=4
  - HFMBPT(3) and IMSRG/VS-IMSRG calculation using the NN potential 
  - shell-model calculation using the effective interaction derived by VS-IMSRG

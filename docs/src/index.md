@@ -11,18 +11,19 @@ Second, add the package in Pkg mode
 julia>]add NuclearToolkit
 ```
 
-You can try the package by 1. or 2.:
+You can try the package in the following ways:
 
-1. clone the repository and run `test/sample_script.jl` in the repository like  
-    ```
-      $ julia -t 8 sample_script.jl
-    ```
+* clone the repository and run `example/sample_script.jl` in the repository like
+
+    `$ julia -t 8 example/sample_script.jl`
+
     This performs:
-      - calculating NN potential from Chiral EFT
+      - calculation of NN potential from Chiral EFT
       - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation with it
       - shell-model calculations with the effective interaction derived by VS-IMSRG
     An expected results using the latest dev branch can be found [here](https://github.com/SotaYoshida/NuclearToolkit.jl/blob/develop/example/log_sample_script.txt).
-2. Try sample codes in [HowToUse](howtouse) page.
+* Try sample codes in [HowToUse](howtouse) page.
+
 
 
 Please make sure to use the latest version of the package. Update can be done with 

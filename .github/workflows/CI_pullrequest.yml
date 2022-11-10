@@ -5,7 +5,7 @@ on:
       - main
       - develop
     tags: '*'
-
+    exclude: "log_sample_script.txt"
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
@@ -58,19 +58,35 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
+
+
   build2:    
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-latest}
+          - {version: '1.7',   os: ubuntu-latest}
     name: Run sample_script.jl
     steps:     
-    - uses: actions/checkout@v2
-      with:
+      - uses: actions/checkout@v2
+        with:
           fetch-depth: 0 
-    - run: git checkout develop example/log_sample_script.txt .
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: x64
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1 
+      - run: | 
+          git_hash=$(git rev-parse --short "$GITHUB_SHA")
+          echo git_hash $git_hash
+          echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
+          julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
+      - name: commit changed logfile
+        uses: stefanzweifel/git-auto-commit-action@v4.2.0
+        with:
+          commit_message: Update log_sample_script.txt  
   docs:
     name: Documentation
     runs-on: ubuntu-latest

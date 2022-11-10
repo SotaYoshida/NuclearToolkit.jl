@@ -80,9 +80,22 @@ jobs:
             using NuclearToolkit
             DocMeta.setdocmeta!(NuclearToolkit, :DocTestSetup, :(using NuclearToolkit); recursive=true)
             doctest(NuclearToolkit)'
+
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: x64
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1
+      - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
+  
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name:  Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,16 +103,12 @@ jobs:
         include:
           - {version: '1.7',   os: ubuntu-latest,  payload: serial}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v1  
+    - name: Cleanup
+      run: rm -rf log_sample_script.txt
     - name: Run sample_script.jl
-      run: echo "" > log_sample_script.txt
-      run: rm log_sample_script.txt
-      run: julia --project="@." sample_script.jl > log_sample_script.txt
-    - name: switching from HTTPS to SSH
-      run: git remote set-url origin ${{ secrets.ssh }}
-    - name: stage changed files
-      run: git add log_sample_script.txt
+      run: julia --project="@." -t4 sample_script.jl > log_sample_script.txt
     - name: commit changed files
-      run: git commit -m "update log_sample_script.txt"
-    - name: push code to develop
-      run: git push origin develop
+      uses: stefanzweifel/git-auto-commit-action@v4.2.0
+      with:
+        commit_message: Update log_sample_script.txt

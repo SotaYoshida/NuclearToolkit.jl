@@ -7,13 +7,13 @@ Functions for shell-model calculations
 - [input_int_snt.jl](https://github.com/SotaYoshida/NuclearToolkit.jl/tree/main/src/ShellModel/input_int_snt.jl): I/O stuffs
 - [eigenvector_continuation.jl](https://github.com/SotaYoshida/NuclearToolkit.jl/tree/main/src/ShellModel/eigenvector_continuation.jl): eigenvector continuation to sample and construct shell-model wavefunctions
 
-
 ```@autodocs
 Modules = [NuclearToolkit]
 Pages = ["ShellModel/shellmodel_main.jl",
          "ShellModel/lanczos_methods.jl",
          "ShellModel/transit.jl",
          "ShellModel/input_int_snt.jl",
-         "ShellModel/eigenvector_continuation.jl"]
-
+         "ShellModel/eigenvector_continuation.jl",
+         "ShellModel/KSHELL.jl",
+         "ShellModel/betadecay.jl"]
 ``` 

@@ -11,9 +11,10 @@ Second, add the package in Pkg mode
 julia>]add NuclearToolkit
 ```
 
-Please make sure to use the latest version of the package. Update can be done with 
+In the Julia REPL you can see the UUIDs and versions of the installed packages
 ```julia
-julia>]up NuclearToolkit
+julia>using Pkg
+julia>Pkg.status()
 ```
 
 You can try the package by 1. or 2.:
@@ -26,8 +27,9 @@ You can try the package by 1. or 2.:
 
     This performs:
       - calculating NN potential from Chiral EFT
-      - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation
+      - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation with it
       - shell-model calculations with the effective interaction derived by VS-IMSRG
+    The corresponding results with the latest release can be found in [here](https://github.com/SotaYoshida/NuclearToolkit.jl/blob/main/sample_results.dat)
 2. Try sample codes in [HowToUse](howtouse) page.
 
 

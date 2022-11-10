@@ -712,10 +712,11 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
     dWS = dWS2n(dtri,dcgm0,keycg)
 
     #### 9j with {la 1/2 ja; lb 1/2 jb; L S J} structure
-    num9j = 0
+    num9js = zeros{Int64,nthreads()}
     dict9j = [ [ [ [ [ [ [ 0.0 for L=0:Lmax] for lb=0:lmax] for jb=1:2:jmax2] for la=0:lmax] for ja=1:2:jmax2] for S=0:1] for J=0:Jmax]
     @threads for J = 0:Jmax
         tJ = dict9j[J+1]
+        tid = threadid()
         for S = 0:1
             tS = tJ[S+1]
             for ja = 1:2:jmax2
@@ -733,7 +734,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                                 if !tri_check(L,S,J);continue;end
                                 t9j = wigner9j(la,1//2,ja//2,lb,1//2,jb//2,L,S,J)
                                 tlb[L+1] = t9j
-                                num9j +=1
+                                num9js[tid] +=1
                             end
                         end
                     end                
@@ -741,6 +742,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
     end
+    num9j = sum(num9js)
 
     ### Calc. HObrackets
     # To reduce total number of HOBs stored, 2n_i+l_i > 2n_j+l_j case is not considered

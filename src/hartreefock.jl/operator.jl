@@ -750,7 +750,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     Nested = deepcopy(Op_Rp2);aOp!(Nested,0.0)
     nwritten = IMSRGobj.n_written_omega[1]
     for i = 1:nwritten
-        read_omega_bin!(binfo,i,tOmega)
+        read_omega_bin!(binfo,Chan2b,i,tOmega)
         BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)
         aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
     end

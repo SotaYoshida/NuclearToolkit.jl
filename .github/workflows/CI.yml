@@ -68,9 +68,8 @@ jobs:
         include:
           - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
     name: deploy results of Sample script
-      - name: Cleanup
-        working-directory: ./doc
-        run: rm -rf log_sample_script.txt
+      working-directory: ./doc
+      run: rm -rf log_sample_script.txt
       - name: Run sample_script.jl
         run: julia --project="@." -t 4 ./example/sample_script.jl > ./example/log_sample_script.txt
       - name: commit changed files

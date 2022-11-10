@@ -60,7 +60,7 @@ jobs:
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
-  test2:
+  test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

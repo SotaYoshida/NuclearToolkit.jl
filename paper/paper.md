@@ -17,7 +17,6 @@ date: 10 August 2022
 bibliography: paper.bib
 ---
 
-
 # Summary
 One of the ultimate goals in nuclear physics is to understand and predict various properties of nuclei from a fundamental interaction among nucleons, the nuclear force.
 Owing to recent developments in the community, especially in describing the nuclear force and in nuclear many-body methods, it is becoming possible to make quantitative discussions and predictions on various properties with first-principles calculations.
@@ -31,12 +30,12 @@ Users can generate nucleon-nucleon (NN) potentials based on chiral effective fie
 
 In nuclear physics community, many public codes are already available.
 Although it may not be possible to list them all, representative examples are ANTOINE [@ANTOINE], NuShellX [@NuShellX], BIGSTICK [@BIGSTICK1;@BIGSTICK2], and KSHELL [@KSHELL1;@KSHELL2] for valence shell-model and imsrg [@imsrgcode] for IM-SRG.
-People are using those various codes, which are typically written in FORTRAN/Fortran, C++, etc., and call them in their homemade shell or Python scripts.
+People are using those various codes, which are typically written in Fortran, C++, etc., and call them in their homemade shell or Python scripts.
 `NuclearToolkit.jl`, which is not a wrapper of those existing codes, provides
 a new interface that combines these various methods into one and works on a variety of environments, including Linux, Mac, and Windows.
-That is achieved by high readability and portability of Julia language[@Bezanson2012].
+This is achieved thanks to the high readability and portability of the Julia programming language[@Bezanson2012].
 
-This code has been used in previous works [@PTEPSY;@SY2n3n]
+This code has been used in previous works [@PTEPSY;@SY2n3n].
 
 # Acknowledgements
 

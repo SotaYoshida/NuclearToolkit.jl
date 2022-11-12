@@ -68,6 +68,7 @@ While NuclearToolkit covers a wide range of methods, the overall code length is 
   This was originally developed as [an independent package] (https://github.com/SotaYoshida/ShellModel.jl).
   - shell model calculations
   - construct approximate wavefunctions with eigenvector continuation 
+  - evaluate beta-decay properties from KSHELL logfiles
 
 ## Optional parameters
 For some parameters, the default values are used unless the user specifies.

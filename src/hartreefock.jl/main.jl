@@ -629,13 +629,13 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
     EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;io=io)
     EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=io)
-    exists = get(amedata,binfo.nuc.cnuc,false)   
+    exists = get(ame2020data,binfo.nuc.cnuc,false)   
     Eexp = 0.0
     if exists==false
         println(io,"E_HF ", @sprintf("%12.5f",E0), 
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: Not Available")
     else
-        Eexp = - binfo.nuc.A * amedata[binfo.nuc.cnuc][1]/1000.0
+        Eexp = - binfo.nuc.A * ame2020data[binfo.nuc.cnuc].BE/1000.0
         println(io,"E_HF ", @sprintf("%12.5f",E0),
         "  E_MBPT(3) = ",@sprintf("%12.4f",E0+EMP2+EMP3),"  Eexp: "*@sprintf("%12.3f", Eexp))  
     end

@@ -9,22 +9,29 @@ struct kshell_nuc
     nuc::nuclei
     sntf::String
     Egs::Float64
+    Egs_target::Float64
     states::Vector{ksl_state}
 end
 
 """
+    read_kshell_summary(fns::Vector{String};targetJpi="",nuc="")
 
+Reading KSHELL summary file from specified paths, `fns`.
+In some beta-decay studies, multiple candidates for parent g.s. will be considered.
+In that case, please specify optional argument `targetJpi` e.g., targetJpi="Si36", otherwise the state havbing the lowest energy in summary file(s) will be regarded as the parent ground state.
 Example:
->
->Energy levels
->
->N    J prty N_Jp    T     E(MeV)  Ex(MeV)  log-file
->
->1     0 +     1     6   -319.906    0.000  log_Ar48_SDPFSDG_j0p.txt 
+```
+Energy levels
 
+N    J prty N_Jp    T     E(MeV)  Ex(MeV)  log-file
+
+1     0 +     1     6   -319.906    0.000  log_Ar48_SDPFSDG_j0p.txt 
+```
+!!! note
+    J is doubled in old versions of KSHELL (kshell_ui.py).
 """
-function read_kshell_summary(fns::Vector{String};targetJpi="",mode="",nuc="")
-    Egs = 1.e+5; sntf=""
+function read_kshell_summary(fns::Vector{String};targetJpi="",nuc="")
+    Egs = Egs_target = 1.e+5; sntf=""
     states=ksl_state[]
     for fn in fns
         f = open(fn,"r")
@@ -62,11 +69,16 @@ function read_kshell_summary(fns::Vector{String};targetJpi="",mode="",nuc="")
                 push!(states,state)
             end 
             tmpJpi = "j"*string(J2)*ifelse(tl[3]=="+","p","n") 
-            if targetJpi == "" || targetJpi == tmpJpi
-                if Energy < Egs ; Egs = Energy; end
+            Egs = min(Energy,Egs)
+            if targetJpi == "" 
+                Egs_target = Egs
             end
+            if targetJpi == tmpJpi
+                Egs_target = min(Energy,Egs_target)
+            end
+            
         end
     end
     nuclei = def_nuc(string(nuc),"","")
-    return kshell_nuc(nuclei,sntf,Egs,states)
+    return kshell_nuc(nuclei,sntf,Egs,Egs_target,states)
 end

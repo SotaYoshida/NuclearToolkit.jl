@@ -1,12 +1,26 @@
 const K = 6144.0
 const lam_gav = 1.2701
 
-function eval_betadecay_from_kshell_log(fns_sum_parent,fns_sum_daughter,fns_GT,fns_FF,parentJpi;pnuc="",dnuc="")
+"""
+    eval_betadecay_from_kshell_log(fns_sum_parent::Vector{String},fns_sum_daughter::Vector{String},fns_GT::Vector{String},fns_FF::Vector{String},parentJpi::String;pnuc="",dnuc="",verbose=false)
+
+# Arguments
+- `fns_sum_parent::Vector{String}` vector of paths to KSHELL-summary files for the parent nucleus
+- `fns_sum_daughter::Vector{String}` vector of paths to KSHELL-summary files for the daughter nucleus
+- `fns_GT::Vector{String}` vector of paths to KSHELL-log files for Gamow-Teller transitions.
+- `fns_FF::Vector{String}` vector of paths to KSHELL-log files for First-Forbidden transitions.
+
+# Optional Arguments
+- `pnuc::String` to specify the parent nuclei explicitly
+- `dnuc::String` to specify the daughter nuclei explicitly
+- `verbose::Bool` option to show GT/FF transitions for each state
+"""
+function eval_betadecay_from_kshell_log(fns_sum_parent::Vector{String},fns_sum_daughter::Vector{String},fns_GT::Vector{String},fns_FF::Vector{String},parentJpi::String;pnuc="",dnuc="",verbose=false)
     qfactors = get_quenching_factors()
     parent = read_kshell_summary(fns_sum_parent;nuc=pnuc,targetJpi=parentJpi)
     daughter = read_kshell_summary(fns_sum_daughter;nuc=dnuc)
     qvals = get_qval(parent,daughter,parentJpi)
-    eval_logft_f(parent,daughter,qvals,fns_GT,fns_FF,qfactors)
+    eval_logft_f(parent,daughter,qvals,fns_GT,fns_FF,qfactors;verbose=verbose)
 end
 
 mutable struct quenching_factors
@@ -16,19 +30,6 @@ mutable struct quenching_factors
     qx::Float64
     qu::Float64
     qz::Float64
-end
-
-function get_quenching_factors(qtype="")
-    if qtype == "" || qtype == "SY" 
-        # S. Yoshida et al., PRC 97, 054321(2018).
-        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
-    elseif qtype == "W" || qtype == "Warburton" 
-        # E. Warburton, J. Becker, B. Brown, and D. Millener, Ann. Phys. 187, 471 (1988).
-        return quenching_factors(1.0,1.1,1.5,1.0,1.0,0.51)
-    else
-        @warn "qtype=$qtype is not supported! SY value will be used"
-        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
-    end
 end
 
 """
@@ -52,29 +53,44 @@ function Ecoulomb_SM(Z,N)
     return 0.7 * (Z*(Z-1) -0.76 * (Z*(Z-1))^(2/3)) / Rc
 end
 
-function get_qval(parent,daughter,parentJpi)
+function get_quenching_factors(qtype="")
+    if qtype == "" || qtype == "SY" 
+        # S. Yoshida et al., PRC 97, 054321(2018).
+        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
+    elseif qtype == "W" || qtype == "Warburton" 
+        # E. Warburton, J. Becker, B. Brown, and D. Millener, Ann. Phys. 187, 471 (1988).
+        return quenching_factors(1.0,1.1,1.5,1.0,1.0,0.51)
+    else
+        @warn "qtype=$qtype is not supported! SY value will be used"
+        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
+    end
+end
+
+function get_qval(parent::kshell_nuc,daughter::kshell_nuc,parentJpi::String)
     pZ = parent.nuc.Z; dZ = daughter.nuc.Z
     pN = parent.nuc.N; dN = daughter.nuc.N
     deltam = (Mn - Mp - Me)
     # get theoretical Qval
-    qval_tho = parent.Egs + Ecoulomb_SM(pZ,pN) - (daughter.Egs + Ecoulomb_SM(dZ,dN)) + deltam
+    qval_tho = parent.Egs_target + Ecoulomb_SM(pZ,pN) - (daughter.Egs + Ecoulomb_SM(dZ,dN)) + deltam
     # get experimental Qval
     qval_exp = 0.0
     try
-        pBE = amedata[parent.nuc.cnuc][1]*parent.nuc.A
-        dBE = amedata[daughter.nuc.cnuc][1]*daughter.nuc.A
+        pBE = ame2020data[parent.nuc.cnuc].BE*parent.nuc.A
+        dBE = ame2020data[daughter.nuc.cnuc].BE*daughter.nuc.A   
         qval_exp = (dBE-pBE)/1000.0 + deltam
     catch
         println("experimental qval is not available from amedata.jl, so Qval is set 0.0")
     end
-    println(parent.nuc.cnuc,"($parentJpi)=>",daughter.nuc.cnuc, " qval_exp $qval_exp qval_tho $qval_tho")    
+    parEx = parent.Egs_target - parent.Egs
+    gsTF = ifelse(parEx > 0.0,",Ex.="*strip(@sprintf("%9.2f",parEx))*" MeV","")
+    println(parent.nuc.cnuc,"($(parentJpi)$(gsTF))=>",daughter.nuc.cnuc, " qval_exp $qval_exp qval_tho $qval_tho")    
     return [qval_exp,qval_tho]
 end
 
-function eval_logft_f(parent,daughter,Qvals,fns_GT,fns_FF,qfactors::quenching_factors)
+function eval_logft_f(parent::kshell_nuc,daughter::kshell_nuc,Qvals,fns_GT::Vector{String},fns_FF::Vector{String},qfactors::quenching_factors;verbose=false)
     GTdata = eval_bgt_files(fns_GT,qfactors,parent,daughter,Qvals)
-    FFkeys,FFdata = eval_bFF_files(fns_FF,qfactors,parent,daughter,Qvals)
-    calc_halflife(GTdata,FFkeys,FFdata)
+    FFkeys,FFdata = eval_bFF_files(fns_FF,qfactors,parent,daughter,Qvals;verbose=verbose)
+    calc_halflife(GTdata,FFkeys,FFdata;verbose=verbose)
 end
 
 function radius_nuc_for_FermiIntegarl(A;formula=1)
@@ -93,22 +109,30 @@ function calc_halflife(GTdata,FFkeys,FFdata;verbose=false)
             println("Energy ", @sprintf("%12.4f",GTstate.Energy), " J2prty",@sprintf("%4i",GTstate.J2)*GTstate.prty," Ex. ", @sprintf("%9.3f",GTstate.Ex),
                     " BGT ", @sprintf("%13.5f", GTstate.BGT)," log10ft(GT) ", @sprintf("%9.2f", GTstate.logft))
         end
-        hl_GT_expQ += 1.0 / GTstate.hl_expQ
-        hl_GT_thoQ += 1.0 / GTstate.hl_thoQ
+        if GTstate.hl_expQ != 0.0
+            hl_GT_expQ += 1.0 / GTstate.hl_expQ
+        end
+        if GTstate.hl_thoQ != 0.0
+            hl_GT_thoQ += 1.0 / GTstate.hl_thoQ
+        end
     end
     for tkey in FFkeys
-        FFstate = FFdata[tkey]
-        if verbose #&& (FFstate.f0_thoQ != Inf)
+        FFstate = FFdata[tkey]        
+        if FFstate.hl_expQ != 0.0
+            hl_FF_expQ += 1.0 / FFstate.hl_expQ
+        end
+        if FFstate.hl_thoQ != 0.0
+            hl_FF_thoQ += 1.0 / FFstate.hl_thoQ
+        end
+        if verbose && (FFstate.f0_thoQ != Inf)
             logft_expQ = log10(FFstate.f0_expQ*FFstate.hl_expQ)
             logft_thoQ = log10(FFstate.f0_thoQ*FFstate.hl_thoQ)
             println("Energy ", @sprintf("%12.4f",tkey), " J2prty",@sprintf("%4i",FFstate.J2)*FFstate.prty, " Ex. ", @sprintf("%9.3f",FFstate.Ex),
                     " log10ft(expQ) ", @sprintf("%9.2f", logft_expQ)," log10ft(thoQ) ", @sprintf("%9.2f", logft_thoQ) )
         end
-        hl_FF_expQ += 1.0 / FFstate.hl_expQ
-        hl_FF_thoQ += 1.0 / FFstate.hl_thoQ
     end
-    hl_total_expQ = 1.0 / (hl_GT_expQ + hl_FF_expQ)
-    hl_total_thoQ = 1.0 / (hl_GT_thoQ + hl_FF_thoQ)
+    hl_total_expQ = 1.0 / (ifelse(hl_GT_expQ==Inf,0.0,hl_GT_expQ) + ifelse(hl_FF_expQ==Inf,0.0,hl_FF_expQ))
+    hl_total_thoQ = 1.0 / (ifelse(hl_GT_thoQ==Inf,0.0,hl_GT_thoQ) + ifelse(hl_FF_thoQ==Inf,0.0,hl_FF_thoQ))
     hl_GT_expQ = 1.0 / hl_GT_expQ; hl_FF_expQ = 1.0 / hl_FF_expQ
     hl_GT_thoQ = 1.0 / hl_GT_thoQ; hl_FF_thoQ = 1.0 / hl_FF_thoQ
     approp_hl_total_expQ = get_appropunit(hl_total_expQ)
@@ -124,14 +148,16 @@ function get_appropunit(hl_in_sec)
     hl = hl_in_sec
     degit = log10(hl_in_sec)
     aunit = "sec"
-    if 60 <= hl < 3600
+    if hl >= 0.8 * 31556926
+        aunit = "y"; hl /= 31556926
+    elseif 60 <= hl #< 2 *3600
         aunit = "min"; hl /= 60.0
     elseif -3 <= degit < 0
         aunit = "ms"; hl /= 10^(-3)
     elseif -6 <= degit < -3
         aunit = "μs"; hl /= 10^(-6)
     end
-    return  @sprintf("%9.3f",hl) * " " * aunit 
+    return  @sprintf("%15.3f",hl) * " " * aunit 
 end
 
 """
@@ -200,6 +226,7 @@ function eval_bgt_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;us
         if using_strength_funciton_method 
             read_bgtstrength_file!(fn,qfactors,parent,daughter,Qvals,data)
         else
+            @error "only the log files using strength function method is supported now"
             #read_bgt_file!(fn,qfactors,parent,daughter,Qvals,data)
         end
     end
@@ -209,7 +236,7 @@ end
 """
 
 """
-function read_bgtstrength_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,data)
+function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::kshell_nuc,daughter::kshell_nuc,Qvals,data)
     dZ = parent.nuc.Z
     A = parent.nuc.A
     R = radius_nuc_for_FermiIntegarl(A)
@@ -349,10 +376,10 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
                 println("x', u' z    ", @sprintf("%12.4e", xd),@sprintf("%12.4e", ud),@sprintf("%12.4e", z) )
                 #println("K0_01,K0_0 ",@sprintf("%12.4e", K0_m1),@sprintf("%12.4e",K0_0))
                 #println("K2_0,K2_1,K2_2 ",@sprintf("%12.4e", K2_0),@sprintf("%12.4e",K2_1),@sprintf("%12.4e", K2_2) )
-                #println("  W0 ",@sprintf("%12.4e",W0), " qval $qval")
-                #println("fis ",@sprintf("%12.4e", fis[1]),@sprintf("%12.4e", fis[2]),@sprintf("%12.4e", fis[3]),@sprintf("%12.4e", fis[4]) )
+                println("  W0 ",@sprintf("%12.4e",W0), " qval $qval")
                 println("f0, f1, f2  ",@sprintf("%12.4e", f_0),@sprintf("%12.4e", f_1),@sprintf("%12.4e", f_2) )
                 println("log10(f0t) ", @sprintf("%6.2f",logft) ,@sprintf("%10.4f",logft))
+                println("thalf ",@sprintf("%10.4f",thalf))
                 println("")
             end
             if use_expQ
@@ -447,7 +474,10 @@ function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,dat
 end
 
 """
-Since M0rs,M1r,M1rs,M2rs (M0sp,M1p) are evaluated in [fm] ([1/fm]), it is needed to multiply 1/lambda_Ce (lambda_Ce) to get transition matrix element in natural unit.
+    ME_FF_func!(chan,qfactors,C_J,Mred,lambda_Ce,mass_n_nu,dict)
+
+Function to calc FF matrix elements.
+Since M0rs,M1r,M1rs,M2rs (M0sp,M1p) are evaluated in [fm] ([1/fm]) in KSHELL, it is needed to multiply 1/lambda_Ce (lambda_Ce) to get transition matrix element in natural unit.
 """
 function ME_FF_func!(chan,qfactors,C_J,Mred,lambda_Ce,mass_n_nu,dict)
     if chan == "M0rs" #M0rs=<f||[rC1 x sigma]^(0)t^-||i>

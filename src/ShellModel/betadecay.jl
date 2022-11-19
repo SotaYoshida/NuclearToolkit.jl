@@ -56,7 +56,8 @@ end
 function get_quenching_factors(qtype="")
     if qtype == "" || qtype == "SY" 
         # S. Yoshida et al., PRC 97, 054321(2018).
-        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
+        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55)
+        #return quenching_factors(0.77,1.0,1.7,1.0,1.0,0.55) 
     elseif qtype == "W" || qtype == "Warburton" 
         # E. Warburton, J. Becker, B. Brown, and D. Millener, Ann. Phys. 187, 471 (1988).
         return quenching_factors(1.0,1.1,1.5,1.0,1.0,0.51)
@@ -73,24 +74,25 @@ function get_qval(parent::kshell_nuc,daughter::kshell_nuc,parentJpi::String)
     # get theoretical Qval
     qval_tho = parent.Egs_target + Ecoulomb_SM(pZ,pN) - (daughter.Egs + Ecoulomb_SM(dZ,dN)) + deltam
     # get experimental Qval
-    qval_exp = 0.0
+    qval_exp = 0.0 
+    qvalTF= ""
     try
-        pBE = ame2020data[parent.nuc.cnuc].BE*parent.nuc.A
-        dBE = ame2020data[daughter.nuc.cnuc].BE*daughter.nuc.A   
-        qval_exp = (dBE-pBE)/1000.0 + deltam
+        qval_exp = ame2020data[parent.nuc.cnuc].Qval
+        qvalTF = ifelse(occursin("#",qval_exp),"#","")
+        qval_exp = parse(Float64,replace(qval_exp,"#"=>"")) / 1000.0
     catch
         println("experimental qval is not available from amedata.jl, so Qval is set 0.0")
     end
     parEx = parent.Egs_target - parent.Egs
     gsTF = ifelse(parEx > 0.0,",Ex.="*strip(@sprintf("%9.2f",parEx))*" MeV","")
-    println(parent.nuc.cnuc,"($(parentJpi)$(gsTF))=>",daughter.nuc.cnuc, " qval_exp $qval_exp qval_tho $qval_tho")    
+    println(parent.nuc.cnuc,"($(parentJpi)$(gsTF))=>",daughter.nuc.cnuc, " qval_exp$(qvalTF) $qval_exp qval_tho $qval_tho")    
     return [qval_exp,qval_tho]
 end
 
 function eval_logft_f(parent::kshell_nuc,daughter::kshell_nuc,Qvals,fns_GT::Vector{String},fns_FF::Vector{String},qfactors::quenching_factors;verbose=false)
     GTdata = eval_bgt_files(fns_GT,qfactors,parent,daughter,Qvals)
     FFkeys,FFdata = eval_bFF_files(fns_FF,qfactors,parent,daughter,Qvals;verbose=verbose)
-    calc_halflife(GTdata,FFkeys,FFdata;verbose=verbose)
+    calc_halflife(daughter,GTdata,FFkeys,FFdata;verbose=verbose)
 end
 
 function radius_nuc_for_FermiIntegarl(A;formula=1)
@@ -101,28 +103,48 @@ function radius_nuc_for_FermiIntegarl(A;formula=1)
     end
 end
 
-function calc_halflife(GTdata,FFkeys,FFdata;verbose=false)
+function calc_halflife(daughter::kshell_nuc,GTdata,FFkeys,FFdata;verbose=false)
     hl_GT_expQ = hl_FF_expQ = hl_total_expQ = 0.0
     hl_GT_thoQ = hl_FF_thoQ = hl_total_thoQ = 0.0
+    Qw_hl_GT_expQ = Qw_hl_FF_expQ = Qw_hl_total_expQ = 0.0
+    Qw_hl_GT_thoQ = Qw_hl_FF_thoQ = Qw_hl_total_thoQ = 0.0 
+    Sn = NaN
+    try
+        Sn = parse(Float64,replace(ame2020data[daughter.nuc.cnuc].Sn,"#"=>"")) / 1000.0
+    catch   
+        @warn "experimental Sn for $(daughter.nuc.cnuc) is not available from amedata.jl"
+    end
     for GTstate in GTdata
-        if verbose && (GTstate.hl_expQ != Inf)
+        if verbose #&& (GTstate.hl_expQ != Inf)
             println("Energy ", @sprintf("%12.4f",GTstate.Energy), " J2prty",@sprintf("%4i",GTstate.J2)*GTstate.prty," Ex. ", @sprintf("%9.3f",GTstate.Ex),
                     " BGT ", @sprintf("%13.5f", GTstate.BGT)," log10ft(GT) ", @sprintf("%9.2f", GTstate.logft))
         end
         if GTstate.hl_expQ != 0.0
             hl_GT_expQ += 1.0 / GTstate.hl_expQ
+            if GTstate.Ex >= Sn
+                Qw_hl_GT_expQ += 1.0 / GTstate.hl_expQ
+            end
         end
         if GTstate.hl_thoQ != 0.0
             hl_GT_thoQ += 1.0 / GTstate.hl_thoQ
+            if GTstate.Ex >= Sn
+                Qw_hl_GT_thoQ += 1.0 / GTstate.hl_thoQ
+            end
         end
     end
     for tkey in FFkeys
         FFstate = FFdata[tkey]        
         if FFstate.hl_expQ != 0.0
             hl_FF_expQ += 1.0 / FFstate.hl_expQ
+            if FFstate.Ex >= Sn
+               Qw_hl_FF_expQ += 1.0 / FFstate.hl_expQ
+            end
         end
         if FFstate.hl_thoQ != 0.0
             hl_FF_thoQ += 1.0 / FFstate.hl_thoQ
+            if FFstate.Ex >= Sn
+                Qw_hl_FF_thoQ += 1.0 / FFstate.hl_thoQ
+            end
         end
         if verbose && (FFstate.f0_thoQ != Inf)
             logft_expQ = log10(FFstate.f0_expQ*FFstate.hl_expQ)
@@ -131,16 +153,25 @@ function calc_halflife(GTdata,FFkeys,FFdata;verbose=false)
                     " log10ft(expQ) ", @sprintf("%9.2f", logft_expQ)," log10ft(thoQ) ", @sprintf("%9.2f", logft_thoQ) )
         end
     end
+    
     hl_total_expQ = 1.0 / (ifelse(hl_GT_expQ==Inf,0.0,hl_GT_expQ) + ifelse(hl_FF_expQ==Inf,0.0,hl_FF_expQ))
     hl_total_thoQ = 1.0 / (ifelse(hl_GT_thoQ==Inf,0.0,hl_GT_thoQ) + ifelse(hl_FF_thoQ==Inf,0.0,hl_FF_thoQ))
+    Qw_hl_total_expQ = 1.0 / (ifelse(Qw_hl_GT_expQ==Inf,0.0,Qw_hl_GT_expQ) + ifelse(Qw_hl_FF_expQ==Inf,0.0,Qw_hl_FF_expQ))
+    Qw_hl_total_thoQ = 1.0 / (ifelse(Qw_hl_GT_thoQ==Inf,0.0,Qw_hl_GT_thoQ) + ifelse(Qw_hl_FF_thoQ==Inf,0.0,Qw_hl_FF_thoQ))
+    Pn_GT_expQ = ifelse(isnan(Sn),NaN,100 * Qw_hl_GT_expQ / hl_GT_expQ)
+    Pn_GT_thoQ = ifelse(isnan(Sn),NaN,100 * Qw_hl_GT_thoQ / hl_GT_thoQ)
+    Pn_full_expQ = ifelse(isnan(Sn),NaN,100 / (Qw_hl_total_expQ / hl_total_expQ))
+    Pn_full_thoQ = ifelse(isnan(Sn),NaN,100 / (Qw_hl_total_thoQ / hl_total_thoQ))
     hl_GT_expQ = 1.0 / hl_GT_expQ; hl_FF_expQ = 1.0 / hl_FF_expQ
     hl_GT_thoQ = 1.0 / hl_GT_thoQ; hl_FF_thoQ = 1.0 / hl_FF_thoQ
     approp_hl_total_expQ = get_appropunit(hl_total_expQ)
     approp_hl_total_thoQ = get_appropunit(hl_total_thoQ)
     println("ExpQ: "," hl(GT-only) ",@sprintf("%12.4e",hl_GT_expQ), get_appropunit(hl_GT_expQ),
-            " h1/2[sec] ",@sprintf("%12.4e",hl_total_expQ), approp_hl_total_expQ)
+            " h1/2[sec] ",@sprintf("%12.4e",hl_total_expQ), approp_hl_total_expQ,
+            " Pn_GT", @sprintf("%9.2f",Pn_GT_expQ)," Pn_tot", @sprintf("%9.2f",Pn_full_expQ) )
     println("ThoQ: "," hl(GT-only) ",@sprintf("%12.4e",hl_GT_thoQ), get_appropunit(hl_GT_thoQ),
-            " h1/2[sec] ",@sprintf("%12.4e",hl_total_thoQ), approp_hl_total_thoQ)
+            " h1/2[sec] ",@sprintf("%12.4e",hl_total_thoQ), approp_hl_total_thoQ,
+            " Pn_GT", @sprintf("%9.2f",Pn_GT_thoQ)," Pn_tot", @sprintf("%9.2f",Pn_full_thoQ))
     return nothing
 end
 
@@ -149,15 +180,15 @@ function get_appropunit(hl_in_sec)
     degit = log10(hl_in_sec)
     aunit = "sec"
     if hl >= 0.8 * 31556926
-        aunit = "y"; hl /= 31556926
+        aunit = "y  "; hl /= 31556926
     elseif 60 <= hl #< 2 *3600
         aunit = "min"; hl /= 60.0
     elseif -3 <= degit < 0
-        aunit = "ms"; hl /= 10^(-3)
+        aunit = "ms "; hl /= 10^(-3)
     elseif -6 <= degit < -3
-        aunit = "μs"; hl /= 10^(-6)
+        aunit = "μs "; hl /= 10^(-6)
     end
-    return  @sprintf("%15.3f",hl) * " " * aunit 
+    return  @sprintf("%12.3f",hl) * " " * aunit 
 end
 
 """
@@ -273,7 +304,7 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
         BGT = qGT^2 * S
         logft = log10( K / (gAV^2 * BGT) )
         Ex = Energy-daughter.Egs
-        @assert Ex >= 0.0 "Energy $Energy must be daughter Egs $(daughter.Egs)"        
+        @assert Ex >= 0.0 "Energy $Energy must be higher than daughter Egs $(daughter.Egs)"        
         f0_expQ = Fermi_integral(Qvals[1]-Ex,dZ,R)
         f0_thoQ = Fermi_integral(Qvals[2]-Ex,dZ,R)
         hl_expQ =  K / (gAV^2 * BGT) / f0_expQ
@@ -312,7 +343,7 @@ mutable struct bFFdata
     hl_thoQ::Float64
 end
 
-function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;verbose=false)
+function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;verbose=false,nonrela=true)
     dZ = daughter.nuc.Z
     @assert dZ <= 137 "Z = $dZ > 137 is not assumed in Fermi's beta-decay theory"
     A = daughter.nuc.A
@@ -329,6 +360,8 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
     fis = zeros(Float64,4)
     keylist = [ tmp for tmp in keys(data)]
     sorted_keys =  [ keylist[i] for i in sortperm(keylist) ]
+    Ecoul = Ecoulomb_SM(parent.nuc.Z,parent.nuc.N) - Ecoulomb_SM(daughter.nuc.Z,daughter.nuc.N)
+    deltam = (Mn - Mp - Me)
     for tkey in sorted_keys
         ffobj = data[tkey]
         ffobj.prty = dprty
@@ -336,6 +369,7 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
             qval = ifelse(use_expQ,ffobj.Qd_exp,ffobj.Qd_tho)
             J2 = ffobj.J2
             if qval < 0.0; continue;end
+            Egamma = qval - Ecoul - deltam
             W0 = qval / Me + 1.0
             fis[1] = Fermi_integral(qval,dZ,R_in_nu,-1)
             fis[2] = Fermi_integral(qval,dZ,R_in_nu,0)
@@ -347,11 +381,11 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
             K0_m1 = -2/3 * mu1 * gamma1 * zeta0 * ffobj.M0rs
             f_0 = K0_m1 * fis[1] + K0_0 * fis[2]
             # Rank 1:
-            xidy = ffobj.M1p
             x = ffobj.M1r
             xd = ffobj.M1rd
             u = ffobj.M1rs
             ud = ffobj.M1rsd
+            xidy = ifelse(nonrela,Egamma/Me*x,ffobj.M1p)
             Y = xidy - xi * (ud+xd)
             zeta1 = Y + 1/3 * (u-x) * W0
             K1_0 = zeta1^2 + 1/9 * (x + u)^2 - 4/9 * mu1*gamma1*u*(x + u)
@@ -369,14 +403,14 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
             fFF = f_0 + f_1 + f_2
             thalf = K/fFF
             logft = log10(fis[2]*thalf) 
-            if verbose
+            if false #verbose                
                 println("Energy $tkey Ex.",@sprintf("%8.3f",tkey-daughter.Egs)," J2",@sprintf("%4i",J2),ffobj.prty)
                 println("M0s,M0t,M0s'", @sprintf("%12.4e", ffobj.M0rs),@sprintf("%12.4e", ffobj.M0sp),@sprintf("%12.4e", ffobj.M0rsd))
                 println("x, u, xi'y  ", @sprintf("%12.4e", x),@sprintf("%12.4e", u),@sprintf("%12.4e", xidy))
                 println("x', u' z    ", @sprintf("%12.4e", xd),@sprintf("%12.4e", ud),@sprintf("%12.4e", z) )
                 #println("K0_01,K0_0 ",@sprintf("%12.4e", K0_m1),@sprintf("%12.4e",K0_0))
                 #println("K2_0,K2_1,K2_2 ",@sprintf("%12.4e", K2_0),@sprintf("%12.4e",K2_1),@sprintf("%12.4e", K2_2) )
-                println("  W0 ",@sprintf("%12.4e",W0), " qval $qval")
+                println("  W0 ",@sprintf("%12.4e",W0), " qval $qval Egamma $Egamma Ecoul $Ecoul")
                 println("f0, f1, f2  ",@sprintf("%12.4e", f_0),@sprintf("%12.4e", f_1),@sprintf("%12.4e", f_2) )
                 println("log10(f0t) ", @sprintf("%6.2f",logft) ,@sprintf("%10.4f",logft))
                 println("thalf ",@sprintf("%10.4f",thalf))
@@ -394,23 +428,23 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
     return sorted_keys,data
 end
 
-"""
-    get_wf_if_order(fn,parent,daughter)
+# """
+#     get_wf_if_order(fn,parent,daughter)
     
-Since the logfile by KSHELL is given as log_NucA_NucB_sntname_tr_JpiA_JpiB.txt,
-"""
-function get_wf_if_order(fn,parent,daughter)
-    pnuc = parent.nuc.cnuc
-    dnuc = daughter.nuc.cnuc
-    if occursin(pnuc*"_"*dnuc, fn)
-        return true
-    elseif occursin(dnuc*"_"*pnuc,fn)
-        return false
-    else
-        @error "filename:$fn does not include $(pnuc)_$(dnuc) nor $(dnuc)_$(pnuc)"
-        return nothing
-    end
-end
+# Since the logfile by KSHELL is given as log_NucA_NucB_sntname_tr_JpiA_JpiB.txt,
+# """
+# function get_wf_if_order(fn,parent,daughter)
+#     pnuc = parent.nuc.cnuc
+#     dnuc = daughter.nuc.cnuc
+#     if occursin(pnuc*"_"*dnuc, fn)
+#         return true
+#     elseif occursin(dnuc*"_"*pnuc,fn)
+#         return false
+#     else
+#         #@error "filename:$fn does not include $(pnuc)_$(dnuc) nor $(dnuc)_$(pnuc)"
+#         return nothing
+#     end
+# end
 
 function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,data)
     dZ = daughter.nuc.Z
@@ -424,10 +458,10 @@ function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,dat
     FFchannel = ""
     tar_text1 = "First Forbidden"
     tar_text2 = "First forbidden"
-    order = get_wf_if_order(fn,parent,daughter)
+    order = nothing
     for line in lines
         if occursin("FN_LOAD_WAVE_L",line)
-            nuc_l = strip(split(split(split(line,"=")[end],"/")[end],"_")[1])
+            nuc_l = strip(split(split(replace(split(line,"=")[end],"\""=>""),"/")[end],"_")[1])
             order = ifelse(nuc_l == parent.nuc.cnuc,true,false)
         end
         if occursin(tar_text1,line) || occursin(tar_text2,line) 

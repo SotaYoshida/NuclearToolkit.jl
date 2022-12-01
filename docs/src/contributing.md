@@ -84,7 +84,7 @@ Function to calculate the lowest ``n`` wavefunctions and overwrite results to `�
 - `ψ::WaveFunction` the wavefunction, see struct `WaveFunction` for more details.
 - `n::Int64` the number of states of interest.
 """
-function Show_EigenStates!(H::Hamiltonian,ψ::WaveFunction,n::Int64)
+function Eval_EigenStates!(H::Hamiltonian,ψ::WaveFunction,n::Int64)
     # write your nice codes here
     
 end

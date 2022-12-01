@@ -57,7 +57,6 @@ function get_quenching_factors(qtype="")
     if qtype == "" || qtype == "SY" 
         # S. Yoshida et al., PRC 97, 054321(2018).
         return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55)
-        #return quenching_factors(0.77,1.0,1.7,1.0,1.0,0.55) 
     elseif qtype == "W" || qtype == "Warburton" 
         # E. Warburton, J. Becker, B. Brown, and D. Millener, Ann. Phys. 187, 471 (1988).
         return quenching_factors(1.0,1.1,1.5,1.0,1.0,0.51)
@@ -286,8 +285,8 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
         if occursin("parity =",line)
             prty = strip(split(line,"parity =")[end])
         end
-        if occursin("N_EIGEN ",line)
-            n_eigen = parse(Int,split(split(line)[end],",")[1])
+        if occursin("N_EIGEN",line)
+            n_eigen = parse(Int,split(split(line,"=")[end],",")[1])
         end
         if !occursin("strength function ",line); continue; end
         tl = split(line)

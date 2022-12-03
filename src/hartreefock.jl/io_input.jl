@@ -85,7 +85,7 @@ function rm_comment(lines)
     nlines = []
     for line in lines
         line = strip(line)
-        if length(line)>1
+        if length(line) > 0
             if startswith(line,"!")
                 continue
             end

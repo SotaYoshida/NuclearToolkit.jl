@@ -57,12 +57,14 @@ include("ShellModel/input_int_snt.jl")
 include("ShellModel/eigenvector_continuation.jl")
 include("ShellModel/KSHELL.jl")
 include("ShellModel/betadecay.jl")
+include("ShellModel/trans_snt_msnt.jl")
+export read_smsnt
 export main_sm,samplerun_sm # from shellmodel.
 export prepEC,solveEC,solveEC_UQ # from eigenvector_continuation.jl
 export transit_main # from transit.jl
 export read_kshell_summary
 export eval_betadecay_from_kshell_log
-
+export main_trans_msnt
 end
 
 

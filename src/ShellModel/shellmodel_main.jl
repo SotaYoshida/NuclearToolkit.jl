@@ -45,7 +45,7 @@ end
 
 """
 main_sm(sntf,target_nuc,num_ev,target_J;
-        save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-6,
+        save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-8,
         in_wf="",mdimmode=false,calc_moment = false,gfactors = [1.0,0.0,5.586,-3.826],effcharge=[1.5,0.5])
 
 Digonalize the model-space Hamiltonian 
@@ -64,7 +64,7 @@ Digonalize the model-space Hamiltonian
 - `save_wav=false`   whether or not to save wavefunction file 
 - `is_show = true`   to show elapsed time & allocations 
 - `lm = 100`         number of Lanczos vectors to store 
-- `ls = 15`          number of vectors to be used for Thick-Restart 
+- `ls = 20`          number of vectors to be used for Thick-Restart 
 - `tol= 1.e-8`       tolerance for convergence check in the Lanczos method 
 - `in_wf=""`      path to initial w.f. (for preprocessing) 
 - `mdimmode=false`   `true` => calculate only the M-scheme dimension
@@ -83,7 +83,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
     Anum = parse(Int64, match(reg,target_nuc).match)
     lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
     massformula = 1
-    if 16<= Anum <= 40; massformula = 2;end
+    if 16 <= Anum <= 40; massformula = 2;end
     ## massformula=2: J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
     ## we use this for the sd-shell nuclei
     hw, bpar = init_ho_by_mass(Anum,massformula)
@@ -142,7 +142,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
         en =[ [1.e+4 for j=1:num_ev] for i = 1:num_history]
         Rvecs = [ zeros(Float64,mdim) for i=1:num_ev]
         Tmat = zeros(Float64,lm,lm)
-        vks =[]; uks=[];itmin = 1; elit=1
+        vks = Vector{Float64}[]; uks=Vector{Float64}[];itmin = 1; elit=1
         doubleLanczos = false
         if tJ !=-1; doubleLanczos = true;end
             
@@ -261,7 +261,7 @@ To read interaction file in ".snt" format.
 function readsmsnt(sntf,Anum) 
     f = open(sntf,"r");tlines = readlines(f);close(f)
     lines = rm_comment(tlines)
-    line = lines[1]
+    line = lines[1]    
     lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
     p_sps = [zeros(Int64,4) for i=1:lp]
     n_sps = [zeros(Int64,4) for i=1:ln]
@@ -329,7 +329,8 @@ end
 """
    def_mstates(p_sps,n_sps)
 
-to define the single particle states specified by m_z
+to define the single particle states specified by `[n,l,j,tz,mz,p(n)idx]`.
+The last elements `pidx` and `nidx` to represent original index of j states, [n,l,j,tz].
 """
 function def_mstates(p_sps,n_sps)
     mstates_p = Vector{Int64}[] ; mstates_n = Vector{Int64}[]; mz_p = Int64[]; mz_n = Int64[]
@@ -426,7 +427,7 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
         loff = loffs[vrank]
         vecs= [ [ [ false for i = 1:lp] for j=1:2],
                 [ [ false for i = 1:ln] for j=1:2]]
-        blist = bit2b[]
+        blist=bit2b[]
         Vs=Float64[]
         @inbounds for (i,ME) in enumerate(TBMEs[vrank])
             a,b,c,d,totJ,dummy = labels[vrank][i]
@@ -474,7 +475,7 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
         bV1[vrank] = blist
         V1[vrank] = Vs
     end
-    return bV1,V1 #bVpp,Vpp,bVnn,Vnn
+    return bV1,V1 
 end
 
 """
@@ -865,6 +866,19 @@ function ReORTH(it,vtarget,vks)
     return nothing
 end
 
+function Check_Orthogonality(it::Int,vks,en)
+    print_vec("it = $it",en[1])
+    svks = @views vks[1:it+1]
+    for i = 1:it+1
+        for j = i:it+1
+            tdot = dot(svks[i],svks[j])
+            if (abs(tdot) > 1.e-10 && i != j) || (i==j && abs(1-tdot) > 1.e-10)
+                println("dot(",@sprintf("%3i",i),",",@sprintf("%3i",j),") = ",@sprintf("%15.4e",tdot))
+            end
+        end
+    end
+    return nothing
+end
 
 function myQR!(Q,R::FA2,
                d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
@@ -889,8 +903,7 @@ function myQR!(Q,R::FA2,
     return nothing
 end
 
-function bl_QR!(Q,R::FA2,
-               d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
+function bl_QR!(Q,R::FA2,d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
     R .= 0.0
     @inbounds for j = 1:d2
         q = @views Q[:,j]
@@ -909,8 +922,7 @@ function bl_QR!(Q,R::FA2,
     return nothing
 end
 
-function bisearch!(v::Array{Int64,1}, target::Int64,
-                  ret::Array{Int64,1})
+function bisearch!(v::Array{Int64,1}, target::Int64,ret::Array{Int64,1})
     hi = length(v); lo = 1
     ret[2] = 1; ret[3]=length(v)
     @inbounds while ret[2] <= ret[3]
@@ -927,8 +939,7 @@ function bisearch!(v::Array{Int64,1}, target::Int64,
     return nothing
 end
 
-function bisearch_ord!(v::Array{Int64,1}, target::Int64,
-                       ret::Array{Int64,1})
+function bisearch_ord!(v::Array{Int64,1}, target::Int64, ret::Array{Int64,1})
     ret[3] = length(v); ret[2] = 1
     @inbounds while ret[2] <= ret[3]
         ret[1] = div(ret[2]+ret[3],2)
@@ -948,7 +959,7 @@ function func_j(j1::I,j2::I,m1::I,m2::I) where{I<:Int64}
     sqrt( (0.5*j1*(0.5*j1+1.0)-0.5*m1*(0.5*m1-1.0))*(0.5*j2*(0.5*j2+1.0)-0.5*m2*(0.5*m2+1.0)) )
 end
 
-function J_from_JJ1(JJ,tol=1.e-6)
+function J_from_JJ1(JJ,tol=1.e-8)
     for J = 0:100 ## ad hoc J<=50
         hJ = 0.5*J
         if abs(hJ*(hJ+1.0)-JJ) <tol
@@ -1088,8 +1099,7 @@ function calc_1b_jumps!(bi::Int64,bf::Int64,j::Int64,
     return hits
 end
 
-function add_bl_T!(q::Int64,k::Int64,
-                   Tmat::FA2,R::FA2) where{FA2<:Array{Float64,2}}
+function add_bl_T!(q::Int64,k::Int64,Tmat::FA2,R::FA2) where{FA2<:Array{Float64,2}}
     Tmat[q*k+1:q*k+q,q*k-q+1:q*k] .= R
     Tmat[q*k-q+1:q*k,q*k+1:q*k+q] .= R'
     return nothing

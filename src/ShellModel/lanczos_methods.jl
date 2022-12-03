@@ -3,7 +3,7 @@ function TRL(vks,uks,Tmat,k,
              SPEs,ppinfo,nninfo,bis,bfs,block_tasks,
              p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
               eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-             tdims,num_ev,num_history,lm,ls,en,tol,to,doubleLanczos=false)
+             tdims,num_ev,num_history,lm,ls,en,tol,to,doubleLanczos=false,checkorth=false)
     mdim = tdims[end]
     TF=[false]
 
@@ -34,13 +34,14 @@ function TRL(vks,uks,Tmat,k,
             end
             talpha =  dot(vk,vkp1)
             Tmat[it,it] = talpha
-            diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)
+            diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)            
+            if it == mdim; TF[1]=true;end
             if TF[1];elit=it;break;end
-            svks = @views vks[1:it]            
+            svks = @views vks[1:it]
             @timeit to "ReORTH" ReORTH(it,vkp1,svks)
             tbeta = sqrt(dot(vkp1,vkp1))
-            tmp = 1.0/tbeta
-            vkp1 .*= tmp
+            vkp1 .*= 1.0/tbeta
+            if checkorth; Check_Orthogonality(it,vks,en); end
             Tmat[it+1,it] = tbeta; Tmat[it,it+1] = tbeta
             if doubleLanczos
                 if tbeta < Jtol;TF[1]=true;elit=it;break;end

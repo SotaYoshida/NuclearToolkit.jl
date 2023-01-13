@@ -46,7 +46,7 @@ end
 """
 main_sm(sntf,target_nuc,num_ev,target_J;
         save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-8,
-        in_wf="",mdimmode=false,calc_moment = false,gfactors = [1.0,0.0,5.586,-3.826],effcharge=[1.5,0.5])
+        in_wf="",mdimmode=false,calc_moment=false, visualize_occ=false, gfactors=[1.0,0.0,5.586,-3.826],effcharge=[1.5,0.5])
 
 Digonalize the model-space Hamiltonian 
 
@@ -69,6 +69,7 @@ Digonalize the model-space Hamiltonian
 - `in_wf=""`      path to initial w.f. (for preprocessing) 
 - `mdimmode=false`   `true` => calculate only the M-scheme dimension
 - `calc_moment=false`  `true` => calculate mu&Q moments 
+- `visualize_occ=false` `true` => visualize all configurations to be considered
 - `gfactors=[1.0,0.0,5.586,-3.826]` angular momentum and spin g-factors 
 - `effcgarge=[1.5,0.5]` effective charges 
 """
@@ -76,7 +77,9 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
               q=1,is_block=false,is_show=false,
               num_history=3,lm=100,ls=20,tol=1.e-8,
               in_wf="",mdimmode=false,
+              print_evec=false,
               calc_moment = false,
+              visualize_occ = false,
               gfactors = [1.0,0.0,5.586,-3.826],
               effcharge=[1.5,0.5])
     to = TimerOutput()
@@ -103,10 +106,10 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
     pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,mstates_p,mz_p,vp,
                                                   n_sps,mstates_n,mz_n,vn,Mtot)
     lblock=length(pbits)
-    mdim = tdims[end]; if mdim==0;exit();end
-
+    mdim = tdims[end]; if mdim==0;exit();end    
     mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ)
     if mdimmode; return nothing;end
+    if visualize_occ; visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim); end
 
     @timeit to "prep. 1bjumps" begin
         ## bit representation of Hamiltonian operators
@@ -211,6 +214,14 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
                    Jidxs,oPP,oNN,oPNu,oPNd)
         Js[nth] += dot(Rv,vt)
     end
+
+    if print_evec
+        print("\n")
+        for (nth,Rv) in enumerate(Rvecs)
+            print_vec("nth = "*@sprintf("%4i",nth),Rv;long=true)
+        end
+    end
+    
     totJs = J_from_JJ1.(Js)
     #println("totJs $totJs")
     tx_mom =""
@@ -646,10 +657,11 @@ function occ(p_sps::Array{Array{Int64,1}},
     for ith = 1:length(possidxs)
         ni,nj = possidxs[ith]
         Mp = Mps[ni]; Mn = Mns[nj]
-        if Mp + Mn != Mtot;println("warn");end
+        if Mp + Mn != Mtot;@error "something wrong in occ func" ;end
         for i = 1:pDim
             Mcount!(lp,mzp,occs_p[i],Mret)
-            if Mp != Mret[1]; continue;end
+            if Mp != Mret[1]; continue;end           
+            pbit =bitarr_to_int(occs_p[i])
             push!(pbits[ith], bitarr_to_int(occs_p[i]))
             count_jocc!(p_sps,mstates_p,occs_p[i],tocc_p_j)
             push!(occ_p_j[ith],copy(tocc_p_j))
@@ -959,7 +971,7 @@ function func_j(j1::I,j2::I,m1::I,m2::I) where{I<:Int64}
     sqrt( (0.5*j1*(0.5*j1+1.0)-0.5*m1*(0.5*m1-1.0))*(0.5*j2*(0.5*j2+1.0)-0.5*m2*(0.5*m2+1.0)) )
 end
 
-function J_from_JJ1(JJ,tol=1.e-8)
+function J_from_JJ1(JJ,tol=1.e-6)
     for J = 0:100 ## ad hoc J<=50
         hJ = 0.5*J
         if abs(hJ*(hJ+1.0)-JJ) <tol
@@ -973,7 +985,7 @@ end
 function prep_pp(mstates_p::Array{Array{Int64,1},1},
                  pbits::Array{Array{Int64,1}},
                  bVpp::Array{bit2b,1},
-                 Vpp::Array{Float64,1}) where {IA<:Array{Int64,1}}
+                 Vpp::Array{Float64,1}) 
     lMp=length(pbits)
     lmstates_p = length(mstates_p)
     ppinfo = [ [ T1info[] for j=1:length(pbits[i]) ] for i = 1:lMp]
@@ -1000,7 +1012,7 @@ end
 function prep_nn(mstates_n::Array{Array{Int64,1},1},
                  nbits::Array{Array{Int64,1}},
                  bVnn::Array{bit2b,1},
-                 Vnn::Array{Float64,1}) where {IA<:Array{Int64,1}}
+                 Vnn::Array{Float64,1}) 
     lMn=length(nbits)
     lmstates_n = length(mstates_n)
     nninfo = [ [ T1info[ ] for j=1:length(nbits[i]) ] for i = 1:lMn]
@@ -1571,3 +1583,110 @@ function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
 end
 
 
+mutable struct occ_object
+    pbit::Vector{Bool}
+    nbit::Vector{Bool}
+    p_nljs::Vector{Vector{Int64}}
+    n_nljs::Vector{Vector{Int64}}
+    width::Int64
+end
+
+function make_occ_obj(mstates_p,mstates_n)
+    pbit = [false for i=1:length(mstates_p)]
+    nbit = [false for i=1:length(mstates_n)]
+    p_nljs=Vector{Int64}[]
+    n_nljs=Vector{Int64}[]
+    width = 0
+    for (pn,mstates) in enumerate([mstates_p,mstates_n])
+        prev = jmax = 0 
+        nljs = Vector{Int64}[ ]    
+        for tmp in mstates
+            n,l,j = tmp[1:3]
+            if prev != tmp[end]
+                prev = tmp[end]
+                push!(nljs,[n,l,j])
+            end
+            jmax = max(jmax,j)
+        end        
+        width = max(jmax + 1 + 2,width)
+        if pn == 1
+            p_nljs = nljs
+        else
+            n_nljs = nljs
+        end
+    end
+    return occ_object(pbit,nbit,p_nljs,n_nljs,width)
+end
+
+function update_occ_obj!(occ_obj,pbit_int,nbit_int)
+    pbit_arr = reverse(digits(pbit_int, base=2, pad=length(occ_obj.pbit)))
+    nbit_arr = reverse(digits(nbit_int, base=2, pad=length(occ_obj.nbit)))
+    occ_obj.pbit .= pbit_arr
+    occ_obj.nbit .= nbit_arr
+    return nothing
+end
+
+function get_occstring(occ_obj,mstates_p,mstates_n)
+    pbit_arr = occ_obj.pbit
+    nbit_arr = occ_obj.nbit
+    width = occ_obj.width
+    for pn = 1:2
+        pntext = ""
+        jtxt = "-"
+        bitarr = ifelse(pn==1,pbit_arr,nbit_arr)
+        mstates= ifelse(pn==1,mstates_p,mstates_n)
+        for (bitidx,bit) in enumerate(bitarr)
+            n,l,j,tz,mz,oidx = mstates[bitidx]
+            mark = ifelse(bit == 1,"x","o")
+            jtxt *= mark
+            if mz == j
+                tmp = jtxt * "-"
+                while length(tmp) < width
+                    tmp = "-"*tmp*"-"
+                end
+                tmp *= "  "*ifelse(pn==1,"π","ν")*string(n)*chara_l[l]*string(j)*"/2"
+                pntext *= tmp * ifelse(bitidx!=length(pbit_arr),"\n","")
+                jtxt = "-"
+            end
+        end
+        println(pntext)
+    end
+    return nothing
+end
+
+"""
+visualize all configurations in a given model-space
+"""
+function visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim;mdim_max=100)
+    if mdim > mdim_max
+        println("You are trying to execute `visualize_configurations`` for Dim.= $(mdim)!")
+        println("Are you sure?(y/n, default:n)")
+        s = readline( )
+        if s != "y"
+            println("skiped!")
+            return nothing
+        end
+    end
+    println("")
+    nth = 0
+    nblock = length(pbits)
+    occ_obj = make_occ_obj(mstates_p,mstates_n)
+    for block = 1:nblock
+        t_pbits = pbits[block]
+        t_nbits = nbits[block]
+        for pbit in t_pbits
+            for nbit in t_nbits
+                nth += 1
+                nth_txt = nth 
+                if mdim > mdim_max
+                    println("config: ",nth_txt)
+                else 
+                    println("config: ",@sprintf("%4i",nth))
+                end
+                update_occ_obj!(occ_obj,pbit,nbit)
+                get_occstring(occ_obj,mstates_p,mstates_n)
+            end
+        end
+    end
+    return nothing
+end

@@ -321,11 +321,11 @@ end
 struct `dWS2n`, Wigner symbols used in PreCalcHOB
 # Fields
 - `dtri::Dict{Vector{Int64},Float64}` dict for trinomial 
-- `dcgm0::Dict{Vector{Int64},Float64}` dict for special CG coefficients
+- `dcgm0::Dict{Int64,Float64}` dict for special CG coefficients
 - `keycg::Vector{Vector{Int64}}` array of key for cg
 """
 struct dWS2n
     dtri::Dict{Vector{Int64},Float64}
-    dcgm0::Dict{Vector{Int64},Float64}
+    dcgm0::Dict{Int64,Float64}
     keycg::Vector{Vector{Int64}}
 end

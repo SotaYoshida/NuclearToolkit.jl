@@ -218,8 +218,7 @@ function diagonalize_T!(k::Int64,num_ev::Int64,
                         en::Array{Array{Float64,1}},
                         num_history::Int64,
                         TF::Array{Bool,1},
-                        tol::Float64) where{FA<:Array{Float64,1},
-                                            FA2<:Array{Float64,2}}
+                        tol::Float64) 
     for ith = num_history:-1:2
         en[ith] .= en[ith-1]
     end

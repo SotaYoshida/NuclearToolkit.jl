@@ -378,9 +378,9 @@ function Ghob(e1, l1, ea, la, eb, lb,dtri,dcgm0,keycg;to=nothing)
     keycg[3] = l1
     cg = 0.0
     if la <= lb
-        keycg[1] = la; keycg[2] = lb; cg = dcgm0[keycg]
+        tkey = get_nkey3(la,lb,l1); cg = dcgm0[tkey]
     else
-        keycg[1] = lb; keycg[2] = la; cg = dcgm0[keycg] *( (-1)^(la+lb-l1))
+        tkey = get_nkey3(lb,la,l1); cg = dcgm0[tkey] *( (-1)^(la+lb-l1))
     end
     r  = cg * sqrt( (2.0*la + 1.0) * (2.0*lb + 1.0) ) 
     keycg[1]=e1-l1; keycg[2]=ea-la; keycg[3]=eb-lb; r *= sqrt( dtri[keycg] )
@@ -400,7 +400,6 @@ function trinomial(n1,na,nb)
 end
 
 function tri_check(ja,jb,jc)
-    TF= true
     if ja+jb < jc ; return false;end
     if jb+jc < ja ; return false;end
     if jc+ja < jb ; return false;end
@@ -455,7 +454,7 @@ function HObracket(nl, ll, nr, lr, n1, l1, n2, l2, Lam, d::Float64,dWs,tkey9j,di
                         tmp = ((-d)^ed)  * t                        
                         tmp *= t9j 
                         tmp *= Ghob(e1, l1, ea, la, eb, lb, dtri, dcgm0, keycg)
-                        tmp *= Ghob(e2, l2, ec, lc, ed, ld, dtri, dcgm0, keycg) 
+                        tmp *= Ghob(e2, l2, ec, lc, ed, ld, dtri, dcgm0, keycg)
                         tmp *= Ghob(ee, ll, ea, la, ec, lc, dtri, dcgm0, keycg)
                         tmp *= Ghob(er, lr, eb, lb, ed, ld, dtri, dcgm0, keycg)
                         r += tmp
@@ -672,11 +671,11 @@ Note that div(j,2)+1 will be used as idx for ja&jb.
 The same can be said for HOBs
 HOBs => nested array N=>n=>Lam=>lam=>L=>na=>nb=>la (lb is automatically determined)
 """
-function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
+function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0,mode3n=false,N3max=0)
     emax = ifelse(emax_calc!=0,emax_calc,params.emax)
     Nnmax = params.Nnmax
-    Nmax = max(2*emax,Nnmax)
-    if emax >= 10; Nmax = Nnmax + 10;end
+    Nmax = max(2*N3max,max(2*emax,Nnmax))
+    #if emax >= 10; Nmax += 10;end
     Jmax = jmax2 = 2*emax + 1
     Lmax = Jmax + 1
     lmax = emax + 1
@@ -694,7 +693,7 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
     end
     ### CG coeff for special case
     Nmax2 = Nmax*2
-    dcgm0 = Dict{Vector{Int64},Float64}()
+    dcgm0 = Dict{Int64,Float64}()
     hitCG = 0
     for l = 0:Nmax2
         for l1 = 0:Nmax2
@@ -702,8 +701,8 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                 if !tri_check(l1,l2,l);continue;end
                 if l1 > l2;continue;end
                 key = zeros(Int64,3)
-                key[1] = l1; key[2]=l2; key[3]=l
-                dcgm0[key] = CGm0(l1,l2,l)
+                tkey = get_nkey3(l1,l2,l)
+                dcgm0[tkey] = CGm0(l1,l2,l)
                 hitCG +=1
             end
         end
@@ -742,82 +741,13 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
             end
         end
     end
-    num9j = sum(num9js)
+    num9j = sum(num9js)    
 
     ### Calc. HObrackets
-    # To reduce total number of HOBs stored, 2n_i+l_i > 2n_j+l_j case is not considered
-    # sed order n_ab,N_ab,lam_ab,Lam_ab,Lab+1,nb+1,na+1,lb+1 or N_ab,n_ab,Lam_ab,lam_ab,Lab+1,na+1,nb+1,la+1
-    #new (faster, but more memory greedy)
-    @timeit to "HOB" begin
-        HOBs = Dict{Int64, Dict{Int64,Float64}}()
-        HOBkeys = Dict{Int64,Vector{Int64}}()
-        n1keys = Int64[]
-        hit = 0 
-        dict9j_HOB = [ Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}() for L = 0:e2max]
-        arr9j = [ zeros(Int64,9) for i=1:nthreads()]
-        for N=0:e2max
-            for n = 0:e2max-N
-                Lam_max = e2max-2*N-2*n
-                for Lam = 0:Lam_max
-                    lam_max = Lam_max-Lam
-                    for lam = 0:lam_max
-                        e2 = 2*N+Lam + 2*n+lam 
-                        nkey1 = get_nkey_from_key6j(N,n,Lam,lam,0) 
-                        defined = get(HOBs,nkey1,false)
-                        if defined == false
-                            HOBs[nkey1] = Dict{Int64,Float64}()
-                            HOBkeys[nkey1] = Int64[]
-                            push!(n1keys,nkey1)
-                        end
-                        for L = abs(Lam-lam):Lam+lam                            
-                            for n1=0:div(e2,2)
-                                for n2 = 0:div(e2,2)-n1
-                                    l1max = e2-2*n1-2*n2
-                                    for l1 = 0:l1max
-                                        l2 = e2-2*n1-2*n2-l1
-                                        e_1 = 2*n1 + l1; e_2 = 2*n2 + l2
-                                        if (e_1 > e_2) && (2*N+Lam > 2*n+lam); continue;end
-                                        if (l1+l2+lam+Lam)%2 > 0;continue;end
-                                        if !tri_check(l1,l2,L);continue;end
-                                        nkey2 = get_nkey_from_key6j(L,n1,n2,l1,0)
-                                        push!(HOBkeys[nkey1],nkey2)
-                                        hit += 1              
-                                    end
-                                end
-                            end
-                        end                                             
-                    end
-                end
-            end
-        end
-        @timeit to "prep9jHOB" @threads for L = 0:e2max
-            targetdict = dict9j_HOB[L+1]
-            tkey9j = arr9j[threadid()]
-            for N=0:e2max-L
-                for n = 0:e2max-N
-                    Lam_max = e2max-2*N-2*n
-                    for Lam = 0:Lam_max
-                        lam_max = Lam_max-Lam
-                        for lam = 0:lam_max
-                            e2 = 2*N+Lam + 2*n+lam 
-                            for n1=0:div(e2,2)
-                                for n2 = 0:div(e2,2)-n1
-                                    l1max = e2-2*n1-2*n2
-                                    for l1 = 0:l1max
-                                        l2 = e2-2*n1-2*n2-l1
-                                        if l1 > l2;continue;end
-                                        if (l1+l2+lam+Lam)%2 > 0;continue;end
-                                        if !tri_check(l1,l2,L);continue;end
-                                        prep9j_HOB(N,Lam,n,lam,n1,l1,n2,l2,L,d6j_int,tkey9j,targetdict)
-                                    end
-                                end
-                            end
-                        end   
-                    end
-                end
-            end
-        end
-        tkeys = [ zeros(Int64,4) for i=1:nthreads()]
+    Nmax_in = ifelse(mode3n,N3max,e2max)
+    HOBs,HOBkeys,n1keys,dict9j_HOB,arr9j,hit = def_dict_key_9j(Nmax_in,d6j_int,to)
+    tkeys = [ zeros(Int64,4) for i=1:nthreads()]
+    if !mode3n
         @threads for i in eachindex(n1keys)
             nkey1 = n1keys[i]
             tkey = tkeys[threadid()]
@@ -833,12 +763,88 @@ function PreCalcHOB(params::chiEFTparams,d6j_int,to;io=stdout,emax_calc=0)
                 targetdict[nkey2] = tHOB
             end
         end        
-    end    
+    end
     println(io,"@emax $emax ","hitCG $hitCG dWS <", @sprintf("%7.2f",Base.summarysize(dWS)/1024/1024)," MB ",
             "  9j($num9j) <", @sprintf("%7.2f",Base.summarysize(dict9j)/1024/1024)," MB ",
             "  HOB ($hit) <",@sprintf("%7.2f",Base.summarysize(HOBs)/1024/1024), " MB")
     dWS = nothing; dcgm0 =nothing; dtri=nothing 
-    return dict9j,HOBs
+    if mode3n
+        return nine_j_stuff(dict9j_HOB,arr9j)
+    else
+        return dict9j,HOBs
+    end
+end
+
+function def_dict_key_9j(e2max,d6j_int,to)
+    HOBs = Dict{Int64, Dict{Int64,Float64}}()
+    HOBkeys = Dict{Int64,Vector{Int64}}()
+    n1keys = Int64[]
+    hit = 0 
+    dict9j_HOB = [ Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}() for L = 0:e2max]
+    arr9j = [ zeros(Int64,9) for i=1:nthreads()]
+    for N=0:e2max
+        for n = 0:e2max-N
+            Lam_max = e2max-2*N-2*n
+            for Lam = 0:Lam_max
+                lam_max = Lam_max-Lam
+                for lam = 0:lam_max
+                    e2 = 2*N+Lam + 2*n+lam 
+                    nkey1 = get_nkey_from_key6j(N,n,Lam,lam,0) 
+                    defined = get(HOBs,nkey1,false)
+                    if defined == false
+                        HOBs[nkey1] = Dict{Int64,Float64}()
+                        HOBkeys[nkey1] = Int64[]
+                        push!(n1keys,nkey1)
+                    end
+                    for L = abs(Lam-lam):Lam+lam                            
+                        for n1=0:div(e2,2)
+                            for n2 = 0:div(e2,2)-n1
+                                l1max = e2-2*n1-2*n2
+                                for l1 = 0:l1max
+                                    l2 = e2-2*n1-2*n2-l1
+                                    e_1 = 2*n1 + l1; e_2 = 2*n2 + l2
+                                    if (e_1 > e_2) && (2*N+Lam > 2*n+lam); continue;end
+                                    if (l1+l2+lam+Lam)%2 > 0;continue;end
+                                    if !tri_check(l1,l2,L);continue;end
+                                    nkey2 = get_nkey_from_key6j(L,n1,n2,l1,0)
+                                    push!(HOBkeys[nkey1],nkey2)
+                                    hit += 1              
+                                end
+                            end
+                        end
+                    end                                             
+                end
+            end
+        end
+    end
+    @threads for L = 0:e2max
+        targetdict = dict9j_HOB[L+1]
+        tkey9j = arr9j[threadid()]
+        for N=0:e2max-L
+            for n = 0:e2max-N
+                Lam_max = e2max-2*N-2*n
+                for Lam = 0:Lam_max
+                    lam_max = Lam_max-Lam
+                    for lam = 0:lam_max
+                        e2 = 2*N+Lam + 2*n+lam 
+                        for n1=0:div(e2,2)
+                            for n2 = 0:div(e2,2)-n1
+                                l1max = e2-2*n1-2*n2
+                                for l1 = 0:l1max
+                                    l2 = e2-2*n1-2*n2-l1
+                                    if l1 > l2;continue;end
+                                    if (l1+l2+lam+Lam)%2 > 0;continue;end
+                                    if !tri_check(l1,l2,L);continue;end
+                                    prep9j_HOB(N,Lam,n,lam,n1,l1,n2,l2,L,d6j_int,tkey9j,targetdict)
+                                end
+                            end
+                        end
+                    end   
+                end
+            end
+        end
+    end
+    return HOBs,HOBkeys,n1keys,dict9j_HOB,arr9j,hit
 end
 
 function prep9j_HOB(nl, ll, nr, lr, n1, l1, n2, l2, lm,d6j_int,tkey9j,dict9j_HOB)
@@ -1170,4 +1176,74 @@ function PreCalc6j(emax::Int,only_halfinteger=false)
         end
     end
     return d6j,d6j_nabla,d6j_int
+end
+
+function PreCalc6j_3NF(N3max,jmax3)
+    Jmax = N3max
+    int_jmax = Jmax
+    d6j_int = [ Dict{Int64,Float64}() for J = 0:Jmax]
+    for totJ = 0:Jmax
+        tdict = d6j_int[totJ+1]
+        for j1 = 0:int_jmax
+            for j2 = j1:int_jmax
+                if !tri_check(j1,j2,totJ);continue;end
+                for Jp = totJ:Jmax
+                    for j3 = 0:int_jmax
+                        if !tri_check(j2,j3,Jp);continue;end
+                        for j4 = 0:int_jmax
+                            if !tri_check(j3,j4,totJ);continue;end                        
+                            if !tri_check(j1,j4,Jp);continue;end
+                            t6j = wigner6j(Float64,j1,j2,totJ,j3,j4,Jp)
+                            nkey = get_nkey_from_key6j(j1,j2,j3,j4,Jp)
+                            tdict[nkey] = t6j
+                        end
+                    end
+                end
+            end    
+        end
+    end
+    # {1/2 1/2 T(S); t t' T'=1}
+    d6j_dot = Dict{Int64,Dict{Int64,Float64}}() 
+    Tp = 1
+    for T = 1:2:3
+        d6j_dot[T] = Dict{Int64,Float64}()
+        tdict = d6j_dot[T]
+        for t = 0:1
+            for tp = 0:1
+                t6j = wigner6j(Float64,t,tp,Tp,1//2,1//2,T//2)
+                tkey = get_nkey2(t,tp)
+                tdict[tkey] = t6j
+            end
+        end
+    end
+    return d6j_dot,d6j_int
+end
+
+function get_nkey2(i,j;ofst=10^3)
+    return i + j * ofst
+end
+
+function get_nkey3(i,j,k;ofst=10^3)
+    return i + ofst * j + ofst^2 * k
+end
+
+function get_nkey4(i,j,k,l;ofst=10^3)
+    return i + ofst * j + ofst^2 * k + ofst^3 * l
+end
+
+function get_nkey_from_key6j(tkey;ofst_unit=1000)
+    nkey = tkey[1] + tkey[2] * ofst_unit + tkey[3] * ofst_unit^2 + tkey[4] * ofst_unit^3 +  tkey[5] * ofst_unit^4
+    return nkey
+end
+function get_nkey_from_key6j(ji,jj,jk,jl,Jp;ofst_unit=1000)
+    return ji + jj*ofst_unit + jk * ofst_unit^2+ jl* ofst_unit^3 + Jp * ofst_unit^4
+end
+
+"""
+    get_nkey_from_abcdarr(tkey;ofst=1000)
+
+To get integer key from an Int array (with length greater than equal 4)
+"""
+function get_nkey_from_abcdarr(tkey;ofst=1000)
+    return tkey[1] + tkey[2] * ofst + tkey[3] * ofst^2 + tkey[4] * ofst^3 
 end

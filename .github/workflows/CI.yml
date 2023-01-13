@@ -17,10 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: serial}
-          - {version: '1.7',   os: macOS-latest,   payload: serial}
-          - {version: '1.7',   os: windows-2019,   payload: serial}
-          - {version: nightly,   os: ubuntu-latest,  payload: serial}
+          - {version: '1.8',   os: ubuntu-latest,  payload: serial}
+          - {version: '1.8',   os: macOS-latest,   payload: serial}
+          - {version: '1.8',   os: windows-2019,   payload: serial}
+          - {version: nightly, os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -35,12 +35,12 @@ jobs:
         if: ${{ matrix.payload == 'serial' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.7',   os: ubuntu-latest,  payload: mpi}
+          - {version: '1.8',   os: 'ubuntu-18.04',  payload: mpi}
         mpi: [ 'openmpi' ]
     name: mpi test
     steps:
@@ -51,18 +51,23 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: ${{ matrix.mpi }}
-      - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
+      - name: "Run mpi tests"
+        run: |
+          export JULIA_PROJECT=@.
+          export JULIA_MPIEXEC=mpiexecjl
+          export JULIA_NUM_THREADS=1
+          julia --project -e 'ENV["JULIA_MPI_BINARY"]=""; using Pkg; Pkg.add("MPI"); Pkg.build("MPI"; verbose=true); using MPI; MPI.install_mpiexecjl()'
+          julia --project=@. -e "using InteractiveUtils; versioninfo(verbose=true)"
+          julia --project=@. -e "using Pkg; Pkg.instantiate(); Pkg.build()"
+          export PATH=$PATH:/home/runner/.julia/bin
+          mpiexecjl -n 4 julia --depwarn=yes --project=@. ./test/mpirun_test.jl	  
   build2:    
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-18.04'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.7',   os: ubuntu-latest}
+          - {version: '1.8',   os: 'ubuntu-18.04'}
     name: Run sample_script.jl
     steps:     
       - uses: actions/checkout@v2
@@ -81,12 +86,12 @@ jobs:
           commit_message: Update log_sample_script.txt  
   docs:
     name: Documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: '1.7'
+          version: '1.8'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:

@@ -17,10 +17,11 @@ You can try the package in the following ways:
 
     `$ julia -t 8 example/sample_script.jl`
 
-    This performs:
-      - calculation of NN potential from Chiral EFT
-      - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation with it
-      - shell-model calculations with the effective interaction derived by VS-IMSRG
+    This performs:  
+    - calculation of NN potential from Chiral EFT
+    - HFMBPT(3) and IMSRG/VS-IMSRG(2) calculation with it
+    - shell-model calculations with the effective interaction derived by VS-IMSRG
+
     An expected results using the latest dev branch can be found [here](https://github.com/SotaYoshida/NuclearToolkit.jl/blob/develop/example/log_sample_script.txt).
 * Try sample codes in [HowToUse](howtouse) page.
 

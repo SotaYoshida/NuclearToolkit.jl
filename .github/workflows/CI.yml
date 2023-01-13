@@ -50,7 +50,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: x64
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@vlatest
+      - uses: julia-actions/julia-buildpkg@v1
       - run: sudo apt-get update
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1

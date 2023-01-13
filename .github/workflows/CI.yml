@@ -51,8 +51,6 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:

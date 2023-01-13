@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.8',   os: ubuntu-latest,  payload: mpi}
+          - {version: '1.8',   os: 'ubuntu-20.04',  payload: mpi}
         mpi: [ 'openmpi' ]
     name: mpi test
     steps:
@@ -51,21 +51,19 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
       - run: sudo apt-get update
-
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
           mpi: ${{ matrix.mpi }}
       - run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
   build2:    
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-20.04'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.8',   os: ubuntu-latest}
+          - {version: '1.8',   os: 'ubuntu-20.04'}
     name: Run sample_script.jl
     steps:     
       - uses: actions/checkout@v2

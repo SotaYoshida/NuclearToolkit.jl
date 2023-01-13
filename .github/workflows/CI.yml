@@ -52,11 +52,11 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - run: sudo apt-get update
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: ${{ matrix.mpi }}
-      - name: "Run tests"
+      #- name: Setup MPI
+      #  uses: mpi4py/setup-mpi@v1
+      #  with:
+     #     mpi: ${{ matrix.mpi }}
+      - name: "Run mpi tests"
         run: |
           export JULIA_PROJECT=@.
           export JULIA_MPIEXEC=mpiexecjl

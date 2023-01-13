@@ -20,7 +20,7 @@ jobs:
           - {version: '1.8',   os: ubuntu-latest,  payload: serial}
 	  - {version: '1.8',   os: macOS-latest,   payload: serial}
           - {version: '1.8',   os: windows-2019,   payload: serial}
-          - {version: nightly,   os: ubuntu-latest,  payload: serial}
+          - {version: nightly, os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -51,11 +51,6 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - run: sudo apt-get update
-      #- name: Setup MPI
-      #  uses: mpi4py/setup-mpi@v1
-      #  with:
-      #     mpi: ${{ matrix.mpi }}
       - name: "Run mpi tests"
         run: |
           export JULIA_PROJECT=@.
@@ -66,7 +61,6 @@ jobs:
           julia --project=@. -e "using Pkg; Pkg.instantiate(); Pkg.build()"
           export PATH=$PATH:/home/runner/.julia/bin
           mpiexecjl -n 4 julia --depwarn=yes --project=@. ./test/mpirun_test.jl	  
-      #- run: mpiexec -n 4 julia --project="@." ./test/mpirun_test.jl
   build2:    
     runs-on: 'ubuntu-18.04'
     strategy:

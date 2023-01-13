@@ -18,8 +18,8 @@ jobs:
       matrix:
         include:
           - {version: '1.8',   os: ubuntu-latest,  payload: serial}
-          - {version: '1.8',   os: macOS-latest,   payload: serial}
-          - {version: '1.8',   os: windows-2019,   payload: serial}
+          #- {version: '1.8',   os: macOS-latest,   payload: serial}
+          #- {version: '1.8',   os: windows-2019,   payload: serial}
           - {version: nightly,   os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2

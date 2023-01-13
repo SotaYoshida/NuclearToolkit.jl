@@ -340,15 +340,6 @@ function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to)
 end
 
 """
-    get_nkey_from_abcdarr(tkey;ofst=1000)
-
-To get integer key from an Int array (with length greater than equal 4)
-"""
-function get_nkey_from_abcdarr(tkey;ofst=1000)
-    return tkey[1] + tkey[2] * ofst + tkey[3] * ofst^2 + tkey[4] * ofst^3 
-end
-
-"""
     get_abcdarr_from_intkey!(nkey,abcdarr;ofst=1000)
 
 A destructive function to get original array from integer array.

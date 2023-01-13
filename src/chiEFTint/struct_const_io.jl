@@ -701,14 +701,17 @@ end
 
 function to print float vectors more readable. This is usuful for debug.
 """
-function print_vec(s,v,io=stdout;ine=false)
+function print_vec(s,v,io=stdout;ine=false,long=false)
     s *= " "
     for i = 1:length(v)
         if ine
             s *= @sprintf "%9.1e" v[i]
         else
-            s *= @sprintf "%10.4f" v[i]
-            #s *= @sprintf "%25.15f" v[i] 
+            if long
+                s *= @sprintf "%15.8f" v[i]
+            else  
+                s *= @sprintf "%10.4f" v[i]
+            end
     	end
     end
     println(io,s)

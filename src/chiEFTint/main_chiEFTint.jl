@@ -449,6 +449,14 @@ function Rnl_all_ab(chiEFTobj,lmax_in,br,n_mesh,xr_fm)
 end
 
 """
+simply calculate ``R_{nl}(p,b) = \\sqrt{ \\frac{2 n! b^3}{\\Gamma(n+l+3/2)} (pb)^l e^{-p^2b^2/2} L^{l+1/2}_{n}(p^2b^2) }``
+"""
+function single_Rnl(p,b,n,l)
+    pb  = p*b
+    return sqrt(2.0*factorial(n) * b^3 / gamma(n+l+3/2)) * (pb^l) *exp(-0.5*pb^2) * genLaguerre(n,l+1//2,pb^2)
+end
+
+"""
     prepare_2b_pw_states(;io=stdout)
 
 preparing two-body partical-wave channels, <Lp,S,J| |L,S,J>.

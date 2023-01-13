@@ -59,8 +59,9 @@ function dict_em500n3lo()
     dLECs["ct1_NNLO"] = -0.804  
     dLECs["ct3_NNLO"] = -2.828   
     dLECs["ct4_NNLO"] =  4.811   
-    dLECs["cD"] =  0.545
-    dLECs["cE"] = -0.044 
+    dLECs["cD"] = 0.000
+    dLECs["cE"] = 0.0 
+
     ## N3LO GeV^-2
     dLECs["d12"] = 3.06
     dLECs["d3"] = -3.27

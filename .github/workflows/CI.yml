@@ -51,6 +51,7 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
+      - run: sudo apt-get update
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:

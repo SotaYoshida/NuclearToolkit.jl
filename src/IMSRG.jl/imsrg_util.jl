@@ -559,14 +559,6 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j
     return nothing
 end
 
-function get_nkey_from_key6j(tkey;ofst_unit=1000)
-    nkey = tkey[1] + tkey[2] * ofst_unit + tkey[3] * ofst_unit^2 + tkey[4] * ofst_unit^3 +  tkey[5] * ofst_unit^4
-    return nkey
-end
-function get_nkey_from_key6j(ji,jj,jk,jl,Jp;ofst_unit=1000)
-    return ji + jj*ofst_unit + jk * ofst_unit^2+ jl* ofst_unit^3 + Jp * ofst_unit^4
-end
-
 function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dict6j,
                    core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split") 
     Chan2b = Chan2bD.Chan2b

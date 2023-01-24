@@ -55,12 +55,16 @@ function dict_em500n3lo()
     dLECs["c2_NNLO"] =  2.8
     dLECs["c3_NNLO"] = -3.2
     dLECs["c4_NNLO"] =  5.4
+    dLECs["cD"] = 1.000
+    dLECs["cE"] = 1.0 
     ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
     dLECs["ct1_NNLO"] = -0.804  
     dLECs["ct3_NNLO"] = -2.828   
     dLECs["ct4_NNLO"] =  4.811   
-    dLECs["cD"] = 0.000
-    dLECs["cE"] = 0.0 
+
+    dLECs["cD"] = 1.0
+    dLECs["cE"] = 1.0 
+
 
     ## N3LO GeV^-2
     dLECs["d12"] = 3.06

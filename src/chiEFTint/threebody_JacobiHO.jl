@@ -14,7 +14,7 @@ end
 """
 ``\\int d\\pi_1 d\\pi_2 ``
 """
-function inner_nonlocal(params)
+function inner_nonlocal(params,to)
     N3max = params.N3max
     Rnls_r,Rnls_p = prep_Rnls(params)
     gKXs = prep_gKX(params)
@@ -135,7 +135,8 @@ end
 
 function gKX(K,X,p,pp,us,ws)
     Mpi_fm = mean(mpis) / hc
-    ret = 0.0
+
+        ret = 0.0
     for (i,u) in enumerate(us)
         w = ws[i]
         px = Legendre(X,u)
@@ -198,154 +199,61 @@ end
 """
 function to calculate integrals in local Jacobi HO three-body matrix elements
 """
-function inner_local(params)
+function inner_local(params,to)
     N3max = params.N3max
     Rnls_r,Rnls_p = prep_Rnls(params)
     ps = params.meshpoints.ps
     ws = params.meshpoints.wps     
-    Z0s,Z0Xs,fKs,fKXs = prep_Z0s_Z0Xs_fKs(params)
-    Xmax_tpe = N3max*2
-
+    @timeit to "Zs" Z0s,Z0Xs,fKs,fKXs = prep_Z0s_Z0Xs_fKs(params)
+    Xmax_tpe = params.j3max + 1 + 2 + 2
+    #println("Xmax_tpe $Xmax_tpe N3max $N3max L3max $(params.L3max) L3max*2 + 2(K2) + 2(K3) $(params.L3max*2+2+2) ")
+  
     integ_E = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_D = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_c1 = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_c34 = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
-
-    for E_bra = 0:N3max
-        for E_ket = E_bra:N3max
-            Ekey = get_nkey2(E_bra,E_ket)
-            integ_E[Ekey] = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}()
-            integ_D[Ekey] = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}()
-            integ_c1[Ekey] = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}()
-            integ_c34[Ekey] = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}()
-
-            target = integ_E[Ekey]
-            targetD= integ_D[Ekey]
-            for e1 = 0:E_bra
-                e2 = E_bra - e1 
-                for n1 = 0:div(e1,2)
-                    l1 = e1 - 2*n1
-                    tkey1 = get_nkey3(e1,n1,l1)
-                    R1s = Rnls_r[tkey1]
-                    for n2 = 0:div(e2,2)
-                        l2 = e2 - 2*n2
-                        tkey2 = get_nkey3(e2,n2,l2)
-                        R2s = Rnls_r[tkey2]
-                        for e1p = 0:E_ket
-                            e2p = E_ket - e1p 
-                            e4key = get_nkey4(e1,e2,e1p,e2p)
-                            check_construct_integdict(integ_E,Ekey,e4key)
-                            check_construct_integdict(integ_D,Ekey,e4key)
-                            check_construct_integdict(integ_c1,Ekey,e4key)
-                            check_construct_integdict(integ_c34,Ekey,e4key)
-
-                            tdict = target[e4key]
-                            tdictD= targetD[e4key]
-                            tdictc1= integ_c1[Ekey][e4key]
-                            tdictc34= integ_c34[Ekey][e4key]
-                            for n1p = 0:div(e1p,2)
-                                l1p = e1p - 2*n1p
-                                tkey1p = get_nkey3(e1p,n1p,l1p)
-                                R1ps = Rnls_r[tkey1p]
-                                for n2p = 0:div(e2p,2)
-                                    l2p = e2p - 2*n2p
-                                    tkey2p = get_nkey3(e2p,n2p,l2p)
-                                    R2ps = Rnls_r[tkey2p]
-                                    key_bra = get_nkey4(n1,l1,n2,l2)
-                                    key_ket = get_nkey4(n1p,l1p,n2p,l2p)
   
-                                    # Contact
-                                    check_construct_integdict(integ_E,Ekey,e4key,key_bra,key_ket;level=2)
-                                    ret = tdict[key_bra][key_ket]
-                                    Xmin = max(abs(l1-l1p),abs(l2-l2p))
-                                    Xmax = min(l1+l1p,l2+l2p)
-                                    for X = Xmin:Xmax  
-                                        ret[X] = 0.0
-                                    end
+    @threads for n_thre = 1:4
+        target = integ_E
+        if n_thre == 2; target = integ_D;end
+        if n_thre == 3; target = integ_c1;end
+        if n_thre == 4; target = integ_c34;end
 
-                                    # OPE
-                                    check_construct_integdict(integ_D,Ekey,e4key,key_bra,key_ket;level=2)
-                                    retD = tdictD[key_bra][key_ket]
-                                    Xmin_D = abs(l2-l2p)
-                                    Xmax_D = l2 + l2p
-                                    for K = 0:2:2
-                                        for X = Xmin_D:Xmax_D
-                                            retD[get_nkey2(K,X)] = 0.0
-                                        end
-                                    end
-
-                                    # TPE: c1 term
-                                    check_construct_integdict(integ_c1,Ekey,e4key,key_bra,key_ket;level=2)
-                                    retc1 = tdictc1[key_bra][key_ket]
-                                    for K3 = 0:1
-                                        for X = 0:Xmax_tpe
-                                            retc1[get_nkey2(K3,X)] = 0.0
-                                        end
-                                    end
-
-                                    # TPE: c3&c4 term
-                                    check_construct_integdict(integ_c34,Ekey,e4key,key_bra,key_ket;level=2)
-                                    retc34 = tdictc34[key_bra][key_ket]
-                                    for K1 = 0:2:2
-                                        for K2 = 0:2:2
-                                            for X = 0:Xmax_tpe
-                                                for K3 = 0:K2
-                                                    retc34[get_nkey4(K1,K2,K3,X)] = 0.0
-                                                end
-                                            end
-                                        end
-                                    end
-                                    
-                                    for (imesh1,w1) in enumerate(ws)
-                                        R1 = R1s[imesh1]
-                                        R1p = R1ps[imesh1]
-                                        Z0 = Z0s[imesh1]
-                                        p1 = ps[imesh1]
-                                        for (imesh2,w2) in enumerate(ws)
-                                            R2  = R2s[imesh2]
-                                            R2p = R2ps[imesh2]                
-                                            p2 = ps[imesh2] 
-                                            meshkey = get_nkey2(imesh1,imesh2)
-                                            # for Contact
-                                            for X = Xmin:Xmax              
-                                                Z0X = Z0Xs[X+1][meshkey]
-                                                ret[X] += w1 * w2 * R1 * R1p * R2 * R2p * Z0 * Z0X
-                                            end
-                                            # for OPE
-                                            for X = Xmin_D:Xmax_D
-                                                Z0X = Z0Xs[X+1][meshkey]
-                                                for K = 0:2:2
-                                                    KXkey = get_nkey2(K,X)
-                                                    fK = fKs[get_nkey2(K,imesh1)]
-                                                    retD[KXkey] +=  w1 * w2 * R1 * R1p * R2 * R2p * fK * Z0X
-                                                end
-                                            end
-                                            # for TPE c1
-                                            for K3 = 0:1
-                                                for X = 0:Xmax_tpe
-                                                    f1  = fKs[get_nkey2(1,imesh1)]
-                                                    f1X = fKXs[get_nkey4(1,X,imesh1,imesh2)]
-                                                    retc1[get_nkey2(K3,X)] += w1 * w2 * R1 * R1p * R2 * R2p * f1 * f1X * (p1/sqrt(2.0))^K3 * (p2*sqrt(3/2))^(1-K3)
-                                                end
-                                            end
-                                            # for TPE c3&c4
-                                            for K1 = 0:2:2
-                                                fK1 = fKs[get_nkey2(K1,imesh1)]
-                                                for K2 = 0:2:2
-                                                    for X = 0:Xmax_tpe
-                                                        fK2X = fKXs[get_nkey4(K2,X,imesh1,imesh2)]
-                                                        for K3 = 0:K2
-                                                            retc34[get_nkey4(K1,K2,K3,X)] += w1 * w2 * R1 * R1p * R2 * R2p * fK1 * fK2X * (p1/sqrt(2.0))^K3 * (p2*sqrt(3/2))^(K2-K3)
-                                                        end
-                                                    end
-                                                end
-                                            end
-                                        end
+        for E_bra = 0:N3max
+            for E_ket = E_bra:N3max
+                Ekey = get_nkey2(E_bra,E_ket)
+                target[Ekey] = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}()
+                for e1 = 0:E_bra
+                    e2 = E_bra - e1 
+                    for n1 = 0:div(e1,2)
+                        l1 = e1 - 2*n1
+                        tkey1 = get_nkey3(e1,n1,l1)
+                        R1s = Rnls_r[tkey1]
+                        for n2 = 0:div(e2,2)
+                            l2 = e2 - 2*n2
+                            tkey2 = get_nkey3(e2,n2,l2)
+                            R2s = Rnls_r[tkey2]
+                            for e1p = 0:E_ket
+                                e2p = E_ket - e1p 
+                                e4key = get_nkey4(e1,e2,e1p,e2p)
+                                check_construct_integdict(target,Ekey,e4key)
+                                for n1p = 0:div(e1p,2)
+                                    l1p = e1p - 2*n1p
+                                    tkey1p = get_nkey3(e1p,n1p,l1p)
+                                    R1ps = Rnls_r[tkey1p]
+                                    for n2p = 0:div(e2p,2)
+                                        l2p = e2p - 2*n2p
+                                        tkey2p = get_nkey3(e2p,n2p,l2p)
+                                        R2ps = Rnls_r[tkey2p]
+                                        key_bra = get_nkey4(n1,l1,n2,l2)
+                                        key_ket = get_nkey4(n1p,l1p,n2p,l2p)
+                                        integ_inner_nnlo(n_thre,target,Ekey,e4key,key_bra,key_ket,l1,l1p,l2,l2p,Xmax_tpe,
+                                                         ps,ws,R1s,R1ps,R2s,R2ps,Z0s,Z0Xs,fKs,fKXs)
                                     end
                                 end
                             end
                         end
-                    end
+                    end 
                 end
             end
         end
@@ -353,19 +261,103 @@ function inner_local(params)
     return inner_integ_local(integ_c1,integ_c34,integ_D,integ_E)
 end
 
+function integ_inner_nnlo(n_thre,target,Ekey,e4key,key_bra,key_ket,l1,l1p,l2,l2p,Xmax_tpe,
+                         ps,ws,R1s,R1ps,R2s,R2ps,Z0s,Z0Xs,fKs,fKXs)
+    check_construct_integdict(target,Ekey,e4key,key_bra,key_ket;level=2)
+    ret = target[Ekey][e4key][key_bra][key_ket]
+    if n_thre == 1  # Contact
+        Xmin = max(abs(l1-l1p),abs(l2-l2p))
+        Xmax = min(l1+l1p,l2+l2p)
+        for X = Xmin:Xmax  
+            tsum = 0.0
+            for (imesh1,w1) in enumerate(ws)
+                R1 = R1s[imesh1]; R1p = R1ps[imesh1]
+                Z0 = Z0s[imesh1]
+                for (imesh2,w2) in enumerate(ws)
+                    R2  = R2s[imesh2]; R2p = R2ps[imesh2]
+                    Z0X = Z0Xs[get_nkey3(X,imesh1,imesh2)]
+                    tsum += w1 * w2 * R1 * R1p * R2 * R2p * Z0 * Z0X
+                end
+            end
+            ret[X] = tsum
+        end
+    elseif n_thre == 2 # OPE
+        Xmin_D = abs(l2-l2p)
+        Xmax_D = l2 + l2p
+        for K = 0:2:2
+            for X = Xmin_D:Xmax_D
+                tsum = 0.0
+                for (imesh1,w1) in enumerate(ws)
+                    R1 = R1s[imesh1]; R1p = R1ps[imesh1]
+                    fK = fKs[get_nkey2(K,imesh1)]
+                    for (imesh2,w2) in enumerate(ws)
+                        R2  = R2s[imesh2]; R2p = R2ps[imesh2]
+                        Z0X = Z0Xs[get_nkey3(X,imesh1,imesh2)]
+                        tsum +=  w1 * w2 * R1 * R1p * R2 * R2p * fK * Z0X
+                    end
+                end                                        
+                ret[get_nkey2(K,X)] = tsum                                        
+            end
+        end
+    elseif n_thre == 3 # TPE: c1 term
+        for K3 = 0:1
+            for X = 0:Xmax_tpe
+                tsum = 0.0
+                for (imesh1,w1) in enumerate(ws)
+                    R1 = R1s[imesh1]; R1p = R1ps[imesh1];p1 = ps[imesh1]
+                    f1  = fKs[get_nkey2(1,imesh1)]
+                    for (imesh2,w2) in enumerate(ws)
+                        R2  = R2s[imesh2]; R2p = R2ps[imesh2];p2 = ps[imesh2]
+                        f1X = fKXs[get_nkey4(1,X,imesh1,imesh2)]
+                        tsum += w1 * w2 * R1 * R1p * R2 * R2p * f1 * f1X * (p1/sqrt(2.0))^K3 * (p2*sqrt(3/2))^(1-K3)
+                    end
+                end
+                ret[get_nkey2(K3,X)] = tsum
+            end
+        end
+    elseif n_thre == 4 # TPE: c3&c4 term
+        for X = 0:Xmax_tpe
+            for K1 = 0:2:2
+                for K2 = 0:2:2                
+                    for K3 = 0:K2                                                
+                        tsum = 0.0
+                        for (imesh1,w1) in enumerate(ws)
+                            R1 = R1s[imesh1]; R1p = R1ps[imesh1];p1 = ps[imesh1]
+                            fK1 = fKs[get_nkey2(K1,imesh1)]
+                            for (imesh2,w2) in enumerate(ws)
+                                R2  = R2s[imesh2]; R2p = R2ps[imesh2];p2 = ps[imesh2]
+                                fK2X = fKXs[get_nkey4(K2,X,imesh1,imesh2)]
+                                tsum += w1 * w2 * R1 * R1p * R2 * R2p * fK1 * fK2X * (p1/sqrt(2.0))^K3 * (p2*sqrt(3/2))^(K2-K3)
+                            end
+                        end
+                        ret[get_nkey4(K1,K2,K3,X)] = tsum
+                    end
+                end
+            end
+        end        
+    end
+    return nothing
+end
+
 function prep_inner_integ(params3N,to)
-    regulator = params3N.regulator
+    regulator = params3N.regulator  
     tfunc = ifelse(regulator=="local",inner_local,inner_nonlocal)
-    return tfunc(params3N)
+    return tfunc(params3N,to)
 end
 
 function Calc_3NF_in_JacobiHO_coorrdinate(params3N,LECs,to)
+    print("Calculating inner integrals... ")
     @timeit to "prep_inner" inner_integ = prep_inner_integ(params3N,to)
+    println("=> Done!")
     labframe = true
     if labframe
         #calculation of 3NF in laboratory frame(???)
+        print("Calculating CFPs")
         @timeit to "chJPT" JPTs,cfps = calc_channel_JPT(params3N,to)
+        println("=> Done!")
+        print("Calculating JacobiHO matrix elements")
         @timeit to "calc JacobiHO_3NF" JacobiHO_3NF(LECs,params3N,JPTs,cfps,inner_integ)
+        println("=> Done!")
         @timeit to "read JacobiHO_3NF" read_JacobiHO_3NF(params3N,JPTs)
     else
         #solve three-body system
@@ -527,8 +519,8 @@ function write_cfp_bin(io,north,nphys,vals,vecs,JPT,N,params,cfpvals_ch)
             write(io,vec)
         elseif abs(val-0.0) < 1.e-5
             nothing
-        else
-            println("warn! something is wrong")
+        else            
+            @error "warn! something is wrong:eval cfp $val"
             exit()
         end
     end
@@ -662,12 +654,12 @@ function calc_write_JacobiHO_ME(idx_JPT::Int,N3max::Int64,JPT,
                     v_d = JacobiHO_3NF_OPE(params3NF,LECs,inner_integ,bra,ket)
                     v_e = JacobiHO_3NF_Contact(params3NF,LECs,inner_integ,bra,ket)
                     vmat = v_134 + v_d + v_e
+                  
                     Vmat[idx_bra,idx_ket] = Vmat[idx_ket,idx_bra] =  vmat
                 end
             end            
         end
     end
-
     BLAS.gemm!('N','N',3.0,Cmat,Vmat,0.0,tmat)
     BLAS.gemm!('N','T',1.0,tmat,Cmat,0.0,Vret)
 
@@ -676,7 +668,7 @@ function calc_write_JacobiHO_ME(idx_JPT::Int,N3max::Int64,JPT,
     norm_CVC = norm(Vret,2)
                 
     println("   J =",@sprintf("%3i", J),"   P =",@sprintf("%3i", P),"   T =",@sprintf("%3i", T),
-            "  dimp",@sprintf("%4i",dim_phys),"  dimo",@sprintf("%4i",dim_orth),
+            "  dimp",@sprintf("%5i",dim_phys),"  dimo",@sprintf("%5i",dim_orth),
             "  normC ",@sprintf("%12.5f",norm_C),"  normV ",@sprintf("%12.5f",norm_V),
             "  normCVC ",@sprintf("%12.5f",norm_CVC))
 
@@ -694,8 +686,8 @@ function JacobiHO_3NF_TPE(params3NF,LECs,inner_integ,bra,ket)
     if params3NF.regulator == "local"        
         return tpe_JacobiHO_local(params3NF,LECs,inner_integ,bra,ket)
     elseif params3NF.regulator == "nonlocal"
-        @error "not defined!!"
-        return tpe_JacobiHO_nonlocal(params3NF,LECs,inner_integ,bra,ket)
+        @error "tpe_JacobiHO_nonlocal not defined now!!"
+        #return tpe_JacobiHO_nonlocal(params3NF,LECs,inner_integ,bra,ket)
     else
         @error "regulator = $(params3NF.regulator) is not supported now"
     end    
@@ -743,7 +735,7 @@ function contact_JacobiHO_nonlocal(params3NF,coeffE,inner_integ::inner_integ_non
     if k_s12 != k_j12; return 0.0;end
     if b_s12 != k_s12; return 0.0;end
     if b_t12 == k_t12 == 0; return 0.0; end
-    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_dot)
+    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_lj)
     if tdot==0.0; return 0.0; end
     e_bra = 2*b_n12 + 2*b_n3; tkey1 = get_nkey3(e_bra,b_n12,b_n3); freg1 = inner_integ.integ_E[tkey1]
     e_ket = 2*k_n12 + 2*k_n3; tkey2 = get_nkey3(e_ket,k_n12,k_n3); freg2 = inner_integ.integ_E[tkey2]
@@ -757,7 +749,7 @@ function prep_Z0s_Z0Xs_fKs(params)
     ps = params.meshpoints.ps
     ws = params.meshpoints.wps
     Z0s  = Dict{Int64,Float64}() 
-    Z0Xs = [ Dict{Int64,Float64}() for X = 0:Xmax] 
+    Z0Xs = Dict{Int64,Float64}()
     fKs  = Dict{Int64,Float64}() 
     fKXs  = Dict{Int64,Float64}() 
 
@@ -771,17 +763,14 @@ function prep_Z0s_Z0Xs_fKs(params)
         xi1 = p /sqrt(2.0)
         for (imesh2,w2) in enumerate(ws)
             xi2 = ps[imesh2] * sqrt(3/2)
-            meshkey = get_nkey2(imesh1,imesh2)
             for X = 0:Xmax
-                Z0Xs[X+1][meshkey]=Z0X_local_reg(X,xi1,xi2,params.Lambda3NF,ps,ws)
+                meshkey = get_nkey3(X,imesh1,imesh2)               
+                Z0Xs[meshkey]=Z0X_local_reg(X,xi1,xi2,params.Lambda3NF,ps,ws)
             end
             for K = 0:1:2
                 for X = 0:Xmax+1
                     tmp = Float64(f_KX(K,X,xi1,xi2,params))
                     fKXs[get_nkey4(K,X,imesh1,imesh2)] = tmp  
-                    # if K == 1 && X == 0
-                    #     println("fKX K=$K X=$X fK ", fKs[get_nkey2(K,imesh1)], " fKX ",@sprintf("%12.5e",tmp ))
-                    # end               
                 end
             end
         end
@@ -888,9 +877,9 @@ Eq.(15) in P.Navratil
     k_n12=ket.n; k_l12=ket.l; k_s12=ket.s; k_j12=ket.j; k_t12=ket.t; k_n3=ket.N; k_l3=ket.L; k_j3 = ket.J
     if b_s12 != k_s12; return 0.0; end
     if b_t12 == k_t12 == 0; return 0.0; end
-    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_dot)
+    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_lj)
     d6j_int = params3NF.dWS.d6j_int
-    d6j_lj3 = params3NF.dWS.d6j_lj3
+    d6j_lj = params3NF.dWS.d6j_lj
     dcgm0 = params3NF.dWS.dcgm0
     hats  = hat(b_j12)*hat(k_j12)*hat(b_j3/2)*hat(k_j3/2)
     phase = (-1)^(div(dT123-1,2)+div(abs(b_j3-k_j3),2)+b_l12+b_l3+b_s12)
@@ -913,22 +902,12 @@ Eq.(15) in P.Navratil
         if !tri_check(b_j12,k_j12,X);continue;end
         if !tri_check(b_j3,k_j3,2*X);continue;end
         if !tri_check(b_l3,k_l3,X);continue;end
-        x6j_1 = x6j_2 = x6j_3 = 0.0; key1 = 0
-        if b_l12 <= k_l12 
-            key1 = get_nkey_from_key6j(b_l12,k_l12,k_j12,b_j12,b_s12)
-        else
-            key1 = get_nkey_from_key6j(k_l12,b_l12,b_j12,k_j12,b_s12)
-        end
-        x6j_1 = d6j_int[X+1][key1]
-        if x6j_1 == 0.0; continue;end
 
-        x6j_2 = flip_needed_6j(k_j12,b_j12,X,b_j3,k_j3,dJ123,d6j_lj3)
-        if x6j_2 == 0.0; continue;end
-
-        x6j_3 = flip_needed_6j(b_l3,k_l3,X,k_j3,b_j3,1,d6j_lj3)
-        if x6j_3 == 0.0; continue;end
-
-        cgs = dcgm0[get_nkey3(k_l12,X,b_l12)] * dcgm0[get_nkey3(k_l3,X,b_l3)] * hat(k_l12)*hat(k_l3) 
+        x6j_1 = call_d6j_nond(k_l12,b_l12,X,b_j12,k_j12,b_s12,d6j_int)
+        x6j_2 = call_d6j(b_j12*2,k_j12*2,X*2,k_j3,b_j3,dJ123,d6j_lj)
+        x6j_3 = call_d6j(b_l3*2,k_l3*2,X*2,k_j3,b_j3,1,d6j_lj)
+        cgs = call_dcgm0(k_l12,X,b_l12,dcgm0) *call_dcgm0(k_l3,X,b_l3,dcgm0) * hat(k_l12)*hat(k_l3) 
+        
         tsum = (-1)^X * hat(X)^2 * x6j_1 * x6j_2* x6j_3 * cgs * integ_dict[X]
         X6js += tsum
     end
@@ -961,20 +940,19 @@ function ope_JacobiHO_nonlocal(params3NF,coeffD,inner_integ::inner_integ_nonloca
     if b_l12 != 0; return 0.0;end
     if abs(b_l3-k_l3) > 2; return 0.0; end
     if !tri_check(b_j12,k_j12,1); return 0.0;end
-    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_dot)
+    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_lj)
     if tdot == 0.0; return 0.0; end
 
     d6j_int = params3NF.dWS.d6j_int
-    d6j_lj3 = params3NF.dWS.d6j_lj3
-    d6j_dot = params3NF.dWS.d6j_dot
-    d9j = params3NF.dWS.d9j
+    d6j_lj = params3NF.dWS.d6j_lj
+    d9j_lsj = params3NF.dWS.d9j_lsj
     dcgm0 = params3NF.dWS.dcgm0
 
     hats = hat(b_j12)*hat(k_j12)*hat(b_j3/2)*hat(k_j3/2)
     phase = (-1)^(b_n12+b_n3+k_n12+k_n3 + (dJ123-b_j3+b_l3+k_l3)/2 + b_l3 - b_t12 - k_t12)
 
-    w6js  = d6j_dot[1][get_nkey2(b_j12,k_j12)]
-    w6js *= flip_needed_6j(b_j12,k_j12,1,k_j3,b_j3,dJ123,d6j_lj3) 
+    w6js  = call_d6j(b_j12*2,k_j12*2,1*2,1,1,1,d6j_lj) 
+    w6js *= call_d6j(b_j12*2,k_j12*2,1*2,k_j3,b_j3,dJ123,d6j_lj)
     if w6js == 0.0; println("w6js0");return 0.0;end
     
     e1 = bra.e1 ; e2 = bra.e2; Ebra = bra.E
@@ -989,24 +967,15 @@ function ope_JacobiHO_nonlocal(params3NF,coeffD,inner_integ::inner_integ_nonloca
     ret = 0.0
     for K = 0:2:2
         if !tri_check(b_l3,k_l3,K);continue;end
-        key1 = get_nkey3(K,1,1)
-        key2 = get_nkey2(b_l3,b_j3)
-        key3 = get_nkey3(k_l3,1,k_j3)
-        K9j = d9j[key1][key2][key3]
-        Kfac = hat(K) * dcgm0[get_nkey3(1,1,K)] * K9j
+        K9j = call_d9j_lsj(K*2,1*2,1*2,b_l3*2,1,b_j3,k_l3*2,1,k_j3,d9j_lsj)
+        Kfac = hat(K) * call_dcgm0(1,1,K,dcgm0) * K9j
         for K1=0:K            
             K1fac =hat(K-K1) * sqrt(binomial(2*K+1,2*K1))*  (-1)^(b_l3+K1) 
             Xmin = max(abs(b_l3-K1),abs(k_l3-(K-K1)))
             Xmax = min(b_l3+K1,k_l3+K-K1)
             for X = Xmin:Xmax
-                key1 = 0
-                if k_l3 <= K-K1 
-                    key1 = get_nkey_from_key6j(k_l3,K-K1,K1,b_l3,K)
-                else
-                    key1 = get_nkey_from_key6j(K-K1,k_l3,b_l3,K1,K)
-                end
-                Xfac  = hat(X)* hat(k_l3)*dcgm0[get_nkey3(K1,X,b_l3)] * dcgm0[get_nkey3(k_l3,K-K1,X)] 
-                Xfac *= d6j_int[X+1][key1]
+                Xfac  = hat(X)* hat(k_l3) * call_dcgm0(K1,X,b_l3,dcgm0) * call_dcgm0(k_l3,K-K1,X,dcgm0) # *dcgm0[get_nkey3(K1,X,b_l3)] * dcgm0[get_nkey3(k_l3,K-K1,X)] 
+                Xfac *= call_d6j_nond(k_l3,K-K1,X,K1,b_l3,K,d6j_int) #d6j_int[X+1][key1]
                 integ = dict_integ[get_nkey3(K,K1,X)]
                 ret += Kfac * K1fac * Xfac * integ
             end
@@ -1025,18 +994,17 @@ function ope_JacobiHO_local(params3NF,coeffD,inner_integ::inner_integ_local,bra:
     dJ123 = bra.dJ3; dT123 = bra.dT3
     k_n12=ket.n; k_l12=ket.l; k_s12=ket.s; k_j12=ket.j; k_t12=ket.t; k_n3=ket.N; k_l3=ket.L; k_j3 = ket.J
     if b_s12 == k_s12 ==0; return 0.0;end
-    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_dot)
+    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_lj)
     if tdot == 0.0; return 0.0; end
 
     d6j_int = params3NF.dWS.d6j_int
-    d6j_lj3 = params3NF.dWS.d6j_lj3
-    d6j_dot = params3NF.dWS.d6j_dot
-    d9j = params3NF.dWS.d9j
+    d6j_lj = params3NF.dWS.d6j_lj
     d9j_int = params3NF.dWS.d9j_int
+    d9j_lsj = params3NF.dWS.d9j_lsj
     dcgm0 = params3NF.dWS.dcgm0
 
     hats = hat(b_j12)*hat(k_j12)*hat(b_j3/2)*hat(k_j3/2)*hat(b_s12)*hat(k_s12) * hat(k_l12)*hat(k_l3)
-    phase6j = (-1)^((dJ123-b_j3)/2 +b_s12+k_j12) * d6j_dot[1][get_nkey2(b_s12,k_s12)]
+    phase6j = (-1)^((dJ123-b_j3)/2 +b_s12+k_j12) * call_d6j(b_s12*2,k_s12*2,2,1,1,1,d6j_lj) #d6j_dot[1][get_nkey2(b_s12,k_s12)]
 
     e1 = bra.e1 ; e2 = bra.e2; Ebra = bra.E
     e1p= ket.e1 ; e2p= ket.e2; Eket = ket.E
@@ -1049,39 +1017,27 @@ function ope_JacobiHO_local(params3NF,coeffD,inner_integ::inner_integ_local,bra:
 
     ret = 0.0
     for K = 0:2:2
-        Kfac = hat(K) * (-1)^(K/2) * dcgm0[get_nkey3(1,1,K)] 
+        Kfac = hat(K) * (-1)^(K/2) * call_dcgm0(1,1,K,dcgm0) 
         for V = abs(b_l12-k_l12):b_l12+k_l12
-            Vfac = (-1)^(V+k_l12) * hat(b_l12) * dcgm0[get_nkey3(b_l12,k_l12,V)]
+            Vfac = (-1)^(V+k_l12) * hat(b_l12) *  call_dcgm0(b_l12,k_l12,V,dcgm0) 
 
             Xmin = max(abs(K-V),abs(b_l3-k_l3))
             Xmax = min(K+V,b_l3+k_l3)
             for X = Xmin:Xmax
-                Xfac = hat(X)^2 * dcgm0[get_nkey3(X,K,V)] * dcgm0[get_nkey3(X,k_l3,b_l3)]
+                Xfac = hat(X)^2 * call_dcgm0(X,K,V,dcgm0) * call_dcgm0(X,k_l3,b_l3,dcgm0)
                 Zmin = max(max(max(abs(X-1),abs(V-1)),abs(b_j12-k_j12)),abs(div(b_j3-k_j3,2)))
                 Zmax = min(min(min(V+1,X+1),b_j12+k_j12),div(b_j3+k_j3,2))
                 integ = dict_integ[get_nkey2(K,X)]                
 
                 for Z = Zmin:Zmax
-                    z6j1 = flip_needed_6j(b_j12,k_j12,Z,k_j3,b_j3,dJ123,d6j_lj3)
+                    z6j1 = call_d6j(b_j12*2,k_j12*2,Z*2,k_j3,b_j3,dJ123,d6j_lj)
                     if z6j1 == 0.0;continue;end
-                    tkey = -1
-                    if V <= 1
-                        tkey = get_nkey_from_key6j(V,1,1,X,K)
-                    else
-                        tkey = get_nkey_from_key6j(1,V,X,1,K)
-                    end
-                    z6j2 = d6j_int[Z+1][tkey]
+
+                    z6j2 = call_d6j_nond(V,1,Z,1,X,K,d6j_int)
                     if z6j2 ==0.0; continue;end
 
-                    key1 = get_nkey3(X,1,Z)
-                    key2 = get_nkey2(b_l3,b_j3)
-                    key3 = get_nkey3(k_l3,1,k_j3)
-                    z9j2 = d9j[key1][key2][key3]
-
-                    key1 = get_nkey3(b_l12,b_s12,b_j12)
-                    key2 = get_nkey3(k_l12,k_s12,k_j12)
-                    key3 = get_nkey3(V,1,Z)
-                    z9j1 = d9j_int[key1][key2][key3]
+                    z9j2 = call_d9j_lsj(X*2,1*2,Z*2,b_l3*2,1,b_j3,k_l3*2,1,k_j3,d9j_lsj)
+                    z9j1 = call_d9j_int_notdoubled(V,1,Z,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)
 
                     Zfac = hat(Z)^2 * z6j1 * z6j2 * z9j1 *z9j2
                     
@@ -1099,7 +1055,7 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
     dJ123 = bra.dJ3; dT123 = bra.dT3
     k_n12=ket.n; k_l12=ket.l; k_s12=ket.s; k_j12=ket.j; k_t12=ket.t; k_n3=ket.N; k_l3=ket.L; k_j3 = ket.J
     if b_s12 == k_s12 ==0; return 0.0;end
-    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_dot)
+    tdot = IsospinDot(b_t12,k_t12,dT123,params3NF.dWS.d6j_lj)
     if tdot == 0.0; return 0.0; end
     Mpi_fm = mean(mpis) / hc
 
@@ -1108,20 +1064,18 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
     coeff_c4 = - 216  * gA2 / (4*(Fpi/hc)^4) *  LECs.dLECs["c4_NNLO"] * hc2 / 1000.0
 
     d6j_int = params3NF.dWS.d6j_int
-    d6j_lj3 = params3NF.dWS.d6j_lj3
-    d6j_dot = params3NF.dWS.d6j_dot
-    d9j = params3NF.dWS.d9j
+    d6j_lj  = params3NF.dWS.d6j_lj
+
+    d9j_lsj = params3NF.dWS.d9j_lsj
     d9j_int = params3NF.dWS.d9j_int
     dcgm0 = params3NF.dWS.dcgm0
 
     hats = hat(b_j12)*hat(k_j12)*hat(b_j3/2)*hat(k_j3/2)*hat(b_s12)*hat(k_s12) * hat(k_l12)*hat(k_l3)
-    s6j = d6j_dot[1][get_nkey2(b_s12,k_s12)]
+    s6j = call_d6j(b_s12*2,k_s12*2,1*2,1,1,1,d6j_lj) 
     phase6j = (-1)^((dJ123-b_j3)/2 +b_s12+k_j12) 
 
-    key1 = get_nkey3(1,1,1)
-    key2 = get_nkey2(k_t12,1)
-    key3 = get_nkey3(b_t12,1,1)
-    rac_9jc4= d9j[key1][key2][key3] / d6j_dot[1][get_nkey2(b_t12,k_t12)] 
+    rac_9j = call_d9j_lsj(2,2,2,k_t12*2,1,1,b_t12*2,1,1,d9j_lsj)
+    rac_9jc4= rac_9j / call_d6j(b_t12*2,k_t12*2,2,1,1,1,d6j_lj)
 
     e1 = bra.e1 ; e2 = bra.e2; Ebra = bra.E
     e1p= ket.e1 ; e2p= ket.e2; Eket = ket.E
@@ -1131,13 +1085,12 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
     keyket = get_nkey4(k_n12,k_l12,k_n3,k_l3)
     dict_c1 = inner_integ.integ_c1[Ekey][e4key][keybra][keyket]
     dict_c34= inner_integ.integ_c34[Ekey][e4key][keybra][keyket]
-
     ret_c1 = ret_c3 = ret_c4 = 0.0
     for V = abs(b_l12-k_l12):b_l12+k_l12
-        Vfac = hat(V) * dcgm0[get_nkey3(V,k_l12,b_l12)]
+        Vfac = hat(V) * call_dcgm0(V,k_l12,b_l12,dcgm0) 
         if Vfac == 0.0; continue;end
         for R = abs(b_l3-k_l3):b_l3+k_l3
-            Rfac = hat(R) * dcgm0[get_nkey3(R,k_l3,b_l3)]
+            Rfac = hat(R) * call_dcgm0(R,k_l3,b_l3,dcgm0)
             if Rfac == 0.0; continue;end
             ## c1 term
             if s6j != 0.0
@@ -1146,70 +1099,23 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                 for Y = Ymin:Ymax
                     if !tri_check(R,1,Y);continue;end
                     if !tri_check(b_j3/2,k_j3/2,Y);continue;end
-                    key1 = get_nkey3(b_l12,b_s12,b_j12)
-                    key2 = get_nkey3(k_l12,k_s12,k_j12)
-                    key3 = get_nkey3(V,1,Y)
-                    V9j = d9j_int[key1][key2][key3]
-
-                    key1 = get_nkey3(R,1,Y)
-                    key2 = get_nkey2(b_l3,b_j3)
-                    key3 = get_nkey3(k_l3,1,k_j3)
-                    R9j = d9j[key1][key2][key3]
-
-                    y6j = flip_needed_6j(b_j12,k_j12,Y,k_j3,b_j3,dJ123,d6j_lj3)
+                    V9j = call_d9j_int_notdoubled(V,1,Y,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)
+                    R9j = call_d9j_lsj(R*2,1*2,Y*2,b_l3*2,1,b_j3,k_l3*2,1,k_j3,d9j_lsj)
+                    y6j = call_d6j(b_j12*2,k_j12*2,Y*2,k_j3,b_j3,dJ123,d6j_lj)
                     if y6j == 0.0;continue;end
-
-                    Yfac = (-1)^Y * hat(Y) * dcgm0[get_nkey3(Y,1,V)] * V9j * R9j *y6j
-
+                    Yfac = (-1)^Y * hat(Y) * call_dcgm0(Y,1,V,dcgm0) * V9j * R9j *y6j 
                     if Yfac == 0.0; continue;end
-
-                    # if debug 
-                    #     Yfac_debug = (-1)^Y * hat(Y) * clebschgordan(Y,0,1,0,V,0) 
-                    #     Yfac_debug *= wigner9j(b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,V,1,Y)
-                    #     Yfac_debug *= wigner9j(b_l3,1/2,b_j3/2,k_l3,1/2,k_j3/2,R,1,Y)
-                    #     Yfac_debug *= wigner6j(Float64,b_j12,k_j12,Y,k_j3/2,b_j3/2,dJ123/2)
-                    #     @assert abs(Yfac-Yfac_debug) < 1.e-8 "Yfac error $Yfac $Yfac_debug"
-                    # end
 
                     for K3 = 0:1
                         K3fac = sqrt(binomial(3,2*K3)) * hat(1-K3)    
                         Xmin = max(abs(K3-Y),abs(R+K3-1))
                         Xmax = min(K3+Y,R+1-K3)
                         for X = Xmin:Xmax
-                            Xfac  = hat(X)^2 * dcgm0[get_nkey3(X,K3,Y)] * dcgm0[get_nkey3(X,1-K3,R)]
-                            tkey = -1
-                            if Y <= X
-                                tkey = get_nkey_from_key6j(Y,X,1-K3,1,R)
-                            else
-                                tkey = get_nkey_from_key6j(X,Y,1,1-K3,R)
-                            end                            
-                            Xfac *= d6j_int[K3+1][tkey]
-
-                            # if debug
-                            #     Xfac_debug = hat(X)^2 * clebschgordan(Float64,X,0,K3,0,Y,0) * clebschgordan(Float64,X,0,1-K3,0,R,0)
-                            #     Xfac_debug *= wigner6j(Float64,Y,X,K3,1-K3,1,R)                        
-                            #     @assert abs(Xfac-Xfac_debug) < 1.e-8 "Xfac err $Xfac $Xfac_debug"
-                            # end
-
+                            Xfac  = hat(X)^2 * call_dcgm0(X,K3,Y,dcgm0) * call_dcgm0(X,1-K3,R,dcgm0)
+                            Xfac *= call_d6j_nond(Y,X,K3,1-K3,1,R,d6j_int)
                             integ = dict_c1[get_nkey2(K3,X)]                
                             tsum = Vfac * Rfac * Yfac * K3fac * Xfac * integ
                             ret_c1 += tsum
-
-                            # if K3 == 1 && tsum != 0.0
-                            #     Vfac_debug = hat(V) * dcgm0[get_nkey3(V,k_l12,b_l12)]
-                            #     Rfac_debug = hat(R) * dcgm0[get_nkey3(R,k_l3,b_l3)] * R9j
-                            #     Yfac_debug = (-1)^Y * hat(Y) * dcgm0[get_nkey3(Y,1,V)] * V9j *y6j
-                            #     Xfac_debug =  hat(X)^2 * dcgm0[get_nkey3(X,K3,Y)] * dcgm0[get_nkey3(X,1-K3,R)]
-                                
-                            #     # println("V ",@sprintf("%3i",V)," R",@sprintf("%3i",R)," Y",@sprintf("%3i",Y),
-                            #     # " K3",@sprintf("%3i",K3),
-                            #     # " Vfac",@sprintf("%12.5e",Vfac_debug),
-                            #     # " Rfac",@sprintf("%12.5e",Rfac_debug),
-                            #     # " Yfac",@sprintf("%12.5e",Yfac_debug),
-                            #     # " Xfac",@sprintf("%12.5e",Xfac_debug),
-                            #     # " over",@sprintf("%12.5e",integ))
-                            # end                            
-                            
                         end
                     end
                 end
@@ -1225,53 +1131,19 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                     for Y = Ymin:Ymax
                         if !tri_check(K1,V,Y); continue;end
                         if !tri_check(K2,R,Y); continue;end
-                        K12fac = (-1)^((K1+K2)/2) * hat(K1) * hat(K2) * dcgm0[get_nkey3(1,1,K1)] * dcgm0[get_nkey3(1,1,K2)]
-
-                        Yfac = hat(Y) * dcgm0[get_nkey3(Y,K1,V)]
-                        Zmin = max(abs(Y-1),max(abs(V-1),max(abs(R-1),max(abs(b_j12-k_j12),div(abs(b_j3-k_j3),2)))))
-                        Zmax = min(Y+1,min(V+1,min(R+1,min(b_j12+k_j12,div(b_j3+k_j3,2)))))
+                        K12fac = (-1)^((K1+K2)/2) * hat(K1) * hat(K2) * call_dcgm0(1,1,K1,dcgm0) * call_dcgm0(1,1,K2,dcgm0) 
+                        Yfac = hat(Y) * call_dcgm0(Y,K1,V,dcgm0) 
+                        Zmin = max(abs(Y-1),abs(V-1),abs(R-1),abs(b_j12-k_j12),div(abs(b_j3-k_j3),2))
+                        Zmax = min(    Y+1,     V+1,     R+1,     b_j12+k_j12,div(b_j3+k_j3,2))
                         for Z = Zmin:Zmax
                             Zfac = hat(Z)^2 * (-1)^Z 
-
-                            key1 = get_nkey3(R,1,Z)
-                            key2 = get_nkey2(b_l3,b_j3)
-                            key3 = get_nkey3(k_l3,1,k_j3)
-                            R9j = d9j[key1][key2][key3]
-
-                            # try
-                            #     Z6j_1 = flip_needed_6j(b_j12,k_j12,Z,k_j3,b_j3,dJ123,d6j_lj3)
-                            # catch
-                            #     println("z6j_1\n{  $b_j12    $k_j12    $Z\n $k_j3/2 $b_j3/2 $dJ123/2")
-                            # end
-                            Z6j_1 = flip_needed_6j(b_j12,k_j12,Z,k_j3,b_j3,dJ123,d6j_lj3)
+                            R9j = call_d9j_lsj(R*2,1*2,Z*2,b_l3*2,1,b_j3,k_l3*2,1,k_j3,d9j_lsj)
+        
+                            Z6j_1 = call_d6j(b_j12*2,k_j12*2,Z*2,k_j3,b_j3,dJ123,d6j_lj)
                             if Z6j_1 == 0.0;continue;end
-
-                            tkey = -1
-                            if Z <= 1
-                                tkey = get_nkey_from_key6j(Z,1,K2,R,1)
-                            else
-                                tkey = get_nkey_from_key6j(1,Z,R,K2,1)
-                            end
-                            # try
-                            #     Z6j_2 = d6j_int[Y+1][tkey]
-                            # catch
-                            #     println("z6j_2\n{ $Z 1 $Y\n$K2 $R 1")
-                            # end
-                            Z6j_2 = d6j_int[Y+1][tkey]
-                             
-
-                            tkey = -1
-                            if Z <= 1
-                                tkey = get_nkey_from_key6j(Z,1,K1,V,1)
-                            else
-                                tkey = get_nkey_from_key6j(1,Z,V,K1,1)
-                            end
-                            zc3_6j = d6j_int[Y+1][tkey]
-
-                            key1 = get_nkey3(b_l12,b_s12,b_j12)
-                            key2 = get_nkey3(k_l12,k_s12,k_j12)
-                            key3 = get_nkey3(V,1,Z)
-                            zc3_9j = d9j_int[key1][key2][key3]
+                            Z6j_2 = call_d6j_nond(Z,1,Y,K2,R,1,d6j_int)
+                            zc3_6j = call_d6j_nond(Z,1,Y,K1,V,1,d6j_int)
+                            zc3_9j = call_d9j_int_notdoubled(V,1,Z,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)
                              
                             Z_c4 = Zfac * R9j * Z6j_1 * Z6j_2
                             Z_c3 = Z_c4 * zc3_9j * zc3_6j
@@ -1284,24 +1156,10 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                                 for X = Xmin:Xmax
                                     if !tri_check(X,K3,Y);continue;end
                                     if !tri_check(X,K2-K3,R);continue;end
-
-                                    Xfac  = hat(X)^2 * dcgm0[get_nkey3(X,K3,Y)] * dcgm0[get_nkey3(X,K2-K3,R)]
-                                    tkey = -1
-                                    if Y <= X
-                                        tkey = get_nkey_from_key6j(Y,X,K2-K3,K2,R)
-                                    else
-                                        tkey = get_nkey_from_key6j(X,Y,K2,K2-K3,R)
-                                    end
-                                    Xfac *= d6j_int[K3+1][tkey]
-
-                                    # try
-                                    #     integ = dict_c34[get_nkey4(K1,K2,K3,X)]
-                                    # catch
-                                    #     println("K1 $K1 K2 $K2 K3 $K3 X $X Y $Y")
-                                    #     println("keys ",keys(dict_c34))
-                                    # end
+                                    Xfac  = hat(X)^2 * call_dcgm0(X,K3,Y,dcgm0) * call_dcgm0(X,K2-K3,R,dcgm0) 
+                                    Xfac *= call_d6j_nond(Y,K2,R,K2-K3,X,K3,d6j_int)    
+                                    if Xfac == 0.0; continue;end                               
                                     integ = dict_c34[get_nkey4(K1,K2,K3,X)]
-
                                     ret_c3 += c3fac * K12fac * Vfac * Rfac * Yfac * Z_c3 * K3fac * Xfac * integ
 
                                     for K4 = 0:2
@@ -1309,27 +1167,10 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                                         if !tri_check(K4,V,Z);continue;end
                                         if !tri_check(K4,K1,1);continue;end
                                         K4fac = hat(K4)^2 
-                                        key1 = get_nkey3(b_l12,b_s12,b_j12)
-                                        key2 = get_nkey3(k_l12,k_s12,k_j12)
-                                        key3 = get_nkey3(V,K4,Z)                                      
-                                        K4fac *= d9j_int[key1][key2][key3]
-
-                                        key1 = get_nkey3(K4,1,1)
-                                        key2 = get_nkey2(b_s12,1)
-                                        key3 = get_nkey3(k_s12,1,1)
-                                        K4fac *= d9j[key1][key2][key3]
-
-                                        tkey = -1
-                                        if Z <= 1
-                                            tkey = get_nkey_from_key6j(Z,1,K1,V,K4)
-                                        else
-                                            tkey = get_nkey_from_key6j(1,Z,V,K1,K4)
-                                        end
-                                        K4fac *= d6j_int[Y+1][tkey]
-
-                                        tkey = get_nkey_from_key6j(1,1,1,K4,K1)
-                                        K4fac *= d6j_int[1+1][tkey]
-
+                                        K4fac *= call_d9j_int_notdoubled(V,K4,Z,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)
+                                        K4fac *= call_d9j_lsj(K4*2,1*2,1*2,b_s12*2,1,1,k_s12*2,1,1,d9j_lsj)
+                                        K4fac *= call_d6j_nond(Z,1,Y,K1,V,K4,d6j_int)
+                                        K4fac *= call_d6j_nond(1,1,1,1,K4,K1,d6j_int)
                                         ret_c4 += c4fac * K12fac * Vfac * Rfac * Yfac * Xfac* Z_c4 * K3fac * K4fac* integ
                                     end
                                 end
@@ -1340,19 +1181,6 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
             end
         end
     end
-
-    if ret_c1 != 0.0
-        hatc1 = hat(b_j12)*hat(k_j12)*hat(b_j3/2)*hat(k_j3/2)
-        s6j_c1 = s6j * hat(b_s12)*hat(k_s12) 
-        
-        # println("Idot ",@sprintf("%12.5f", tdot),
-        #         " s6j ", @sprintf("%12.5f", s6j_c1),
-        #         " hats ", @sprintf("%12.5f", hatc1),
-        #         " vsum1 ", @sprintf("%12.5e", ret_c1),
-        #         "coeff ", @sprintf("%12.5f", coeff_c1/LECs.dLECs["c1_NNLO"]))
-        # #exit()
-    end
-
     v_c1 = coeff_c1 * tdot *hats * phase6j * s6j * ret_c1
     v_c3 = coeff_c3 * tdot *hats * phase6j * ret_c3
     v_c4 = coeff_c4 * tdot *hats * phase6j * ret_c4

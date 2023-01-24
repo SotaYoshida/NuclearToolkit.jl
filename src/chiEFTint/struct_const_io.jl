@@ -154,16 +154,6 @@ end
 - `xr_fm::Vector{Float64}` momentum mesh points in fm``^{-1}`` (0 to `pmax_fm`)
 - `xr::Vector{Float64}` momentum mesh points in MeV (`xr_fm` times ``\\hbar c``)
 - `wr::Vector{Float64}` weights vector for Gauss-Legendre quadrature
-- `dict6j::Vector{Dict{Int64, Float64}}` dictionary of Wigner-6j symbols, `dict6j[totalJ][integer_key6j]` = 
-```math
-\\begin{Bmatrix} j_a/2&  j_b/2&   J \\\\ j_c/2&  j_d/2&   J_p \\end{Bmatrix}
-```
-where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_c,j_d,J_p``.
-- `d6j_nabla::Dict{Vector{Int64}, Float64}` dict. for Talmi-Moshinsky transformation `d6j_nabla[[ja,jb,l2,l1,0]]` = 
-```math
-\\begin{Bmatrix} j_a/2&  j_b/2&    1 \\\\  l_2&    l_1&   1/2 \\end{Bmatrix}
-```
-- `d6j_int::Vector{Dict{Int64, Float64}}` dict. of Wigner-6j used for HOBs in HF-MBPT/IMSRG.
 - `Rnl::Array{Float64,3}` arrays for radial functions
 - `xrP_fm::Vector{Float64}` "valence" counter part of `xr_fm` (usually not used)
 - `xrP::Vector{Float64}` "valence" counter part of `xr` (usually not used)
@@ -179,8 +169,6 @@ where `integer_key` is from the `get_nkey_from_key6j` function with ``j_a,j_b,j_
 - `nTBME::Int64` # of two-body matrix elements (TBMEs)
 - `util_2n3n::util_2n3n`
 - `LECs::LECs`
-- `X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}` 9j for Vtrans
-- `U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}` 6j for Vtrans
 - `V12mom::Vector{Matrix{Float64}}` matrix elements of NN int in momentum space for each two-body channnel
 - `V12mom_2n3n::Vector{Matrix{Float64}}` matrix elements of 2n3n int in momentum space for each two-body channnel
 - `pw_channels::Vector{Vector{Int64}}` list of partial wave two-body channels like {[pnrank,L,L',S,J]}
@@ -192,9 +180,6 @@ struct ChiralEFTobject
     xr_fm::Vector{Float64}
     xr::Vector{Float64}
     wr::Vector{Float64}
-    dict6j::Vector{Dict{Int64, Float64}}
-    d6j_nabla::Dict{Vector{Int64}, Float64}  
-    d6j_int::Vector{Dict{Int64, Float64}}
     Rnl::Array{Float64,3}
     xrP_fm::Vector{Float64}
     xrP::Vector{Float64}
@@ -210,8 +195,6 @@ struct ChiralEFTobject
     nTBME::Int64
     util_2n3n::util_2n3n
     LECs::LECs
-    X9::Vector{Vector{Dict{Vector{Int64}, Float64}}}
-    U6::Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}
     V12mom::Vector{Matrix{Float64}}
     V12mom_2n3n::Vector{Matrix{Float64}}
     pw_channels::Vector{Vector{Int64}}
@@ -412,11 +395,12 @@ function readsnt(sntf,Anum;eachA=false,pnfac=1.0)
 end
 
 """
-    write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
+    write_tbme(chiEFTobj,io,ndim,izs,Jtot,vv,nljsnt,nljdict,tkeys,dWS;ofst=0)
 
 write tbme in myg/snt(snt.bin) format
 """
-function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,tkeys,dict6j,d6j_nabla,key6j;ofst=0)
+function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljdict,dWS,tkeys;ofst=0)
+ 
     tbme_fmt = params.tbme_fmt
     target_nlj = params.target_nlj
     
@@ -433,7 +417,7 @@ function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljd
                 owtkey!(tkeys[2],nb,lb,jb,izb)
                 owtkey!(tkeys[3],nc,lc,jc,izc)
                 owtkey!(tkeys[4],nd,ld,jd,izd)
-                vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dict6j,d6j_nabla,key6j)
+                vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dWS)
                 print(io,@sprintf("%4i", iza), @sprintf("%4i", ia), @sprintf("%4i", izb), @sprintf("%4i", ib))
                 print(io,@sprintf("%4i", izc), @sprintf("%4i", ic), @sprintf("%4i", izd), @sprintf("%4i", id))
                 print(io,@sprintf("%4i", Jtot),@sprintf("%20.10e", vv[i,j]),@sprintf("%20.10e", vv_2n3n[i,j]))
@@ -477,7 +461,7 @@ function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljd
                 owtkey!(tkeys[2],nb,lb,jb,izb)
                 owtkey!(tkeys[3],nc,lc,jc,izc)
                 owtkey!(tkeys[4],nd,ld,jd,izd)
-                vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dict6j,d6j_nabla,key6j)
+                vpp = kinetic_tb(tkeys[1],tkeys[2],tkeys[3],tkeys[4],Jtot,dWS)
                 if tbme_fmt == "snt"
                     print(io,@sprintf("%5i", fa),@sprintf("%5i", fb),@sprintf("%5i", fc),@sprintf("%5i", fd))
                     print(io,@sprintf("%6i", Jtot),@sprintf("%18.10f", tv),@sprintf("%18.10f", tv2n3n))

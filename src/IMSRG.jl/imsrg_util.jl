@@ -1,5 +1,5 @@
 """
-    imsrg_main(binfo::basedat,Chan1b,Chan2bD,HFobj,dictMono,d9j,HOBs,dict6j,valencespace,Operators,to; core_generator_type="atan",valence_generator_type="shell-model-atan",denominatorDelta=0.0)
+    imsrg_main(binfo::basedat,Chan1b,Chan2bD,HFobj,dictMono,dWS,valencespace,Operators,to; core_generator_type="atan",valence_generator_type="shell-model-atan",denominatorDelta=0.0)
     
 # Arguments
 - `binfo::basedat` struct basedat(nuc::nuclei,sntf::String,hw::Float,emax::Int)
@@ -7,9 +7,7 @@
 - `Chan2bD::chan2bD` struct for two-body stuffs (e.g., dict to get idx from JPT)
 - `HFobj::HamiltonianNormalOrdered` struct HNO, which includes info. of HF solution (HF energy, occupation, f,Gamma,...)
 - `dictMono::Dict` dictionary to get Vmonopole
-- `d9j` preallocated dictionaries for wigner 9j symbols, which are needed to calculate Rp2
-- `HOBs::Dict{Int64, Dict{Int64,Float64}}` harmonic oscillator brackets 
-- `dict6j` preallocated dictionaries for wigner6j symbols (needed in e.g., Pandya transformation)
+- `dWS` dictionary of preallocated wigner-symbols
 - `valencespace` to specify valence space  
 - `Operators::Vector{String}` non-Hamiltonian operators
 - `to` TimerOutput object to measure runtime&memory allocations
@@ -20,7 +18,7 @@
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
 - `debugmode::Int` 2: sample HF/IMSRG files
 """
-function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;
+function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,dWS,valencespace,Operators,MatOp,to;
                     core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2)
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
@@ -33,11 +31,11 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::Hamilt
     IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
     
-    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;debugmode=debugmode)
+    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;debugmode=debugmode)
 
     if vsIMSRG
-        IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dict6j,core_generator_type,valence_generator_type,to;valenceflow=true)
-        effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
+        IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;valenceflow=true)
+        effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
             getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;undo=true,OpeqH=true)
             set_sps_to_core!(binfo,HFobj)
@@ -51,7 +49,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::Chan2bD,HFobj::Hamilt
         end
         write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,valencespace)
     else
-        flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,d9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
+        flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
     end
     return IMSRGobj
 end
@@ -367,7 +365,7 @@ function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
     return sorted_ns,ns_addinv,sortedChan2b,dict_ch2ich
 end 
 
-function prep_nab_bar_matrices(HFobj::HamiltonianNormalOrdered,Chan2bD::Chan2bD)
+function prep_nab_bar_matrices(HFobj::HamiltonianNormalOrdered,Chan2bD::chan2bD)
     Chan2b = Chan2bD.Chan2b
     MS = HFobj.modelspace; sps = MS.sps
     nch = length(Chan2b)
@@ -397,7 +395,7 @@ end
 constructor of utils for Pandya transformation and others
 numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya) 
 """
-function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::Chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
+function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
     Chan2b = Chan2bD.Chan2b    
     numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj)
     MS = HFobj.modelspace; sps = MS.sps
@@ -492,7 +490,7 @@ function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose
     return tbme
 end
 
-function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j,key6j,orientation="N")
+function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dWS,key6j,orientation="N")
     Chan2b = Chan2bD.Chan2b
     MS = HFobj.modelspace; sps = MS.sps
     J_cc = tbc_cc.J
@@ -501,7 +499,7 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j
     ch_cc,nKets_cc,nhh,nph = numbers_ch
     nph_kets = nhh + nph
     hit_ph = 0    
-    tdict = dict6j[J_cc+1]
+    d6j_lj = dWS.d6j_lj
     Dict_chidx_from_ketJ = Chan2bD.dict_ch_idx_from_ket
     for ibra = 1:nKets_cc #ph_kets
         bra_cc = tbc_cc.kets[ibra]
@@ -539,8 +537,9 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j
                     if !tri_check(ja,jd,2*J_std);continue;end
                     if !tri_check(jb,jc,2*J_std);continue;end
                     if abs(Tz)==2 && J_std %2 ==1 && (b==c || a==d);continue;end
-                    nkey = get_nkey_from_key6j(ja,jb,jc,jd,J_std)
-                    sixj = tdict[nkey]
+                    # nkey = get_nkey_from_key6j(ja,jb,jc,jd,J_std)
+                    # sixj = tdict[nkey]
+                    sixj = call_d6j(ja,jb,J_cc*2,jc,jd,J_std*2,d6j_lj)
                     if abs(sixj) <= 1.e-8;continue;end
                     lookup = Dict_chidx_from_ketJ[1+div(Tz+2,2)][J_std+1]                    
                     tbme = lookup_twobody(a,d,c,b,ja,jd,jc,jb,J_std,lookup,O2b,Chan2b,key6j) 
@@ -559,7 +558,7 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dict6j
     return nothing
 end
 
-function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dict6j,
+function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dWS,
                    core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split") 
     Chan2b = Chan2bD.Chan2b
     ncomm = IMSRGobj.Ncomm    
@@ -606,7 +605,7 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         ## OmegaCheck
         if magnusmethod == "huntergather" 
             GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,
-                        ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to)
+                        ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dWS,PandyaObj,maxnormOmega,to)
         elseif magnusmethod == "split" 
             NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
         elseif magnusmethod == "" || magnusmethod == "NS"
@@ -617,10 +616,10 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         # Eta * ds for Euler step (assuming Magnus expansion) 
         aOp!(eta,ds) 
         ## Calc. Omega(s+ds) 
-        BCH_Product(eta,Omega,nOmega,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)
+        BCH_Product(eta,Omega,nOmega,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
 
         ## IMSRGobj.H updated to H(s+ds)
-        BCH_Transform(nOmega,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to) 
+        BCH_Transform(nOmega,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to) 
 
         #debug_print(debugmode,Hs,nOmega,eta,"s+ds")
         set_dictMonopole!(dictMono,HFobj,IMSRGobj.H.twobody)
@@ -745,12 +744,12 @@ function read_omega_bin!(binfo::basedat,Chan2b::Vector{chan2b},nw::Int,Op::Opera
 end
 
 """
-    GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to)
+    GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dWS,PandyaObj,maxnormOmega,to)
 
 This may not be used now.
 """
 function GatherOmega(Omega::Op,nOmega::Op,gatherer::Op,tmpOp::Op,Nested::Op,
-                     H0,Hs,ncomm,norms,Chan1b::chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dict6j,PandyaObj,maxnormOmega,to) where Op<:Operator
+                     H0,Hs,ncomm,norms,Chan1b::chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dWS,PandyaObj,maxnormOmega,to) where Op<:Operator
     MS = HFobj.modelspace; p_sps =MS.p_sps; n_sps=MS.n_sps
     Chan2b = Chan2bD.Chan2b
     maxnormOmega = IMSRGobj.maxnormOmega
@@ -759,8 +758,8 @@ function GatherOmega(Omega::Op,nOmega::Op,gatherer::Op,tmpOp::Op,Nested::Op,
         return false
     end    
     aOp!(gatherer,0.0)
-    BCH_Product(nOmega,Omega,gatherer,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)
-    BCH_Transform(gatherer,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)        
+    BCH_Product(nOmega,Omega,gatherer,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+    BCH_Transform(gatherer,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)        
     set_dictMonopole!(dictMono,HFobj,IMSRGobj.H.twobody)
     aOp1_p_bOp2!(gatherer,Omega,1.0,0.0)
     return true    
@@ -837,16 +836,16 @@ function init_IMSRGobject(HFobj,filename;smax=500.0,dsmax=0.5,maxnormOmega=0.25,
 end
 
 """
-    flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,to)
+    flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,dWS,Operators,to)
 
 consistent IMSRG flow of scaler operators (Rp2) using written Omega
 """
-function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b::chan1b,Chan2bD,dict_9j,HOBs,dictMono,dict6j,Operators,MatOp,to)
+function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b::chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
     effOperators = Operator[ ]
     for c_op in Operators
         if c_op=="Rp2"
             println("Operator:$c_op")
-            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j,HOBs,dictMono,dict6j,MatOp,to)
+            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,to)
             push!(effOperators,eOp)
         else
             println("IMSRG flow of Operator=$c_op is not supported now ")

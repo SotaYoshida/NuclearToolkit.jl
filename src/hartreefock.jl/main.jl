@@ -22,8 +22,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
     chiEFTparams = init_chiEFTparams(;io=nothing)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
-    @timeit to "PreCalc 6j" dict6j,d6j_nabla,d6j_int = PreCalc6j(emax_calc)   
-    @timeit to "PreCalc 9j&HOBs" d9j,HOBs = PreCalcHOB(chiEFTparams,d6j_int,to;emax_calc=emax_calc)
+    @timeit to "prep dWS2n" dWS = prep_dWS2n(chiEFTparams,to)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
@@ -39,7 +38,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         VCM = InitOp(Chan1b,Chan2bD.Chan2b)
         E0cm = 1.5 * BetaCM * hw
         if BetaCM !=0.0
-            Calculate_RCM(binfo,Chan1b,Chan2bD.Chan2b,sps,VCM,d9j,HOBs,to;non0_ij=false)           
+            Calculate_RCM(binfo,Chan1b,Chan2bD.Chan2b,sps,VCM,dWS,to;non0_ij=false)           
             fac_HCM = 0.5 * BetaCM * Mm * hw^2 / (hc^2)
             aOp!(VCM,fac_HCM)            
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
@@ -71,16 +70,16 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         addHCM1b!(Hamil,HCM,A)
         addHCM1b!(Hamil,TCM)
         @timeit to "HF" begin 
-            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io,E0cm=E0cm) 
+            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,d9j,HOBs,dict6j,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
                 @timeit to "Rp2" begin 
                     Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-                    eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
+                    eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dWS,MatOp,to;io=io)
                 end
             end
             if return_obj; return HFobj;end
@@ -92,11 +91,10 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
 end
 
 """
-    hf_main_mem(chiEFTobj,nucs,dict_TM,dict6j,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
+    hf_main_mem(chiEFTobj,nucs,dict_TM,dWS,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout)
-    dict6j = chiEFTobj.dict6j
+function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout) 
     emax = chiEFTobj.params.emax
     hw = chiEFTobj.params.hw
     sntf = chiEFTobj.params.fn_tbme   
@@ -122,10 +120,10 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,d9j,HOBs,HFdata,to;
             update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
             dictTBMEs = dictsnt.dictTBMEs
         end      
-        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;verbose=verbose,io=io)
+        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io)
         if "Rp2" in Operators
             Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
-            eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,d9j,HOBs,dict6j,MatOp,to;io=io)
+            eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dWS,MatOp,to;io=io)
         end
     end
     return true
@@ -610,13 +608,13 @@ function get_space_chs(sps,Chan2b)
 end
 
 """
-    getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b::tChan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to) where{tChan2b <: Vector{chan2b}}
+    getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b::tChan2b,Gamma,maxnpq,dict_2b_ch,dWS,to) where{tChan2b <: Vector{chan2b}}
 
 obtain spherical HF solution and calc. MBPT correction (upto 2nd&3rd order) to g.s. energy
 """
 function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
                 e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b::tChan2b,Gamma,maxnpq,                
-                dict_2b_ch,dict6j,to;io=stdout) where{tChan2b <: Vector{chan2b}}
+                dict_2b_ch,dWS,to;io=stdout) where{tChan2b <: Vector{chan2b}}
     ## Calc. f (1-body term)
     fp = Cp' * (h_p*Cp); fn = Cn' *(h_n*Cn) # equiv to vals_p/n
     make_symmetric!(fp); make_symmetric!(fn)
@@ -628,7 +626,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
     ## Calc. Gamma (2bchanel matrix element)    
     calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq)
     EMP2 = HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;io=io)
-    EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=io)
+    EMP3 = HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;io=io)
     exists = get(ame2020data,binfo.nuc.cnuc,false)   
     Eexp = 0.0
     if exists==false
@@ -648,7 +646,7 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,
 end
 
 """
-    hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;itnum=100,verbose=false,HFtol=1.e-14,inttype="snt")
+    hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;itnum=100,verbose=false,HFtol=1.e-14,inttype="snt")
 
 solve HF equation
 
@@ -657,8 +655,8 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 - `fp/fn::Matrix{Float64}` one-body int.
 - `Gamma:: Vector{Matrix{Float64}}` two-body int.
 """
-function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dict6j,to;
-                      itnum=300,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)
+function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;
+                      itnum=300,verbose=false,HFtol=1.e-9,io=stdout,E0cm=0.0)                      
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)
@@ -711,7 +709,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     end
     ## HNO: get normal-ordered Hamiltonian
     E0 = EHFs[1][1] - E0cm
-    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dict6j,to;io=io)
+    HFobj = getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,e1b_p,e1b_n,Cp,Cn,V2,Chan1b,Chan2b,Gamma,maxnpq,dict_2b_ch,dWS,to;io=io)
     return HFobj
 end
 

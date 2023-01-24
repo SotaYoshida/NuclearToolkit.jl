@@ -83,7 +83,7 @@ struct `Chan2bD`
 - `dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}` dict to get [ch,idx], having array structure [pnrank(=1/2/3)][J+1], `key`=ket
 - `dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}` dict to get idx from ket, having array structure [ch]
 """
-struct Chan2bD
+struct chan2bD
     Chan2b::Vector{chan2b}
     dict_ch_JPT::Dict{Vector{Int64},VdictCh}
     dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}
@@ -321,11 +321,13 @@ end
 struct `dWS2n`, Wigner symbols used in PreCalcHOB
 # Fields
 - `dtri::Dict{Vector{Int64},Float64}` dict for trinomial 
-- `dcgm0::Dict{Int64,Float64}` dict for special CG coefficients
-- `keycg::Vector{Vector{Int64}}` array of key for cg
+- `dcgm0::Dict{Int64,Float64}` dict for special CG coefficients (l0l'0|L0)
 """
 struct dWS2n
-    dtri::Dict{Vector{Int64},Float64}
+    dtri::Dict{Int64,Float64}
     dcgm0::Dict{Int64,Float64}
-    keycg::Vector{Vector{Int64}}
+    d6j_int::Dict{Int64,Float64}
+    d6j_lj::Dict{Int64,Float64}
+    d9j_lsj::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
+    dictHOB::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
 end

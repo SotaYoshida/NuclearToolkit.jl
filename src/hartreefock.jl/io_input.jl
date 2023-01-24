@@ -568,7 +568,7 @@ function def_chan2b(binfo,dicts,sps)
                         if a > b;ta=b;tb=a;end
                         if !([ta,tb] in kets)
                             push!(kets,[ta,tb])
-                            nkey_ab = get_intkey_2(ta,tb)
+                            nkey_ab = get_nkey2(ta,tb)
                             vdict[nkey_ab] = length(kets)
                         end
                     end
@@ -576,7 +576,7 @@ function def_chan2b(binfo,dicts,sps)
                 nchan += 1
                 kets = sort(kets)
                 for (ik,ket) in enumerate(kets)
-                    intkey = get_intkey_2(ket[1],ket[2])
+                    intkey = get_nkey2(ket[1],ket[2])
                     vdict[intkey] = ik
                 end
                 push!(Chan2b, chan2b(Tz,prty,J,kets))
@@ -601,9 +601,7 @@ function def_chan2b(binfo,dicts,sps)
                         intkey = get_nkey_from_abcdarr(tkey)
                         for JV in tdict[intkey]
                             tJ = JV[1]
-                            #v = JV[3] + JV[4] /Anum  + JV[5] * Anum
-                            v = JV[3] + JV[4] + JV[5] /Anum  + JV[6] * Anum
-                            
+                            v = JV[3] + JV[4] + JV[5] /Anum  + JV[6] * Anum                           
                             if Int(tJ) != J;continue;end                            
                             vmat[i,j] = vmat[j,i] = v
                         end
@@ -631,7 +629,7 @@ function def_chan2b(binfo,dicts,sps)
             target2[ket] = idx
         end 
     end
-    return Chan2bD(Chan2b,dict_2b_ch,dict_ch_idx_from_ket,dict_idx_from_chket),Gamma,maxnpq,V2b
+    return chan2bD(Chan2b,dict_2b_ch,dict_ch_idx_from_ket,dict_idx_from_chket),Gamma,maxnpq,V2b
 end
 
 """

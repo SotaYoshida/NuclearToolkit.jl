@@ -20,7 +20,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     to = TimerOutput()    
     if (optimizer!="" && nucs != []) || MPIcomm; do2n3ncalib=true; writesnt=false; end
     io = select_io(MPIcomm,optimizer,nucs)
-    @timeit to "prep." chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
+    @timeit to "prep." chiEFTobj,OPTobj,dWS = construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params)
     @timeit to "NNcalc" calcualte_NNpot_in_momentumspace(chiEFTobj,to)
     @timeit to "deutron" BE_d = Calc_Deuteron(chiEFTobj,to;io=io)
     @timeit to "renorm." SRG(chiEFTobj,to)
@@ -35,11 +35,11 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
         ## not yet updated to seperate 2n3n from NN
-        caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)        
+        caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;Operators=Operators)        
     else # write out snt/snt.bin file
         calc_vmom_3nf(chiEFTobj,1,to)
         if chiEFTobj.params.calc_EperA; calc_nuclearmatter_in_momspace(chiEFTobj,to,io);end
-        @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=writesnt)
+        @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=writesnt)
     end
     if io != stdout; close(io);end
     show_TimerOutput_results(to;tf=is_show)
@@ -52,15 +52,12 @@ end
 It returns 
 - `chiEFTobj::ChiralEFTobject` parameters and arrays to generate NN (+2n3n) potentials. See also struct `ChiralEFoObject`.
 - `OPTobj` (mutable) struct for LECs calibrations. It can be `LHSobject`/`BOobject`/`MCMCobject`/`MPIMCMCobject` struct.
-- `d9j::Vector{Vector{Vector{Vector{Vector{Vector{Vector{Float64}}}}}}}` array of Wigner-9j symbols used for Pandya transformation in HF-MBPT/IMSRG calculations.
-- `HOBs::Dict{Int64, Dict{Int64, Float64}}` dictionary for harmonic oscillator brackets.
 """
 function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
     # specify chiEFT parameters
     params = init_chiEFTparams(;io=io,fn_params=fn_params)
-    #Next, prepare momentum/integral mesh, arrays, etc.
-    ## Prep WignerSymbols
-    dict6j,d6j_nabla,d6j_int = PreCalc6j(params.emax)
+    dWS = prep_dWS2n(params,to)
+
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
     pw_channels,dict_pwch,arr_pwch = prepare_2b_pw_states(;io=io)
@@ -88,16 +85,13 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     @timeit to "util2n3n" util_2n3n = prep_integrals_for2n3n(params,xr,ts,ws,to)
     ### specify low-energy constants (LECs)
     LECs = read_LECs(params.pottype)
-    ## 9j&6j symbols for 2n (2n3n) interaction
-    X9,U6 = prepareX9U6(2*params.emax)
-    chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,dict6j,d6j_nabla,d6j_int,Rnl,
+    chiEFTobj = ChiralEFTobject(params,xr_fm,xr,wr,Rnl,
                             xrP_fm,xrP,wrP,RNL,lsjs,tllsj,opfs,ts,ws,
-                            infos,izs_ab,nTBME,util_2n3n,LECs,X9,U6,
+                            infos,izs_ab,nTBME,util_2n3n,LECs,
                             V12mom,V12mom_2n3n,pw_channels,dict_pwch,arr_pwch)
     # make Opt stuff    
     @timeit to "OPTobj" OPTobj = prepOPT(LECs,do2n3ncalib,to,io;num_cand=itnum,optimizer=optimizer,MPIcomm=MPIcomm) 
-    @timeit to "HOBs" d9j,HOBs = PreCalcHOB(params,d6j_int,to;io=io)
-    return chiEFTobj,OPTobj,d9j,HOBs
+    return chiEFTobj,OPTobj,dWS
 end
 
 function calcualte_NNpot_in_momentumspace(chiEFTobj,to)
@@ -155,6 +149,16 @@ function genLaguerre(n::Int,alpha,x)
         end        
         return s
     end
+end
+
+function Legendre(n,x)
+    nmax = Int(ifelse(n%2==0,n//2,(n-1)//2))
+    tsum = 0.0
+    for k = 0:nmax
+        tsum += (-1)^k * factorial(big(2*n-2*k)) / factorial(big(k)) / factorial(big(n-k)) / factorial(big(n-2*k)) *x^(n-2*k)
+    end
+    ret = tsum / 2^n
+    return Float64(ret)
 end
 
 """

@@ -82,7 +82,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
 end
 
 """
-    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;io=stdout)
+    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;io=stdout)
 
 Calculate 2nd order correction to HF energy
 ```math
@@ -118,7 +118,8 @@ E^{(3)}=
 Ref. Many-Body Methods in Chemistry and Physics by Isaiah Shavitt and Rodney J. Bartlett (2009, Cambridge Molecular Science).
 More details can be found in e.g. Dr. thesis by A.Tichai (2017, TU Darmstadt).
 """
-function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;verbose=false,io=io)
+function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;verbose=false,io=io)
+    d6j_lj = dWS.d6j_lj
     p_sps = modelspace.p_sps
     n_sps = modelspace.n_sps
     sps = modelspace.sps
@@ -197,7 +198,6 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                 for totJ = Jmin:Jmax                           
                     if tri_check(ja,jj,totJ*2)==false;continue;end
                     Jfac = (2.0*totJ+1.0)
-                    tdict6j = dict6j[totJ+1]  
                     ehole = e1b[i]+e1b[j]
                     prty_ij = (-1)^(li+lj)
                     for b in allps                        
@@ -207,7 +207,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                         if (-1)^(la+lb) != prty_ij;continue;end                            
                         if tri_check(ji,jb,totJ*2)==false;continue;end
                         keych[1] = tz_a + tz_b; keych[2] = (-1)^(la+lb)
-                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,tdict6j,Gamma,keych) 
+                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,d6j_lj,Gamma,keych) 
                         if v1 == 0.0;continue;end
                         v1 = v1 / (ehole - e1b[a] - e1b[b])
                         for k in allhs                                 
@@ -223,10 +223,10 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                                 jc = oc.j
                                 if tri_check(jk,jc,totJ*2)==false;continue;end
                                 keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                 if v2==0.0;continue;end
                                 keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                 v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                 Etmp += Jfac * v1 * v2 * v3                                   
                             end
@@ -246,12 +246,8 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     return EMP3
 end
 
-function get_intkey_2(a,b;ofst=1000)
-    return ofst*a + b
-end
-
 """
-    vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab;verbose=false) 
+    vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,d6j_lj,Gamma,keych,key6j,keyab;verbose=false) 
 
 returns generalized Pandya transformed matrix element:
 ```math
@@ -262,20 +258,21 @@ j_a & j_j & J \\\\ j_i & j_d & J'
 V^{J'}_{abij}
 ```
 """
-function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych;verbose=false) 
+function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,d6j_lj,Gamma,keych;verbose=false) 
     Jmin = div(max(abs(ja-jb),abs(jc-jd)),2)
     Jmax = div(min(ja+jb,jc+jd),2)
-    nkeyab = get_intkey_2(a,b); nkeycd = get_intkey_2(c,d)
+    nkeyab = get_nkey2(a,b); nkeycd = get_nkey2(c,d)
+    
     if a > b # this can happen only when Tz=0 now
-        nkeyab = get_intkey_2(b,a)
+        nkeyab = get_nkey2(b,a)        
     end
     if c > d # this can happen only when Tz=0 now
-        nkeycd = get_intkey_2(d,c)
+        nkeycd = get_nkey2(d,c)
     end
     v = 0.0
     @inbounds for Jp = Jmin:Jmax
         if Jp % 2 == 1 && (a==b || c==d);continue;end          
-        nkey = get_nkey_from_key6j(ja,jd,jc,jb,Jp); t6j = tdict6j[nkey]
+        t6j = call_d6j(ja,jd,totJ*2,jc,jb,Jp*2,d6j_lj)
         if t6j == 0.0; continue;end
         keych[3] = Jp
         vch = dict_2b_ch[keych].Vch; vdict = dict_2b_ch[keych].Vdict

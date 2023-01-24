@@ -1,12 +1,12 @@
-function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=[""])    
+function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;Operators=[""])
     @assert optimizer != "" "optimizer should be BayesOpt/LHS/MCMC"
     if !MPIcomm        
         for it = 1:itnum
             #add2n3n(chiEFTobj,to,it)
             calc_vmom_3nf(chiEFTobj,1,to)
-            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
+            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
-            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators)
+            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,dWS,HFdata,to;Operators=Operators)
             if optimizer=="BayesOpt"
                 BO_HFMBPT(it,OPTobj,HFdata,to)
             elseif optimizer=="LHS"
@@ -538,7 +538,7 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
             updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,OPTobj.params)
             calc_vmom_3nf(chiEFTobj,it,to)
             add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)           
-            dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
+            dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
             if !debug
                 hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
             end
@@ -573,7 +573,7 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
                         updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,candidate)
                         calc_vmom_3nf(chiEFTobj,it,to)
                         add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)                      
-                        dicts_tbme = TMtrans(chiEFTobj,HOBs,to;writesnt=false)
+                        dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
                         if !debug
                             hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
                         end

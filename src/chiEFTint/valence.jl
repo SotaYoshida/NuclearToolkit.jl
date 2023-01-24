@@ -164,7 +164,7 @@ function NLOvs(chiEFTobj,dLECs,vs,xr,wr,xrP,wrP,Rnl,RNL,
                                                     fac34 = 12.0*pi *hat(Jrel) * hat(Jrelp) * hat(Lp)
                                                     fac34 *= clebschgordan(Float64,Lp,0,1,0,L,0)
                                                     fac34 *= wigner6j(Float64,Jrel,L,Jtot,Lp,Jrelp,1)
-                                                    fac34 *= wigner9j(Float64,1,1,1,ell,S,Jrel,ellp,Sp,Jrelp)
+                                                    fac34 *= wigner9j(1,1,1,ell,S,Jrel,ellp,Sp,Jrelp)
                                                     fac4 = fac34 
                                                     fac3 = 2.0*sqrt(2.0) * fac34
                                                     fac3 *= (-1)^(L+Jtot+Jrelp+Sp+1)

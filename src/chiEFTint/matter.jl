@@ -94,96 +94,85 @@ function get_spe_denominator(Tz,ki,kj,K,Lzero=true)
     return hc^2 * ((ki+0.5*K)^2 + (-ki+0.5*K)^2 - (kj+0.5*K)^2 - (-kj+0.5*K)^2) / mass
 end
 
-function calc_EperA_PT2(chiEFTobj::ChiralEFTobject,n_below_kF::Int,to)
-    barLmax = 6
-    kF = chiEFTobj.params.kF
-    mN = (Mp + Mn)/2
-    n_mesh = chiEFTobj.params.n_mesh
-    d6j_int = chiEFTobj.d6j_int
-    V12mom = chiEFTobj.V12mom
-    V12mom_2n3n = chiEFTobj.V12mom_2n3n
-    pw_channels = chiEFTobj.pw_channels
-    xr_fm = chiEFTobj.xr_fm
-    wr = chiEFTobj.wr
-    numts = 24
-    ts,ws = Gauss_Legendre(-1,1,numts)
-    PLs = [ zeros(Float64,numts) for L=0:barLmax] 
-    for L = 0:barLmax
-        for i in eachindex(ts)
-            PLs[L+1][i] = Legendre(L,ts[i])
-        end
-    end
-    nKmesh = 50
-    Ks,wKs = Gauss_Legendre(0,2*kF,nKmesh)
-    EPT2 = 0.0
-    nthre = nthreads()
-    sumarrs = zeros(Float64,nthre)
-    @threads for idx1 in eachindex(V12mom)
-        Tz,tLp,tL,S,tJ = pw_channels[idx1]
-        v1Mat = V12mom[idx1]; v1Mat_2n3n = V12mom_2n3n[idx1]
-        sqfac1 = hat(tL)*hat(tLp)
-        LSfac1 = 1 - (-1)^(tL+S+1)   
-        tid = threadid()
-        if LSfac1 == 0;continue;end
-        for idx2 in eachindex(V12mom)
-            Tz2,Lp,L,S2,J = pw_channels[idx1]
-            if S != S2; continue;end
-            LSfac2 = 1 - (-1)^(L+S+1)
-            if LSfac2 == 0;continue;end
-            v2Mat = V12mom[idx2]; v2Mat_2n3n = V12mom_2n3n[idx2]
-            sqfac2 = hat(L)*hat(Lp)
-            Jfac = (2*J+1) *(2*tJ+1)
-            for barL = 0:barLmax
-                PL = PLs[barL+1]
-                if !tri_check(L,tLp,barL);continue;end
-                if !tri_check(Lp,tL,barL);continue;end
-                if !tri_check(tJ,barL,J);continue;end
-                if !tri_check(L,barL,tLp);continue;end
-                if !tri_check(J,barL,tJ);continue;end
-                if !tri_check(tL,barL,Lp);continue;end
-                ifac = (-1)^(tL+Lp+barL) * (-1)^div(L-Lp+tL-tLp,2) #added
-                wsym1 = clebschgordan(Float64,L,0,tLp,0,barL,0) *get_dict6jint_for9j(L,S,J,tJ,barL,tLp,d6j_int)
-                wsym2 = clebschgordan(Float64,Lp,0,tL,0,barL,0) *get_dict6jint_for9j(J,S,Lp,tL,barL,tJ,d6j_int)
-                coeff = ifac * sqfac1 * sqfac2 *Jfac * LSfac1 * LSfac2 * wsym1 *wsym2 * (4*pi) 
-                if coeff == 0.0;continue;end
-                for iK = 1:nKmesh
-                    K = Ks[iK]; K2 = K^2
-                    Kfac = K2 * wKs[iK] 
-                    Ksq = sqrt(kF^2 - K^2/4)
-                    for i = 1:n_mesh
-                        ki = xr_fm[i]; wi = wr[i]
-                        if ki > Ksq;continue;end
-                        for j = 1:n_mesh                    
-                            kj = xr_fm[j]; wj = wr[j]
-                            if kj <= Ksq;continue;end
-                            v1 = v1Mat[j,i] + v1Mat_2n3n[j,i]/2
-                            v2 = v2Mat[i,j] + v2Mat_2n3n[i,j]/2
-                            momfac = (ki^2) *(kj^2)* wi *wj
-                            edeno = get_spe_denominator(Tz,ki,kj,K)
-                            for idx_t in eachindex(ts) # theta_pp' integral
-                                Pw = PL[idx_t] * ws[idx_t]
-                                sumarrs[threadid()] += coeff * momfac/edeno * v1 * v2 * Pw *Kfac
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    EPT2 = sum(sumarrs)
-    rho = (2 *kF^3 )/ (3*pi^2)
-    return EPT2 /(4 * pi^5) 
-end
-
-function Legendre(n,x)
-    nmax = Int(ifelse(n%2==0,n//2,(n-1)//2))
-    tsum = 0.0
-    for k = 0:nmax
-        tsum += (-1)^k * factorial(big(2*n-2*k)) / factorial(k) / factorial(n-k) / factorial(n-2*k) *x^(n-2*k)
-    end
-    ret = tsum / 2^n
-    return ret
-end
+# function calc_EperA_PT2(chiEFTobj::ChiralEFTobject,n_below_kF::Int,dWS,to)
+#     barLmax = 6
+#     kF = chiEFTobj.params.kF
+#     n_mesh = chiEFTobj.params.n_mesh
+#     d6j_int = dWS.d6j_int
+#     V12mom = chiEFTobj.V12mom
+#     V12mom_2n3n = chiEFTobj.V12mom_2n3n
+#     pw_channels = chiEFTobj.pw_channels
+#     xr_fm = chiEFTobj.xr_fm
+#     wr = chiEFTobj.wr
+#     numts = 24
+#     ts,ws = Gauss_Legendre(-1,1,numts)
+#     PLs = [ zeros(Float64,numts) for L=0:barLmax] 
+#     for L = 0:barLmax
+#         for i in eachindex(ts)
+#             PLs[L+1][i] = Legendre(L,ts[i])
+#         end
+#     end
+#     nKmesh = 50
+#     Ks,wKs = Gauss_Legendre(0,2*kF,nKmesh)
+#     EPT2 = 0.0
+#     nthre = nthreads()
+#     sumarrs = zeros(Float64,nthre)
+#     @threads for idx1 in eachindex(V12mom)
+#         Tz,tLp,tL,S,tJ = pw_channels[idx1]
+#         v1Mat = V12mom[idx1]; v1Mat_2n3n = V12mom_2n3n[idx1]
+#         sqfac1 = hat(tL)*hat(tLp)
+#         LSfac1 = 1 - (-1)^(tL+S+1)   
+#         tid = threadid()
+#         if LSfac1 == 0;continue;end
+#         for idx2 in eachindex(V12mom)
+#             Tz2,Lp,L,S2,J = pw_channels[idx1]
+#             if S != S2; continue;end
+#             LSfac2 = 1 - (-1)^(L+S+1)
+#             if LSfac2 == 0;continue;end
+#             v2Mat = V12mom[idx2]; v2Mat_2n3n = V12mom_2n3n[idx2]
+#             sqfac2 = hat(L)*hat(Lp)
+#             Jfac = (2*J+1) *(2*tJ+1)
+#             for barL = 0:barLmax
+#                 PL = PLs[barL+1]
+#                 if !tri_check(L,tLp,barL);continue;end
+#                 if !tri_check(Lp,tL,barL);continue;end
+#                 if !tri_check(tJ,barL,J);continue;end
+#                 if !tri_check(L,barL,tLp);continue;end
+#                 if !tri_check(J,barL,tJ);continue;end
+#                 if !tri_check(tL,barL,Lp);continue;end
+#                 ifac = (-1)^(tL+Lp+barL) * (-1)^div(L-Lp+tL-tLp,2) #added
+#                 wsym1 = clebschgordan(Float64,L,0,tLp,0,barL,0) *get_dict6jint_for9j(L,S,J,tJ,barL,tLp,d6j_int)
+#                 wsym2 = clebschgordan(Float64,Lp,0,tL,0,barL,0) *get_dict6jint_for9j(J,S,Lp,tL,barL,tJ,d6j_int)
+#                 coeff = ifac * sqfac1 * sqfac2 *Jfac * LSfac1 * LSfac2 * wsym1 *wsym2 * (4*pi) 
+#                 if coeff == 0.0;continue;end
+#                 for iK = 1:nKmesh
+#                     K = Ks[iK]; K2 = K^2
+#                     Kfac = K2 * wKs[iK] 
+#                     Ksq = sqrt(kF^2 - K^2/4)
+#                     for i = 1:n_mesh
+#                         ki = xr_fm[i]; wi = wr[i]
+#                         if ki > Ksq;continue;end
+#                         for j = 1:n_mesh                    
+#                             kj = xr_fm[j]; wj = wr[j]
+#                             if kj <= Ksq;continue;end
+#                             v1 = v1Mat[j,i] + v1Mat_2n3n[j,i]/2
+#                             v2 = v2Mat[i,j] + v2Mat_2n3n[i,j]/2
+#                             momfac = (ki^2) *(kj^2)* wi *wj
+#                             edeno = get_spe_denominator(Tz,ki,kj,K)
+#                             for idx_t in eachindex(ts) # theta_pp' integral
+#                                 Pw = PL[idx_t] * ws[idx_t]
+#                                 sumarrs[threadid()] += coeff * momfac/edeno * v1 * v2 * Pw *Kfac
+#                             end
+#                         end
+#                     end
+#                 end
+#             end
+#         end
+#     end
+#     EPT2 = sum(sumarrs)
+#     rho = (2 *kF^3 )/ (3*pi^2)
+#     return EPT2 /(4 * pi^5) 
+# end
 
 function get_n_below_kF(chiEFTobj;verbose=true)
     kF = chiEFTobj.params.kF  

@@ -53,7 +53,7 @@ export hf_main
 include("IMSRG.jl/imsrg_util.jl")
 include("IMSRG.jl/commutator.jl")
 include("IMSRG.jl/valencespace.jl")
-#include("IMSRG.jl/emulator_imsrg.jl")
+include("IMSRG.jl/emulator_imsrg.jl")
 export imsrg_flow_check
 
 ### ShellModel.jl

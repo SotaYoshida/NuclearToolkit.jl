@@ -4,8 +4,8 @@ using Test
 
 @testset  "NuclearToolkit.jl" begin
     @testset "generate NN potential" begin
-        @test make_chiEFTint(;fn_params="test/optional_parameters.jl")
-        @test make_chiEFTint(;fn_params="test/optional_parameters_snt.jl")
+        @test make_chiEFTint(;fn_params="optional_parameters.jl")
+        @test make_chiEFTint(;fn_params="optional_parameters_snt.jl")
     end
     @testset "HFMBPT & VS-IMSRG calculations" begin
         hw = 20; emax=2

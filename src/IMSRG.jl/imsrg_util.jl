@@ -590,7 +590,7 @@ function get_lookup_ketJT(i::Int64,j::Int64,ji::Int64,jj::Int64,J::Int64,Tz::Int
 end
 
 function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dWS,
-                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="NS",Hsample=false,num_Hsample=50,modsample=1) 
+                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="",Hsample=false,num_Hsample=50,modsample=1) 
     Chan2b = Chan2bD.Chan2b
     ncomm = IMSRGobj.Ncomm
     s,ds = IMSRGobj.s

@@ -62,8 +62,12 @@ function dict_em500n3lo()
     dLECs["ct3_NNLO"] = -2.828   
     dLECs["ct4_NNLO"] =  4.811   
 
-    dLECs["cD"] = 1.0
-    dLECs["cE"] = 1.0 
+    dLECs["ct1_NNLO"] = -0.81  
+    dLECs["ct3_NNLO"] = -3.2   
+    dLECs["ct4_NNLO"] =  5.4
+
+    dLECs["cD"] = 1.264
+    dLECs["cE"] = -0.120
 
 
     ## N3LO GeV^-2
@@ -135,7 +139,7 @@ function dict_emn500n3lo()
     dLECs["ct4_NNLO"] = dLECs["c4_NNLO"]
     dLECs["cD"] = 0.0
     dLECs["cE"] = 0.0
-
+    
     ## N3LO GeV^-2
     dLECs["d12"] = 1.04
     dLECs["d3"] =  -0.48
@@ -218,11 +222,11 @@ function dict_emn500n4lo()
     dLECs["cE"] =  0.0
 
     # ## old MAP
-    # dLECs["ct1_NNLO"] = -1.10
-    # dLECs["ct3_NNLO"] = -4.753
-    # dLECs["ct4_NNLO"] = 4.089
-    # dLECs["cD"] = -0.277
-    # dLECs["cE"] = 0.820
+    dLECs["ct1_NNLO"] = -1.10
+    dLECs["ct3_NNLO"] = -4.453
+    dLECs["ct4_NNLO"] = 4.089
+    dLECs["cD"] = -0.177
+    dLECs["cE"] = 0.820
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18

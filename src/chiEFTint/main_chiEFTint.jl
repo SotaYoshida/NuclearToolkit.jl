@@ -34,7 +34,6 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
-        ## not yet updated to seperate 2n3n from NN
         caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;Operators=Operators)        
     else # write out snt/snt.bin file
         calc_vmom_3nf(chiEFTobj,1,to)
@@ -56,7 +55,7 @@ It returns
 function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params="optional_parameters.jl")
     # specify chiEFT parameters
     params = init_chiEFTparams(;io=io,fn_params=fn_params)
-    dWS = prep_dWS2n(params,to)
+    @timeit to "prep dWS" dWS = prep_dWS2n(params,to)
 
     ## prep. momentum mesh
     xr_fm,wr = Gauss_Legendre(0.0,params.pmax_fm,params.n_mesh); xr = xr_fm .* hc
@@ -151,6 +150,10 @@ function genLaguerre(n::Int,alpha,x)
     end
 end
 
+"""
+    Legendre(n,x)
+function to calculate Legendre polynomial ``P_n(x)``
+"""
 function Legendre(n,x)
     nmax = Int(ifelse(n%2==0,n//2,(n-1)//2))
     tsum = 0.0

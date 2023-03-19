@@ -86,7 +86,7 @@ function rm_comment(lines)
     for line in lines
         line = strip(line)
         if length(line) > 0
-            if startswith(line,"!")
+            if startswith(line,"!")||startswith(line,"#")
                 continue
             end
         end
@@ -118,13 +118,15 @@ function readsnt(sntf,binfo,to)
     @inbounds for i = 1:lp
         ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
         if (2*n+l <= emax_calc)
-            push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+            #push!(p_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
+            push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     @inbounds for i = 1:lp
         ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
         if (2*n+l <= emax_calc)
-            push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+            #push!(n_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
+            push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     lpn_calc = get_lpln_from_emax(emax_calc)
@@ -137,10 +139,20 @@ function readsnt(sntf,binfo,to)
     dicts=[ Dict{Int64,Vector{Vector{Float64}}}() for pnrank=1:3]
     ofst = ln+lp+nsp+3 
     tls = @view lines[ofst+1:end]
+    ci=cj=ck=cl=cJ="-1"
+    cVjj=cVjj_2n3n=cVpp="0.0"
     @inbounds for ith = 1:ntbme
         tkey = zeros(Int64,4)
         tl = tls[ith]
-        ci,cj,ck,cl,cJ,cVjj,cVjj_2n3n,cVpp = split(tl)        
+        sptl = split(tl) 
+        nsptl = length(sptl)
+        if nsptl == 6
+            ci,cj,ck,cl,cJ,cVjj = sptl
+        elseif nsptl == 7
+            ci,cj,ck,cl,cJ,cVjj,cVpp=sptl
+        elseif nsptl == 8 
+            ci,cj,ck,cl,cJ,cVjj,cVjj_2n3n,cVpp=sptl
+        end
         totJ = parse(Float64,cJ); Vjj = parse(Float64,cVjj); Vjj_2n3n = parse(Float64,cVjj_2n3n); Vpp = parse(Float64,cVpp)
         tkey[1] = parse(Int64,ci)
         tkey[2] = parse(Int64,cj)
@@ -150,29 +162,29 @@ function readsnt(sntf,binfo,to)
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
-        phase = 1.0
-        if nth == 2
+        phase = 1.0        
+        #if nth == 2
             i,j,k,l = tkey
             oi = sps[i];oj = sps[j];ok = sps[k];ol = sps[l]
-            ji = oi.j; jj = oj.j; jk = ok.j; jl = ol.j
+            ji = oi.j; jj = oj.j; jk = ok.j; jl = ol.j    
             phaseij = (-1)^(div(ji+jj,2)+totJ+1)
             phasekl = (-1)^(div(jk+jl,2)+totJ+1)
             flipij = ifelse(i>j,true,false)
             flipkl = ifelse(k>l,true,false)
             if flipij; tkey[1] = j; tkey[2] = i; phase *= phaseij;end
             if flipkl; tkey[3] = l; tkey[4] = k; phase *= phasekl;end
-            if tkey[1] > tkey[3]
+            if tkey[1] > tkey[3] || (tkey[1] == tkey[3] && tkey[2] > tkey[4])
                 a,b,c,d = tkey
                 tkey[1] = c; tkey[2] = d; tkey[3] = a; tkey[4] = b
             end
-        end
+        #end
         tdict = dicts[nth]   
         Vjj *= phase; Vjj_2n3n *= phase; Vpp *= phase    
         V2b = Vjj + Vjj_2n3n + Vpp*hw/Anum
         nkey = get_nkey_from_abcdarr(tkey)
-        t = get(tdict,nkey,false)
+
         Vcm = 0.0
-        if t == false
+        if !haskey(tdict,nkey)
             tdict[nkey] = [ [totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Vcm] ]
         else
             push!(tdict[nkey],[totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Vcm])
@@ -253,14 +265,16 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            push!(p_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+            #push!(p_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
+            push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     @inbounds for i = 1:ln
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            push!(n_sps,SingleParticleState(n,l,j,tz,0,false,false,false))
+            #push!(n_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
+            push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
@@ -272,7 +286,7 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
     dicts=[ Dict{Int64,Vector{Vector{Float64}}}() for pnrank=1:3]
 
     for n = 1:ntbme
-    tkey = zeros(Int64,4)        
+        tkey = zeros(Int64,4)        
         org_ijkl = [read(f,Int16) for k=1:4];tkey .= org_ijkl                
         totJ = read(f,Int16)
         if use_Float64
@@ -293,21 +307,20 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
             phasekl = (-1)^(div(jk+jl,2)+totJ+1); flipkl = ifelse(k>l,true,false)
             if flipij; tkey[1] = j; tkey[2] = i; phase *= phaseij;end
             if flipkl; tkey[3] = l; tkey[4] = k; phase *= phasekl;end
-            if tkey[1] > tkey[3]
+            if tkey[1] > tkey[3] || (tkey[1]==tkey[3]&&tkey[2]>tkey[4])
                 a,b,c,d = tkey
                 tkey[1] = c; tkey[2] = d; tkey[3] = a; tkey[4] = b
             end
         end
-        tdict = dicts[nth]        
+        tdict = dicts[nth]
         Vjj *= phase
         Vjj_2n3n *= phase
         Vpp *= phase
         V2b = Vjj + Vjj_2n3n + Vpp*hw/Anum
         nkey = get_nkey_from_abcdarr(tkey)
-        t = get(tdict,nkey,false)
         Vcm= 0.0
         tJ = totJ * 1.0
-        if t == false
+        if !haskey(tdict,nkey)
             tdict[nkey] = [ [tJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Vcm] ]
         else
             push!(tdict[nkey],[tJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Vcm])
@@ -380,12 +393,10 @@ function store_1b2b(sps,dicts1b::Dict1b,dicts,binfo)
                 v1b[ith,jth] = v1b[jth,ith] = tmp 
             end
         end
-    end    
-    
+    end
     ### store two-body part  dictMonopole is used in IMSRG
     #dictTBMEs = [ Dict{Vector{Int64},Float64}( ) for pnrank=1:3]
     dictTBMEs = [ Dict{Vector{Int64},Vector{Float64}}( ) for pnrank=1:3]
-    
     dictMonopole = [ Dict{Vector{Int64},valDictMonopole}( ) for pnrank=1:3]
     for pnrank=1:3
         tdictl = dicts[pnrank]                
@@ -541,7 +552,8 @@ function def_chan2b(binfo,dicts,sps)
     nchan = 0
     Chan2b = chan2b[ ]
     maxnpq = 0
-    dict_2b_ch = Dict{Vector{Int64},VdictCh}()
+    #dict_2b_ch = Dict{Vector{Int64},VdictCh}()
+    dict_2b_ch = Dict{UInt64,VdictCh}()
     Gamma = Matrix{Float64}[ ]
     V2b = Matrix{Float64}[ ]
     tkey = zeros(Int64,4); dkey = zeros(Int64,3)
@@ -579,13 +591,21 @@ function def_chan2b(binfo,dicts,sps)
                     intkey = get_nkey2(ket[1],ket[2])
                     vdict[intkey] = ik
                 end
-                push!(Chan2b, chan2b(Tz,prty,J,kets))
+
+                tuplekets = [ (ket[1],ket[2]) for ket in kets]
+                push!(Chan2b, chan2b(Tz,prty,J,tuplekets,length(kets)))
                 dim = length(kets)
+       
+                # org
+                #push!(Chan2b, chan2b(Tz,prty,J,kets,length(kets)))
+                #dim = length(kets)
                 push!(Gamma,zeros(Float64,dim,dim))
 
                 dkey[1] = Tz; dkey[2]=prty; dkey[3]=J
                 maxnpq = ifelse(dim>maxnpq,dim,maxnpq)
-                dict_2b_ch[copy(dkey)] = VdictCh(nchan,vdict)
+                #dict_2b_ch[copy(dkey)] = VdictCh(nchan,vdict)
+                dict_2b_ch[get_nkey3_JPT(copy(dkey))] = VdictCh(nchan,vdict)
+                
                 vmat = zeros(Float64,dim,dim)
                 for i = 1:dim
                     a,b = kets[i]
@@ -599,6 +619,7 @@ function def_chan2b(binfo,dicts,sps)
                             tkey[3]=a; tkey[4]=b
                         end
                         intkey = get_nkey_from_abcdarr(tkey)
+                        #println("tkey $tkey intkey $intkey")
                         for JV in tdict[intkey]
                             tJ = JV[1]
                             v = JV[3] + JV[4] + JV[5] /Anum  + JV[6] * Anum                           
@@ -612,22 +633,17 @@ function def_chan2b(binfo,dicts,sps)
         end
     end
     nch = length(Chan2b)
-    #println("nch $nch maxnpq $maxnpq")
-    dict_ch_idx_from_ket = [ [Dict{Vector{Int64},Vector{Vector{Int64}}}( ) for J=0:Jmax+1] for Tz = -2:2:2 ]
-    dict_idx_from_chket = [Dict{Vector{Int64},Int64}( ) for ch = 1:nch]
+    dict_ch_idx_from_ket = Dict{UInt64,NTuple{2,Int64}}( ) 
+    dict_idx_from_chket = [Dict{Vector{Int64},Int64}( ) for _ = 1:nch]
     for ch = 1:nch
         tbc = Chan2b[ch]; tkets = tbc.kets; Tz = tbc.Tz; J = tbc.J
-        target = dict_ch_idx_from_ket[1+div(Tz+2,2)][J+1]
+        target = dict_ch_idx_from_ket#[div(Tz+2,2)+1][J+1]
         target2 = dict_idx_from_chket[ch]
         for (idx,ket) in enumerate(tkets)
-            tf = get(target,ket,false)
-            if tf == false
-                target[ket] = [ [ch,idx] ]
-            else
-                push!(target[ket],[ch,idx])
-            end
-            target2[ket] = idx
-        end 
+            nkey = get_nkey4_ketJT(ket[1],ket[2],J,Tz)        
+            target[nkey] = (ch,idx)
+            target2[[ket[1],ket[2]]] = idx
+        end
     end
     return chan2bD(Chan2b,dict_2b_ch,dict_ch_idx_from_ket,dict_idx_from_chket),Gamma,maxnpq,V2b
 end

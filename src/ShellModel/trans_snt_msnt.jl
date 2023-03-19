@@ -1,4 +1,3 @@
-
 function make_dict_convention(similar_to_prevwork::Bool)
     dict_sps = Dict{Int64,Int64}()    
     if similar_to_prevwork 
@@ -127,30 +126,30 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,o
                         @sprintf("%5i",qbit_c),@sprintf("%5i",qbit_d), @sprintf("%5i",Jket), @sprintf("%15.6f",tbme_M))               
             end
         end
-        # if true && pnrank == 2 # Li6
-        #     #for J = 0:10
-        #     for J = 2:3
-        #         idx = idxs[J+1]
-        #         if length(idx) == 0; continue; end
-        #         submat = mat[idx,idx]
-        #         evals,evecs = eigen(submat)
-        #         println("J $J idx $idx")
-        #         for nn = 1:length(idx)
-        #             ket = kets[pnrank][idx[nn]]
-        #             M = m_sps[ket.a][5] +  m_sps[ket.b][5] 
-        #             print("|$(ket.a) $(ket.b);M=$M> ")
-        #         end
-        #         print("\n")
-        #         for nn = 1:length(idx)
-        #             print_vec("", submat[nn,:])
-        #         end 
-        #         for nn = 1:length(evals)
-        #             if abs(evals[nn]) < 1.e-12; continue;end
-        #             vec = evecs[:,nn]
-        #             print_vec(" E "*@sprintf("%15.6f",evals[nn]), vec)
-        #         end
-        #     end
-        # end
+        if true && pnrank == 2 # Li6
+            #for J = 0:10
+            for J = 2:3
+                idx = idxs[J+1]
+                if length(idx) == 0; continue; end
+                submat = mat[idx,idx]
+                evals,evecs = eigen(submat)
+                println("J $J idx $idx")
+                for nn = 1:length(idx)
+                    ket = kets[pnrank][idx[nn]]
+                    M = m_sps[ket.a][5] +  m_sps[ket.b][5] 
+                    print("|$(ket.a) $(ket.b);M=$M> ")
+                end
+                print("\n")
+                for nn = 1:length(idx)
+                    print_vec("", submat[nn,:])
+                end 
+                for nn = 1:length(evals)
+                    if abs(evals[nn]) < 1.e-12; continue;end
+                    vec = evecs[:,nn]
+                    print_vec(" E "*@sprintf("%15.6f",evals[nn]), vec)
+                end
+            end
+        end
     end
     return nothing
 end
@@ -175,4 +174,43 @@ function main_trans_msnt(fn,target_nuc,target_Js=[];similar_to_prevwork=false)
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
     mstates_p,mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
     trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+end
+
+function svd_li6(Rvecs)
+    println("svd_li6 function is called. This is only used for Li6 on the p-shell space.")
+    dict_sps = Dict(1=>[3,3],2=>[1,1],3=>[1,4],4=>[4,1],5=>[4,4],
+                    6=>[2,2],7=>[2,5],8=>[5,2],9=>[5,5],10=>[6,6])
+    nsps = 6
+    Mat = zeros(Float64,nsps,nsps)
+    for n = 1:length(Rvecs)
+        Rvec = Rvecs[n]
+        println("n $n")
+        for i = 1:length(Rvec)
+            idxs = dict_sps[i]
+            Mat[idxs[1],idxs[2]] = Rvec[i]
+        end
+        for j = 1:nsps
+            print_vec("",Mat[j,:];long=true)
+        end
+        SVD = LinearAlgebra.svd(Mat)
+        U = SVD.U; Sig = Diagonal(SVD.S); Vt = SVD.Vt; V = Vt'
+        println("U")
+        for j = 1:nsps
+            print_vec("",U[j,:];long=true)
+        end 
+        println("Sig")
+        for j = 1:nsps
+            print_vec("",Sig[j,:];long=true)
+        end 
+        println("V")
+        for j = 1:nsps
+            print_vec("",V[j,:];long=true)
+        end 
+        println("")
+        # println("Vt")
+        # for j = 1:nsps
+        #     print_vec("",Vt[j,:])
+        # end 
+        Mat .= 0.0
+    end
 end

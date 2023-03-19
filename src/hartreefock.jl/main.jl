@@ -16,13 +16,13 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0)
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,emulator=false)
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
     chiEFTparams = init_chiEFTparams(;io=nothing)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
-    @timeit to "prep dWS2n" dWS = prep_dWS2n(chiEFTparams,to)
+    @timeit to "prep dWS2n" dWS = prep_dWS2n(chiEFTparams,to;emax_calc=emax_calc)
     @timeit to "read" begin        
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
@@ -32,7 +32,6 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         A=nuc.A
         BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
-
         HCM = InitOp(Chan1b,Chan2bD.Chan2b)
         TCM = InitOp(Chan1b,Chan2bD.Chan2b)
         VCM = InitOp(Chan1b,Chan2bD.Chan2b)
@@ -73,7 +72,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode,Hsample=Hsample)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
@@ -113,7 +112,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbo
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
         Z = nuc.Z; N=nuc.N; A=nuc.A
-        binfo = basedat(nuc,sntf,hw,emax,ref)  
+        binfo = basedat(nuc,sntf,hw,emax,ref)
         if i > 1
             recalc_v!(A,dicts)
             update_1b!(binfo,sps,Hamil)
@@ -157,7 +156,7 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
                 tket .= ket
                 tHcm = Hcm[i,j]
                 nkey = get_nkey_from_abcdarr(tkey)
-                for target in dicts[pnrank][nkey] # [ [totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Hcm] ]
+                for target in dicts[pnrank][nkey] #[ [totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Hcm] ]
                     if J != target[1];continue;end
                     target[6] = tHcm
                 end
@@ -247,10 +246,10 @@ function def_sps(emax)
             if n < 0;continue;end
             if jmin < 1;jmin=jmax;end
             for j = jmin:2:jmax
-                push!(p_sps,SingleParticleState(n,l,j,-1,0,false,false,false))
-                push!(sps,SingleParticleState(n,l,j,-1,0,false,false,false))
-                push!(n_sps,SingleParticleState(n,l,j,1,0,false,false,false))
-                push!(sps,SingleParticleState(n,l,j,1,0,false,false,false))
+                push!(p_sps,SingleParticleState(n,l,j,-1,[0.0],[false],[false],[false]))
+                push!(sps,SingleParticleState(n,l,j,-1,[0.0],[false],[false],[false]))
+                push!(n_sps,SingleParticleState(n,l,j,1,[0.0],[false],[false],[false]))
+                push!(sps,SingleParticleState(n,l,j,1,[0.0],[false],[false],[false]))
             end
         end
     end
@@ -479,7 +478,7 @@ function def_holeparticle(Chan1b,occ_p,occ_n,p_sps,n_sps)
         for i = 1:ifelse(pn==1,lp,ln)
             idx_snt = i + lp*(pn-1)
             msidx = snt2ms[idx_snt]
-            t_sps[i].occ = occs[i,i]
+            t_sps[i].occ[1] = occs[i,i]
             if occs[i,i] == 0.0
                 push!(particles[pn],msidx)            
             else
@@ -592,7 +591,7 @@ function get_space_chs(sps,Chan2b)
         kets = tbc.kets
         for (ik,ket) in enumerate(kets)
             i,j = ket
-            ni = sps[i].occ; nj = sps[j].occ
+            ni = sps[i].occ[1]; nj = sps[j].occ[1]
             if ni + nj == 0.0; 
                 add_ch_ket!(ch,ik,pp)
             else
@@ -682,7 +681,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     h_p = copy(mat1b); h_n = copy(mat1b)
     update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
     calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
-    if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
+    #if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
     for it = 1:itnum        
         ## diagonalize proton/neutron 1b hamiltonian
         valsp,vecsp = eigen(h_p); valsn,vecsn = eigen(h_n)
@@ -694,7 +693,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
         ## Re-evaluate tilde(V) and Fock matrix
         calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,abcd,Chan1b)
         update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)        
-        calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
+        calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs;verbose=verbose)
 
         if HF_conv_check(EHFs;tol=HFtol)
             #print("HF converged @ $it  \t")

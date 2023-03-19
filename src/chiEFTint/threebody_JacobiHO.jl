@@ -205,20 +205,20 @@ function inner_local(params,to)
     ps = params.meshpoints.ps
     ws = params.meshpoints.wps     
     @timeit to "Zs" Z0s,Z0Xs,fKs,fKXs = prep_Z0s_Z0Xs_fKs(params)
-    Xmax_tpe = params.j3max + 1 + 2 + 2
-    #println("Xmax_tpe $Xmax_tpe N3max $N3max L3max $(params.L3max) L3max*2 + 2(K2) + 2(K3) $(params.L3max*2+2+2) ")
-  
+    Xmax_tpe = params.N3max + 1 + 1 + 2 + 2
+    println("Xmax_tpe $Xmax_tpe N3max $N3max L3max $(params.L3max) ")
+
     integ_E = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_D = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_c1 = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
     integ_c34 = Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}}()
-  
-    @threads for n_thre = 1:4
+    nch = 0
+    chs = zeros(Int64,1,1)
+    @timeit to "const:integ" for n_thre = 1:4
         target = integ_E
         if n_thre == 2; target = integ_D;end
         if n_thre == 3; target = integ_c1;end
         if n_thre == 4; target = integ_c34;end
-
         for E_bra = 0:N3max
             for E_ket = E_bra:N3max
                 Ekey = get_nkey2(E_bra,E_ket)
@@ -240,15 +240,16 @@ function inner_local(params,to)
                                 for n1p = 0:div(e1p,2)
                                     l1p = e1p - 2*n1p
                                     tkey1p = get_nkey3(e1p,n1p,l1p)
-                                    R1ps = Rnls_r[tkey1p]
                                     for n2p = 0:div(e2p,2)
                                         l2p = e2p - 2*n2p
                                         tkey2p = get_nkey3(e2p,n2p,l2p)
-                                        R2ps = Rnls_r[tkey2p]
                                         key_bra = get_nkey4(n1,l1,n2,l2)
                                         key_ket = get_nkey4(n1p,l1p,n2p,l2p)
-                                        integ_inner_nnlo(n_thre,target,Ekey,e4key,key_bra,key_ket,l1,l1p,l2,l2p,Xmax_tpe,
-                                                         ps,ws,R1s,R1ps,R2s,R2ps,Z0s,Z0Xs,fKs,fKXs)
+                                        check_construct_integdict(target,Ekey,e4key,key_bra,key_ket;level=2)
+                                        nch += 1
+                                        if n_thre == 4
+                                            chs[:,nch] .= [Ekey,e4key,key_bra,key_ket,tkey1,tkey2,tkey1p,tkey2p,l1,l1p,l2,l2p]
+                                        end
                                     end
                                 end
                             end
@@ -257,13 +258,30 @@ function inner_local(params,to)
                 end
             end
         end
+        if n_thre == 4; println("nch_integ $nch ",show_size_inMB("chs",chs));end
+        if n_thre == 3; chs = zeros(Int64,12,nch);end
+        nch = 0
+    end
+
+    dimch = size(chs)[2]
+    @timeit to "eval:integ" @threads for nch = 1:dimch
+        Ekey,e4key,key_bra,key_ket,tkey1,tkey2,tkey1p,tkey2p,l1,l1p,l2,l2p = @view chs[:,nch]
+        R1s = Rnls_r[tkey1]; R1ps = Rnls_r[tkey1p]
+        R2s = Rnls_r[tkey2]; R2ps = Rnls_r[tkey2p]
+        for n_thre = 1:4
+            target = integ_E
+            if n_thre == 2; target = integ_D;end
+            if n_thre == 3; target = integ_c1;end
+            if n_thre == 4; target = integ_c34;end
+            integ_inner_nnlo(n_thre,target,Ekey,e4key,key_bra,key_ket,l1,l1p,l2,l2p,Xmax_tpe,
+                             ps,ws,R1s,R1ps,R2s,R2ps,Z0s,Z0Xs,fKs,fKXs)
+        end
     end
     return inner_integ_local(integ_c1,integ_c34,integ_D,integ_E)
 end
-
+   
 function integ_inner_nnlo(n_thre,target,Ekey,e4key,key_bra,key_ket,l1,l1p,l2,l2p,Xmax_tpe,
                          ps,ws,R1s,R1ps,R2s,R2ps,Z0s,Z0Xs,fKs,fKXs)
-    check_construct_integdict(target,Ekey,e4key,key_bra,key_ket;level=2)
     ret = target[Ekey][e4key][key_bra][key_ket]
     if n_thre == 1  # Contact
         Xmin = max(abs(l1-l1p),abs(l2-l2p))
@@ -346,19 +364,21 @@ function prep_inner_integ(params3N,to)
 end
 
 function Calc_3NF_in_JacobiHO_coorrdinate(params3N,LECs,to)
-    print("Calculating inner integrals... ")
-    @timeit to "prep_inner" inner_integ = prep_inner_integ(params3N,to)
-    println("=> Done!")
     labframe = true
     if labframe
         #calculation of 3NF in laboratory frame(???)
         print("Calculating CFPs")
         @timeit to "chJPT" JPTs,cfps = calc_channel_JPT(params3N,to)
-        println("=> Done!")
-        print("Calculating JacobiHO matrix elements")
-        @timeit to "calc JacobiHO_3NF" JacobiHO_3NF(LECs,params3N,JPTs,cfps,inner_integ)
-        println("=> Done!")
+        println("Calculating inner integrals... ")
+        @timeit to "prep_inner" inner_integ = prep_inner_integ(params3N,to)
+        println("Calculating JacobiHO matrix elements")
+        @timeit to "calc JacobiHO_3NF" dict_JPTN_dim,idx_dict_JPT = JacobiHO_3NF(LECs,params3N,JPTs,cfps,inner_integ)
         @timeit to "read JacobiHO_3NF" read_JacobiHO_3NF(params3N,JPTs)
+        println("Preparing lab kets...")      
+        @timeit to "prepLab" begin
+            dict_lab_JPT = prep_lab_space(params3N)  
+            const_labHO(params3N,JPTs,dict_lab_JPT,dict_JPTN_dim,idx_dict_JPT)
+        end
     else
         #solve three-body system
     end    
@@ -485,7 +505,6 @@ function set_cfps(cfpdim,cfpvals_ch,JPT,nlsjts,params,to)
         nlsjt = @views nlsjts[N+1]
         if nphys == 0;continue;end
         if north == 0;continue;end
-        #println("N = $N JPT $JPT i $i ndim/north $nphys $north ")
         A = zeros(Float64,nphys,nphys)   
         for ib = 1:nphys 
             n12,l12,s12,j12,t12,n3,l3,j3 = @view nlsjt[:,ib]
@@ -520,7 +539,7 @@ function write_cfp_bin(io,north,nphys,vals,vecs,JPT,N,params,cfpvals_ch)
         elseif abs(val-0.0) < 1.e-5
             nothing
         else            
-            @error "warn! something is wrong:eval cfp $val"
+            @error "warn! something is wrong @JPT $JPT channel : $val"
             exit()
         end
     end
@@ -555,21 +574,22 @@ function JacobiHO_3NF(LECs,params3NF,JPTs,cfps,inner_integ;verbose=false,debug=t
     N3max = params3NF.N3max
     cfpdims = cfps.cfpdims
     nallo = nallp = 0
-    dict_N_idx = Dict("phys" =>[ Dict{Int64,Int64}() for idx = 1:length(JPTs)],
-                      "orth" =>[ Dict{Int64,Int64}() for idx = 1:length(JPTs)])
-    dict_JPT_dim = Dict{String,Dict{Int64,Int64}}("phys"=>Dict{Int64,Int64}(),"orth"=>Dict{Int64,Int64}())
+    dict_JPTN_dim = Dict("phys" =>[ Dict{Int64,Vector{Int64}}() for idx = 1:length(JPTs)],
+                         "orth" =>[ Dict{Int64,Vector{Int64}}() for idx = 1:length(JPTs)])
+    idx_dict_JPT = Dict{Vector{Int64},Int64}()
     for (idx_JPT,JPT) in enumerate(JPTs)
-        J,P,T = JPT        
+        J,P,T = JPT
+        idx_dict_JPT[[J,P,T]] = idx_JPT
         notmp = nptmp = 0
         for N = 0:N3max
             nphys,north = cfpdims[idx_JPT][N+1]
-            dict_N_idx["orth"][idx_JPT][N] = notmp
-            dict_N_idx["phys"][idx_JPT][N] = nptmp
+            dict_JPTN_dim["orth"][idx_JPT][N] = [north,notmp]
+            dict_JPTN_dim["phys"][idx_JPT][N] = [nphys,nptmp]
             notmp += north
             nptmp += nphys
         end
-        dict_JPT_dim["phys"][idx_JPT] = nptmp
-        dict_JPT_dim["orth"][idx_JPT] = notmp
+        dict_JPTN_dim["orth"][idx_JPT][N3max+1] = [notmp,notmp]
+        dict_JPTN_dim["phys"][idx_JPT][N3max+1] = [nptmp,nptmp]
         nallp += nptmp
         nallo += notmp
         if verbose
@@ -581,10 +601,10 @@ function JacobiHO_3NF(LECs,params3NF,JPTs,cfps,inner_integ;verbose=false,debug=t
 
     for (idx_JPT,JPT) in enumerate(JPTs)       
         if !check_binexists(JPT,params3NF,"JacobiHO") || debug
-            calc_write_JacobiHO_ME(idx_JPT,N3max,JPT,cfps,dict_JPT_dim,dict_N_idx,params3NF,LECs,inner_integ;debug=debug)
+            calc_write_JacobiHO_ME(idx_JPT,N3max,JPT,cfps,dict_JPTN_dim,params3NF,LECs,inner_integ;debug=debug)
         end
     end
-    return nothing
+    return dict_JPTN_dim,idx_dict_JPT
 end
 
 function read_JacobiHO_3NF(params3NF,JPTs;verbose=false)
@@ -611,15 +631,14 @@ function read_JacobiHO_3NF(params3NF,JPTs;verbose=false)
 end
 
 function calc_write_JacobiHO_ME(idx_JPT::Int,N3max::Int64,JPT,
-                                cfps,dict_JPT_dim,dict_N_idx,
-                                params3NF,LECs,inner_integ;debug=false)
+                                cfps,dict_JPTN_dim,params3NF,LECs,inner_integ;debug=false)
     fn = make_binname(JPT,params3NF,"JacobiHO_"*params3NF.regulator)
     J,P,T = JPT
     chs = cfps.chs
     cfpdims = cfps.cfpdims
     cfpvals = cfps.cfpvals
-    dim_phys = dict_JPT_dim["phys"][idx_JPT]
-    dim_orth = dict_JPT_dim["orth"][idx_JPT]
+    dim_phys = dict_JPTN_dim["phys"][idx_JPT][N3max+1][1]
+    dim_orth = dict_JPTN_dim["orth"][idx_JPT][N3max+1][1]
     Vmat = zeros(Float64,dim_phys,dim_phys)
     Cmat = zeros(Float64,dim_orth,dim_phys)
     tmat = zeros(Float64,dim_orth,dim_phys)
@@ -630,9 +649,9 @@ function calc_write_JacobiHO_ME(idx_JPT::Int,N3max::Int64,JPT,
         nphys_bra,north_bra = cfpdims[idx_JPT][N_bra+1]
         cfpval_bra = cfpvals[idx_JPT][N_bra+1]
         if nphys_bra * north_bra ==0;continue;end
-        ibra_p_ini = dict_N_idx["phys"][idx_JPT][N_bra] 
+        ibra_p_ini = dict_JPTN_dim["phys"][idx_JPT][N_bra][2]
         ibra_p_fin = ibra_p_ini + nphys_bra
-        ibra_o_ini = dict_N_idx["orth"][idx_JPT][N_bra] 
+        ibra_o_ini = dict_JPTN_dim["orth"][idx_JPT][N_bra][2]
         ibra_o_fin = ibra_o_ini + north_bra
         target_C = @view Cmat[ibra_o_ini+1:ibra_o_fin,ibra_p_ini+1:ibra_p_fin]
         target_C .= cfpval_bra
@@ -644,7 +663,7 @@ function calc_write_JacobiHO_ME(idx_JPT::Int,N3max::Int64,JPT,
                 chmat_ket = chs[idx_JPT][N_ket+1]
                 nphys_ket,north_ket = cfpdims[idx_JPT][N_ket+1]
                 if nphys_ket * north_ket ==0;continue;end
-                iket_p_ini = dict_N_idx["phys"][idx_JPT][N_ket]
+                iket_p_ini = dict_JPTN_dim["phys"][idx_JPT][N_ket][2]
                 iket_min = ifelse(N_bra==N_ket,ibra_nlsjt,1)
                 for iket_nlsjt = iket_min:nphys_ket
                     k_n12,k_l12,k_s12,k_j12,k_t12,k_n3,k_l3,k_j3 = @view chmat_ket[:,iket_nlsjt] 
@@ -745,7 +764,7 @@ end
 
 function prep_Z0s_Z0Xs_fKs(params)
     N3max = params.N3max
-    Xmax = 2*N3max # will be truncated
+    Xmax = max(params.N3max + 1 + 1 + 2 + 2,2*N3max) # will be truncated
     ps = params.meshpoints.ps
     ws = params.meshpoints.wps
     Z0s  = Dict{Int64,Float64}() 
@@ -912,20 +931,6 @@ Eq.(15) in P.Navratil
         X6js += tsum
     end
     return coeffE * tdot * (hats * phase * X6js)
-end
-
-function flip_needed_6j(j1,j2,J12,j3,J,J23,dict)
-    ret = 0.0
-    if j1 <= j2
-        key2_1 = get_nkey3(j1,j2,J12)
-        key2_2 = get_nkey3(j3,J,J23)
-        ret = dict[key2_1][key2_2]
-    else
-        key2_1 = get_nkey3(j2,j1,J12)
-        key2_2 = get_nkey3(J,j3,J23)
-        ret = dict[key2_1][key2_2]
-    end
-    return ret
 end
 
 """
@@ -1138,16 +1143,15 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                         for Z = Zmin:Zmax
                             Zfac = hat(Z)^2 * (-1)^Z 
                             R9j = call_d9j_lsj(R*2,1*2,Z*2,b_l3*2,1,b_j3,k_l3*2,1,k_j3,d9j_lsj)
-        
                             Z6j_1 = call_d6j(b_j12*2,k_j12*2,Z*2,k_j3,b_j3,dJ123,d6j_lj)
-                            if Z6j_1 == 0.0;continue;end
                             Z6j_2 = call_d6j_nond(Z,1,Y,K2,R,1,d6j_int)
                             zc3_6j = call_d6j_nond(Z,1,Y,K1,V,1,d6j_int)
-                            zc3_9j = call_d9j_int_notdoubled(V,1,Z,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)
-                             
+                            zc3_9j = call_d9j_int_notdoubled(V,1,Z,b_l12,b_s12,b_j12,k_l12,k_s12,k_j12,d9j_int)                        
+                            
                             Z_c4 = Zfac * R9j * Z6j_1 * Z6j_2
                             Z_c3 = Z_c4 * zc3_9j * zc3_6j
-
+                            if Z_c4 == 0.0;continue;end
+                            
                             for K3 = 0:K2
                                 K3fac = sqrt(binomial(2*K2+1,2*K3)) * hat(K2-K3) 
 
@@ -1158,7 +1162,7 @@ function tpe_JacobiHO_local(params3NF,LECs,inner_integ::inner_integ_local,bra::k
                                     if !tri_check(X,K2-K3,R);continue;end
                                     Xfac  = hat(X)^2 * call_dcgm0(X,K3,Y,dcgm0) * call_dcgm0(X,K2-K3,R,dcgm0) 
                                     Xfac *= call_d6j_nond(Y,K2,R,K2-K3,X,K3,d6j_int)    
-                                    if Xfac == 0.0; continue;end                               
+                                    if Xfac == 0.0; continue;end                    
                                     integ = dict_c34[get_nkey4(K1,K2,K3,X)]
                                     ret_c3 += c3fac * K12fac * Vfac * Rfac * Yfac * Z_c3 * K3fac * Xfac * integ
 

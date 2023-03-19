@@ -50,7 +50,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
         for ib = 1:npq
             α, α_ = kets[ib]
             oα = sps[α]; oα_= sps[α_]
-            nafac = oα.occ * oα_.occ
+            nafac = oα.occ[1] * oα_.occ[1]
             if nafac == 0.0; continue;end
             if (oα.tz + oα_.tz != Tz);continue;end
             iα = div(α,2) + α%2 
@@ -59,7 +59,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
             e1b_α_ = ifelse(α_%2==1,e1b_p,e1b_n)
             for ik = 1:npq
                 β, β_ = kets[ik]
-                if sps[β].occ + sps[β_].occ !=0.0;continue;end 
+                if sps[β].occ[1] + sps[β_].occ[1] !=0.0;continue;end 
                 if (sps[β].tz + sps[β_].tz != Tz);continue;end
                 iβ = div(β,2) + β%2 
                 iβ_= div(β_,2) + β_%2 
@@ -120,8 +120,6 @@ More details can be found in e.g. Dr. thesis by A.Tichai (2017, TU Darmstadt).
 """
 function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;verbose=false,io=io)
     d6j_lj = dWS.d6j_lj
-    p_sps = modelspace.p_sps
-    n_sps = modelspace.n_sps
     sps = modelspace.sps
     holes = modelspace.holes
     particles = modelspace.particles
@@ -145,15 +143,15 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;ve
         npq = length(kets)
         for i = 1:npq
             α, α_ = kets[i]
-            nafac = sps[α].occ * sps[α_].occ
+            nafac = sps[α].occ[1] * sps[α_].occ[1]
             if nafac == 0; continue;end
             for j = 1:npq                       
                 β, β_ = kets[j]                
-                if sps[β].occ + sps[β_].occ == 0
+                if sps[β].occ[1] + sps[β_].occ[1] == 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
-                        if sps[γ].occ + sps[γ_].occ != 0.0; continue;end
+                        if sps[γ].occ[1] + sps[γ_].occ[1] != 0.0; continue;end
                         v2 = Gam[j,k]
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
@@ -161,12 +159,12 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;ve
                         EMP3_pp += (2*J+1) * nume/deno # * nafac
                     end
                 end
-                nbfac = sps[β].occ * sps[β_].occ
+                nbfac = sps[β].occ[1] * sps[β_].occ[1]
                 if nbfac != 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
-                        if sps[γ].occ + sps[γ_].occ != 0; continue;end
+                        if sps[γ].occ[1] + sps[γ_].occ[1] != 0; continue;end
                         v2 = Gam[j,k]
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
@@ -275,7 +273,9 @@ function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,d6j_lj,Gamma,keych;verbose=
         t6j = call_d6j(ja,jd,totJ*2,jc,jb,Jp*2,d6j_lj)
         if t6j == 0.0; continue;end
         keych[3] = Jp
-        vch = dict_2b_ch[keych].Vch; vdict = dict_2b_ch[keych].Vdict
+        vch = dict_2b_ch[get_nkey3_JPT(keych[1],keych[2],Jp)].Vch
+        vdict = dict_2b_ch[get_nkey3_JPT(keych[1],keych[2],Jp)].Vdict
+        
         norfac = ifelse(a == b,sqrt(2.0),1.0) *  ifelse(c == d,sqrt(2.0),1.0)        
         if a > b; norfac *= (-1)^(div(ja+jb,2)+Jp+1); end 
         if c > d; norfac *= (-1)^(div(jc+jd,2)+Jp+1); end

@@ -19,7 +19,7 @@
 - `debugmode::Int` 2: sample HF/IMSRG files
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,dWS,valencespace,Operators,MatOp,to;
-                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2)
+                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2,Hsample=false,emulator=false)
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[],true,false)
     update_core_in_sps!(binfo,HFobj)
@@ -30,11 +30,11 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     init_dictMonopole!(dictMono,Chan2b)
     IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
-    
-    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;debugmode=debugmode)
+
+    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;debugmode=debugmode,Hsample=Hsample)
 
     if vsIMSRG
-        IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;valenceflow=true)
+        IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;valenceflow=true,Hsample=Hsample)
         effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
             getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;undo=true,OpeqH=true)
@@ -51,6 +51,11 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     else
         flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
     end
+
+    # ann emulator (developping)
+    if emulator
+        flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to;emulator=emulator)
+    end
     return IMSRGobj
 end
 
@@ -65,7 +70,7 @@ function read_imsrg_parameter!(fn::String,IMSRGobj::IMSRGobject)
     if @isdefined(maxnormOmega); IMSRGobj.maxnormOmega = maxnormOmega; end
     if @isdefined(eta_criterion); IMSRGobj.eta_criterion = eta_criterion; end
     if @isdefined(denominatorDelta); IMSRGobj.denominatorDelta = denominatorDelta;end
-    IMSRGobj.s[2] = min(IMSRGobj.dsmax,0.5)
+    IMSRGobj.s[2] = IMSRGobj.dsmax
     println("parameters in $fn will be used.")
     return nothing
 end
@@ -82,11 +87,12 @@ function init_dictMonopole!(dictMonopole,Chan2b)
         pnrank = 2 + div(Tz,2)
         tdict = dictMonopole[pnrank]
         for (idx,ket) in enumerate(kets)
-            exists = get(tdict,ket,false)
-            if exists == false
-                tdict[ket] = valDictMonopole([0.0,0.0],[ [ch,idx,J] ])
-            else
-                push!(tdict[ket].vals,[ch,idx,J])
+            tkey = zeros(Int64,2)
+            tkey .= ket
+            if !haskey(tdict,tkey)
+                tdict[tkey] = valDictMonopole([0.0,0.0],[ [ch,idx,J] ])
+            else   
+                push!(tdict[tkey].vals,[ch,idx,J])
             end
         end
     end
@@ -192,12 +198,12 @@ function calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Ch
         eta1b = Eta1b[i]; eta1b .*= 0.0
     end
     for (a,oa) in enumerate(sps) # a->core
-        if !oa.c;continue;end 
+        if !oa.c[1];continue;end 
         idx_a = div(a,2) + a%2
         for (i,oi) in enumerate(sps) # i-> v/q (= not c)
             if a > i;continue;end
             if oa.tz != oi.tz;continue;end
-            if oi.c; continue;end 
+            if oi.c[1]; continue;end 
             pn = ifelse(oa.tz==-1,1,2)
             eta1b = Eta1b[pn]
             tf = f[pn]
@@ -208,8 +214,8 @@ function calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Ch
             nume = 2 * tf[idx_a,idx_i]
             key[1] = a; key[2] = i
             if a > i; key[1] = i; key[2]= a; end
-            mono_ai = dMono[key].monopole[1] 
-            deno = tf[idx_i,idx_i] - tf[idx_a,idx_a] + (oi.occ-oa.occ)*mono_ai + Delta
+            mono_ai = dMono[key].monopole[1]             
+            deno = tf[idx_i,idx_i] - tf[idx_a,idx_a] + (oi.occ[1]-oa.occ[1])*mono_ai + Delta
             tmp = 0.5 * atan( nume / deno)
             eta1b[idx_i,idx_a] = tmp
             eta1b[idx_a,idx_i] = -tmp
@@ -226,11 +232,11 @@ function calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Ch
         #println("ch $ch nket ",length(kets))
         for ik in idxs_cc
             i,j = kets[ik]
-            ni = sps[i].occ; nj = sps[j].occ
+            ni = sps[i].occ[1]; nj = sps[j].occ[1]
             for ib in eachindex(kets)
                 a,b = kets[ib]
-                na = sps[a].occ; nb = sps[b].occ
-                if sps[a].c || sps[b].c ; continue;end                
+                na = sps[a].occ[1]; nb = sps[b].occ[1]
+                if sps[a].c[1] || sps[b].c[1] ; continue;end                
                 nume = 2 * Gam[ib,ik]
                 deno = Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key)                             
                 tmp = 0.5 * atan(nume / deno)                
@@ -275,6 +281,14 @@ function Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key;ver
     pnrank_aj = 3 - (a%2 + j%2); pnrank_bi = 3 - (b%2 + i%2)
     key[1] = i; key[2] = b; check_order_Mkey(key,pnrank_bi); Vm_bibi = dictMono[pnrank_bi][key].monopole[1] # p'h-p'h
     key[1] = a; key[2] = j; check_order_Mkey(key,pnrank_aj); Vm_ajaj = dictMono[pnrank_aj][key].monopole[1] # ph'-ph'
+    # key[1] = a; key[2] = b; check_order_Mkey(key,pnrank); Vm_abab = dictMono[pnrank][(key[1],key[2])].monopole[1] # pp'-pp'
+    # key[1] = i; key[2] = j; check_order_Mkey(key,pnrank); Vm_ijij = dictMono[pnrank][(key[1],key[2])].monopole[1] # hh'-hh'
+    # pnrank_ai = 3 - (a%2 + i%2); pnrank_bj= 3 - (b%2 + j%2)
+    # key[1] = a; key[2] = i; check_order_Mkey(key,pnrank_ai); Vm_aiai = dictMono[pnrank_ai][(key[1],key[2])].monopole[1] # ph-ph
+    # key[1] = b; key[2] = j; check_order_Mkey(key,pnrank_bj); Vm_bjbj = dictMono[pnrank_bj][(key[1],key[2])].monopole[1] # p'h'-p'h'
+    # pnrank_aj = 3 - (a%2 + j%2); pnrank_bi = 3 - (b%2 + i%2)
+    # key[1] = i; key[2] = b; check_order_Mkey(key,pnrank_bi); Vm_bibi = dictMono[pnrank_bi][(key[1],key[2])].monopole[1] # p'h-p'h
+    # key[1] = a; key[2] = j; check_order_Mkey(key,pnrank_aj); Vm_ajaj = dictMono[pnrank_aj][(key[1],key[2])].monopole[1] # ph'-ph'
     idx_a = div(a,2) + a%2; idx_b = div(b,2) + b%2
     idx_i = div(i,2) + i%2; idx_j = div(j,2) + j%2
     pn_a = 2 - a%2; pn_b = 2 - b%2; pn_i = 2 - i%2; pn_j = 2 - j%2
@@ -291,6 +305,7 @@ print flowstatus s,E0,1b&2b norm for Omega, 1b&2b norm for Eta, Ncomm, nwritten
 """
 function print_flowstatus(istep,s,ncomm,norms,IMSRGobj)
     if istep == 0
+        println(" # of 2b-ch ",length(IMSRGobj.Omega.twobody))
         println(" step:        s             E0   ||Omega_1||   ||Omega_2||     ||Eta_1||     ||Eta_2||    Ncomm.  nwritten")
     end        
     E0 = IMSRGobj.H.zerobody[1]
@@ -305,25 +320,27 @@ end
 """
     make_PandyaKets(emax,HFobj)
 
-To prepare "kets" for Pandya transformation. For ordinary two-body channels, kets like `|i,j=i;J=odd>` with ``={n,l,j,tz}` are hindered, but necessary for Pandya transformation.
+To prepare "kets" for Pandya transformation.
+For ordinary two-body channels, kets like `|i,j=i;J=odd>` with ``={n,l,j,tz}` are hindered, but necessary for Pandya transformation.
 """
-function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
+function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered,Chan2b)
     Chan2b_Pandya = chan2b[ ]
     MS = HFobj.modelspace;sps = MS.sps
     dim1b = div(length(sps),2)
     Jmax = 2*emax+1
     nchan = nchanP = 0
-    ns = Vector{Int64}[ ]
-    ns_addinv = Vector{Int64}[ ]
+    ns = NTuple{4,Int64}[ ]
+    ns_addinv = NTuple{4,Int64}[ ]
+    
     for Tz = -2:2:2 ## pp/pn/nn
         for prty = 1:-2:-1        
             for J = 0:Jmax
-                kets = Vector{Int64}[ ]
+                kets = NTuple{2,Int64}[ ]                
                 nhh = nph = 0
                 for a = 1:2*dim1b
-                    oa = sps[a]; la = oa.l; ja = oa.j; tza = oa.tz; na = oa.occ
+                    oa = sps[a]; la = oa.l; ja = oa.j; tza = oa.tz; na = oa.occ[1]
                     for b=a:2*dim1b
-                        ob = sps[b]; lb = ob.l; jb = ob.j; tzb = ob.tz; nb = ob.occ
+                        ob = sps[b]; lb = ob.l; jb = ob.j; tzb = ob.tz; nb = ob.occ[1]
                         aTz = abs(tza+tzb)
                         if aTz != abs(Tz); continue;end
                         if tri_check(ja//2,jb//2,J)==false;continue;end
@@ -331,20 +348,19 @@ function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
                         if prty != tprty; continue;end
                         if (na != 0.0) && (nb !=0.0); nhh +=1;end 
                         if (na*nb ==0.0) && (na+nb!=0.0);nph +=1;end
-                        push!(kets,[a,b])
+                        push!(kets,(a,b))
                     end
                 end
                 nchan += 1
                 nket = length(kets)
-                if nket > 0 
+                if nket > 0
                     if Tz == -2 # for addinv 
-                        push!(ns_addinv,[nchan,nket,nhh,nph])
+                        push!(ns_addinv,(nchan,nket,nhh,nph))                   
                     else
-                        nchanP += 1
-                        nket = length(kets)
-                        push!(Chan2b_Pandya, chan2b(Tz,prty,J,kets))  
-                        push!(ns,[nchan,nket,nhh,nph])
-                        push!(ns_addinv,[nchan,nket,nhh,nph])
+                        nchanP += 1                        
+                        push!(Chan2b_Pandya, chan2b(Tz,prty,J,kets,nket))  
+                        push!(ns,(nchan,nket,nhh,nph))
+                        push!(ns_addinv,(nchan,nket,nhh,nph))
                     end
                 end
             end
@@ -354,7 +370,7 @@ function make_PandyaKets(emax::Int,HFobj::HamiltonianNormalOrdered)
     nkets = [ ns[i][2] for i in eachindex(ns)]
     idxs = sortperm(nkets,rev=true)
     sortedChan2b = chan2b[]
-    sorted_ns = Vector{Int64}[]
+    sorted_ns = NTuple{4,Int64}[]
     dict_ch2ich = Dict{Int64,Int64}()
     for (ich,idx) in enumerate(idxs)
         push!(sortedChan2b,Chan2b_Pandya[idx])      
@@ -378,8 +394,8 @@ function prep_nab_bar_matrices(HFobj::HamiltonianNormalOrdered,Chan2bD::chan2bD)
         mat_nab_bar = zeros(Float64,nket,nket)
         @inbounds for idx_ab = 1:nket
             a,b = tkets[idx_ab]
-            na = sps[a].occ
-            nb = sps[b].occ
+            na = sps[a].occ[1]
+            nb = sps[b].occ[1]
             nab = 1.0 * (na * nb)
             nab_bar = 1.0 * (1-na)*(1-nb)
             mat_nab[idx_ab,idx_ab] = nab
@@ -397,7 +413,7 @@ numbers_Pandya:[ch,nKet_cc,nhh,nph] for ich (channel index of Chan2b_Pandya)
 """
 function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::chan2bD;rank_J=0,rank_T=0,parity=0,ofst=1000)   
     Chan2b = Chan2bD.Chan2b    
-    numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj)
+    numbers_Pandya,numbers_forAddInv,Chan2b_Pandya,dict_ch2ich = make_PandyaKets(binfo.emax,HFobj,Chan2b)
     MS = HFobj.modelspace; sps = MS.sps
 
     ##prep occupation matrix for na*nb and nabar*nbbar
@@ -413,15 +429,15 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
         Mat_pp = zeros(Float64,nhh,nhh);Mat_hh = zeros(Float64,nhh,nhh)
         Mat_ph =  zeros(Float64,nph,nph)
         for (i,idx) in enumerate(hhidx) #this is right! pp from hh!
-            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            a,b = kets[idx]; na = sps[a].occ[1]; nb = sps[b].occ[1]
             Mat_pp[i,i] = (1-na)*(1-nb)
         end
         for (i,idx) in enumerate(hhidx)
-            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            a,b = kets[idx]; na = sps[a].occ[1]; nb = sps[b].occ[1]
             Mat_hh[i,i] = na*nb
         end
         for (i,idx) in enumerate(phidx)
-            a,b = kets[idx]; na = sps[a].occ; nb = sps[b].occ
+            a,b = kets[idx]; na = sps[a].occ[1]; nb = sps[b].occ[1]
             Mat_ph[i,i] = (1-na)*(1-nb) #+ na *nb
         end
         push!(Mats_hh,Mat_hh)
@@ -446,7 +462,7 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
         tbc = Chan2b_Pandya[ich]; tkets = tbc.kets
         target = dict_ich_idx_from_ketcc[ich]
         for (idx,ket) in enumerate(tkets)
-            tkey = ket[1] * ofst + ket[2]
+            tkey = get_nkey2_arr(ket)
             target[tkey] = idx
         end 
     end
@@ -464,58 +480,32 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
                         dict_ich_idx_from_ketcc,XYbars,Zbars,PhaseMats,tMat,dict_ch2ich,keys6j,util122,Mats_hh,Mats_pp,Mats_ph)
 end
 
-function lookup_twobody(a,d,c,b,ja,jd,jc,jb,Jtar,lookup,O2b,Chan2b,key6j;verbose=false)
-    phase = 1.0 
-    key1 = @view key6j[1:2]; key1[1] = a; key1[2] = d
-    key2 = @view key6j[3:4]; key2[1] = c; key2[2] = b
-    if a > d; key1[1] = d; key1[2] = a; phase *= (-1)^(div(ja+jd,2)+Jtar+1); end
-    if c > b; key2[1] = b; key2[2] = c; phase *= (-1)^(div(jb+jc,2)+Jtar+1); end
-    ad_candidates = lookup[key1]
-    cb_candidates = lookup[key2]
-    #println("adcb $a $d $c $b  key1 $key1 key2 $key2 J $Jtar $ad_candidates")
-    tbme = 0.0
-    for ad_cand in ad_candidates
-        ch,idx_ad = ad_cand        
-        if Chan2b[ch].J != Jtar;continue;end
-        for cb_cand in cb_candidates
-            ch_cb,idx_cb = cb_cand
-            if ch != ch_cb; continue;end
-            ta,td = Chan2b[ch].kets[idx_ad]
-            tc,tb = Chan2b[ch].kets[idx_cb]
-            sqfac = ifelse(ta==td,sqrt(2.0),1.0) * ifelse(tc==tb,sqrt(2.0),1.0)
-            tbme += O2b[ch][idx_ad,idx_cb] * phase * sqfac
-            #println("hit@ch=$ch idx_ad $idx_ad ta td $ta $td  idx_cb $idx_cb tc tb $tc $tb")
-        end
-    end
-    return tbme
-end
-
-function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dWS,key6j,orientation="N")
+function DoPandyaTransformation(O::Operator,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dWS,to,orientation="N")
     Chan2b = Chan2bD.Chan2b
     MS = HFobj.modelspace; sps = MS.sps
     J_cc = tbc_cc.J
+    tkets = tbc_cc.kets
     O2b = O.twobody
     herm = ifelse(O.hermite,1.0,-1.0)
-    ch_cc,nKets_cc,nhh,nph = numbers_ch
-    nph_kets = nhh + nph
-    hit_ph = 0    
+    nph_kets = numbers_ch[3] + numbers_ch[4]
     d6j_lj = dWS.d6j_lj
-    Dict_chidx_from_ketJ = Chan2bD.dict_ch_idx_from_ket
-    for ibra = 1:nKets_cc #ph_kets
-        bra_cc = tbc_cc.kets[ibra]
+    tdict = Chan2bD.dict_ch_idx_from_ket
+    hit_ph = 0 
+    @inbounds for ibra in eachindex(tkets)
+        bra_cc = tkets[ibra]
         a,b = bra_cc
-        if (sps[a].occ +sps[b].occ == 0.0);continue;end
+        if (sps[a].occ[1] +sps[b].occ[1] == 0.0);continue;end
         hit_ph += 1
         # to consider a > b case 
         for ab_case = 0:1 # 0-> |a,b> 1->|b,a>
             a = bra_cc[1 + ab_case]
             b = bra_cc[2 - ab_case]
-            na = sps[a].occ; nb = sps[b].occ
-            ja = sps[a].j; jb = sps[b].j
+            na = sps[a].occ[1]; ja = sps[a].j
+            nb = sps[b].occ[1]; jb = sps[b].j
             na_nb_factor = na-nb
             bra_shift = 0
             if a == b && ab_case==1
-                bra_shift=nph_kets
+                bra_shift = nph_kets
             end
             if (na != 0.0 && nb == 0.0)
                 bra_shift = 0
@@ -524,27 +514,20 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dWS,ke
             else
                 bra_shift = ifelse(ab_case==0,0,nph_kets)
             end
-            for iket_cc = 1:nKets_cc
-                ket_cc = tbc_cc.kets[iket_cc]
-                c,d = ket_cc
-                jc = sps[c].j; jd = sps[d].j
+            for iket_cc in eachindex(tkets)
+                c,d = tkets[iket_cc]
                 Tz = sps[a].tz + sps[d].tz
-                if (sps[a].tz + sps[d].tz) != (sps[b].tz + sps[c].tz);continue;end
+                if Tz != (sps[b].tz + sps[c].tz);continue;end
+                jc = sps[c].j; jd = sps[d].j
                 jmin = max(div(abs(ja-jd),2), div(abs(jc-jb),2))
                 jmax = min(div(ja+jd,2),div(jc+jb,2))
-                Obar = 0.0
-                for J_std = jmin:jmax
-                    if !tri_check(ja,jd,2*J_std);continue;end
-                    if !tri_check(jb,jc,2*J_std);continue;end
-                    if abs(Tz)==2 && J_std %2 ==1 && (b==c || a==d);continue;end
-                    # nkey = get_nkey_from_key6j(ja,jb,jc,jd,J_std)
-                    # sixj = tdict[nkey]
-                    sixj = call_d6j(ja,jb,J_cc*2,jc,jd,J_std*2,d6j_lj)
-                    if abs(sixj) <= 1.e-8;continue;end
-                    lookup = Dict_chidx_from_ketJ[1+div(Tz+2,2)][J_std+1]                    
-                    tbme = lookup_twobody(a,d,c,b,ja,jd,jc,jb,J_std,lookup,O2b,Chan2b,key6j) 
-                    Obar -= (2*J_std + 1) * sixj * tbme
-                end
+                tf_skip = (Tz!=0 && (b==c || a==d))
+                jmin = ifelse(tf_skip&&jmin%2==1,jmin+1,jmin)
+                jmax = ifelse(tf_skip&&jmax%2==1,jmax-1,jmax)
+                if jmin > jmax; continue;end                
+                jstep = ifelse(tf_skip,2,1)
+                Obar = inner_sum_Pandya(jmin,jstep,jmax,a,b,c,d,ja,jb,jc,jd,J_cc,Tz,tdict,O2b,Chan2b,d6j_lj)
+
                 if orientation == "N" # for Y
                     Obar_ph[hit_ph+bra_shift,iket_cc] = Obar
                 elseif orientation =="T" # for X                    
@@ -558,12 +541,61 @@ function DoPandyaTransformation(O,Obar_ph,tbc_cc,Chan2bD,HFobj,numbers_ch,dWS,ke
     return nothing
 end
 
+function inner_sum_Pandya(jmin,jstep,jmax,a,b,c,d,ja,jb,jc,jd,J_cc,Tz,subdict,O2b::Vector{Matrix{Float64}},Chan2b::Vector{chan2b},d6j_lj)
+    Obar = 0.0
+    for J_std = jmin:jstep:jmax
+        sixj = call_d6j(ja,jb,J_cc*2,jc,jd,J_std*2,d6j_lj)                    
+        if abs(sixj) < 1.e-8;continue;end        
+        tbme = lookup_twobody(a,d,c,b,ja,jd,jc,jb,J_std,Tz,subdict,O2b,Chan2b) 
+        Obar -= (2*J_std+1) * sixj * tbme                   
+    end
+    return Obar
+end
+
+function lookup_twobody(a::Int64,d::Int64,c::Int64,b::Int64,ja::Int64,jd::Int64,jc::Int64,jb::Int64,Jtar::Int64,Tz::Int64,
+                        lookup::Dict{UInt64,NTuple{2,Int64}},O2b::Vector{Matrix{Float64}},Chan2b)::Float64
+    phase = 1.0 
+    ch, idx_ad, phase_val = get_lookup_ketJT(a,d,ja,jd,Jtar,Tz,lookup)
+    phase *= phase_val
+
+    tkets = Chan2b[ch].kets
+    #if tbc.J != Jtar;println("tbc.J != Jtar $Jtar");return 0.0; end
+ 
+    ch_cb,idx_cb,phase_val = get_lookup_ketJT(c,b,jc,jb,Jtar,Tz,lookup)
+    phase *= phase_val
+    #if ch != ch_cb;println("ch != ch_cb"); return 0.0;end    
+
+    ta,td = tkets[idx_ad]
+    tc,tb = tkets[idx_cb]
+    sqfac = ifelse(ta==td,sqrt(2.0),1.0) * ifelse(tc==tb,sqrt(2.0),1.0)
+    sqfac *= phase
+    me = O2b[ch][idx_ad,idx_cb] 
+    return me * sqfac
+end
+
+function get_lookup_ketJT(i::Int64,j::Int64,ji::Int64,jj::Int64,J::Int64,Tz::Int64,lookup::Dict{UInt64,NTuple{2,Int64}})
+    phase = 1.0
+    if i > j
+        nkey = get_nkey4_ketJT(j,i,J,Tz)
+        if (div(ji+jj,2)+J+1)%2 == 1
+            phase *= -1.0
+        end
+        ch, idx = lookup[nkey]
+        return ch, idx,phase
+    else
+        nkey = get_nkey4_ketJT(i,j,J,Tz)
+        ch, idx = lookup[nkey]
+        return ch, idx,phase
+    end  
+end
+
 function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dWS,
-                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="split") 
+                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,magnusmethod="",Hsample=false,num_Hsample=50,modsample=1) 
     Chan2b = Chan2bD.Chan2b
-    ncomm = IMSRGobj.Ncomm    
+    ncomm = IMSRGobj.Ncomm
     s,ds = IMSRGobj.s
     smax = IMSRGobj.smax 
+    dsmax = IMSRGobj.dsmax 
     maxnormOmega=IMSRGobj.maxnormOmega
     eta_criterion = IMSRGobj.eta_criterion
     norms = zeros(Float64,4)
@@ -588,59 +620,159 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
             println("valence_generator=$valence_generator is not supported now");exit()
         end
     end
-    if debugmode == 2; write_omega_bin(binfo,Chan2b,0,H0;Oplabel="HF");end
     set_dictMonopole!(dictMono,HFobj,Hs.twobody)
     func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
     tmpOp = deepcopy(IMSRGobj.Omega)
     gatherer = ifelse(magnusmethod=="huntergather",deepcopy(IMSRGobj.Omega),nothing)
     nOmega = deepcopy(IMSRGobj.Omega)
     Nested = deepcopy(IMSRGobj.Omega)
-    istep = 0; print_flowstatus(istep,s,ncomm,norms,IMSRGobj) 
+    istep = 0; print_flowstatus(istep,s,ncomm,norms,IMSRGobj)
+
+    dict_idx_op_to_flatvec, dict_idx_flatvec_to_op = get_non0omega_idxs(HFobj,nOmega)
+    fvec = get_fvec_from_Op(s, nOmega, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
+    gather_omega_sofar_write(Hsample, 0, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, dWS, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op;magnusmethod=magnusmethod)
     @timeit to "IMSRG flow" for istep = 1:maxstep
-        if sqrt(norms[3]^2+norms[4]^2) < eta_criterion;break;end
-    	ds = min(ds,smax-s)
+        if istep <= 30
+        	ds = min(ds,smax-s)
+        else
+            ds = max(dsmax,0.5)
+        end
     	s += ds
         IMSRGobj.s[1] = s; IMSRGobj.s[2] = ds
-        #debug_print(debugmode,Hs,Omega,eta,"s")
+
         ## OmegaCheck
         if magnusmethod == "huntergather" 
             GatherOmega(Omega,nOmega,gatherer,tmpOp,Nested,H0,Hs,
                         ncomm,norms,Chan1b,Chan2bD,HFobj,IMSRGobj,dictMono,dWS,PandyaObj,maxnormOmega,to)
-        elseif magnusmethod == "split" 
-            NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
-        elseif magnusmethod == "" || magnusmethod == "NS"
+        elseif magnusmethod == "" 
+            NewOmega(s, Omega, nOmega, binfo, Chan2bD, HFobj, IMSRGobj)
+        elseif magnusmethod == "no-split" || magnusmethod == "NS"
             aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
         else
             println("magnusmethod=$magnusmethod is not supported!");exit()
         end
         # Eta * ds for Euler step (assuming Magnus expansion) 
         aOp!(eta,ds) 
+
         ## Calc. Omega(s+ds) 
         BCH_Product(eta,Omega,nOmega,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
 
         ## IMSRGobj.H updated to H(s+ds)
         BCH_Transform(nOmega,H0,Hs,tmpOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to) 
 
-        #debug_print(debugmode,Hs,nOmega,eta,"s+ds")
         set_dictMonopole!(dictMono,HFobj,IMSRGobj.H.twobody)
         func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
+        if Hsample && (istep <= num_Hsample && istep % modsample == 0)
+            gather_omega_sofar_write(Hsample,istep, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, dWS, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op;magnusmethod=magnusmethod)
+        end
         print_flowstatus(istep,s,ncomm,norms,IMSRGobj)
-        if s >= smax;break;end
+        if sqrt(norms[3]^2+norms[4]^2) < eta_criterion || s >= smax
+            aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
+            write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega,s,IMSRGobj.H.zerobody[1])
+            gather_omega_sofar_write(Hsample,istep+1, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, dWS, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op;magnusmethod=magnusmethod)
+            IMSRGobj.n_written_omega[1] += 1
+            break
+        end
     end
-    aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
-    write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega)
-    IMSRGobj.n_written_omega[1] += 1
-    if debugmode == 2; write_omega_bin(binfo,Chan2b,0,Hs;Oplabel="Hs");end
     return nothing
-end   
-function NewOmega(binfo,Omega,nOmega,HFobj,IMSRGobj,Chan2bD)
+end 
+
+function gather_omega_sofar_write(Hsample::Bool, istep, s, fvec, oOmega, nOmega, tmpOp, binfo, Chan1b, Chan2bD,
+                                  HFobj, IMSRGobj, dictMono, dWS, PandyaObj,to,
+                                  dict_idx_op_to_flatvec, dict_idx_flatvec_to_op;debug_mode=true,magnusmethod="")
+    if !Hsample; return nothing;end
+    splitting = ifelse(magnusmethod!="",true,false)
+    fvec .*= 0.0
+    ncom = zeros(Int64,3)
+    norms = zeros(Float64,3)
+    tildeO = deepcopy(nOmega); aOp!(tildeO,0.0)
+    tmpOp = deepcopy(tildeO)
+    tmpOp2 = deepcopy(tildeO)
+    Nested = deepcopy(tildeO)
+    tOmega = deepcopy(tildeO)
+
+    if splitting 
+        nw = IMSRGobj.n_written_omega[1]    
+        for i = 1:nw
+            aOp!(tOmega,0.0)
+            read_omega_bin!(binfo,Chan2bD.Chan2b,i,tOmega)
+            BCH_Product(tOmega,tildeO,tmpOp,tmpOp2,Nested,ncom,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            aOp1_p_bOp2!(tmpOp,tildeO,1.0,0.0)
+        end
+        BCH_Product(nOmega,tildeO,tmpOp,tmpOp2,Nested,ncom,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+        aOp1_p_bOp2!(tmpOp,tildeO,1.0,0.0)
+    else
+        aOp1_p_bOp2!(nOmega,tildeO,1.0,0.0)
+    end
+    get_fvec_from_Op!(s, fvec, tildeO, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
+    write_fvec_bin(binfo,fvec,istep,s,IMSRGobj.H.zerobody[1];label="omega") 
+    get_fvec_from_Op!(s, fvec, IMSRGobj.eta, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
+    write_fvec_bin(binfo,fvec,istep,s,IMSRGobj.H.zerobody[1];label="eta") 
+
+  
+    # println("\n------------------------------------------\nistep $istep s $s ")
+    # # store sequential Operators
+    # Ops = Operator[ ]
+    # for i = 1:nw
+    #     aOp!(tOmega,0.0)
+    #     read_omega_bin!(binfo,Chan2bD.Chan2b,i,tOmega)
+    #     push!(Ops,deepcopy(tOmega))    
+    # end
+    # push!(Ops,deepcopy(nOmega))
+
+    # # sequential flow
+    # aOp!(tildeO,0.0)
+    # Hflow = deepcopy(HFobj.H)
+    # Oprod = deepcopy(nOmega); aOp!(Oprod,0.0)
+    # ncom_flow = zeros(Int64,3)
+    # for i = 1:nw+1
+    #     tOp = Ops[i]
+    #     #BCH_Product(tildeO,tOp,tmpOp,tmpOp2,Nested,ncom_flow,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+    #     BCH_Product_acc(tOp,tildeO,tmpOp,tmpOp2,Nested,ncom_flow,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+    #     aOp1_p_bOp2!(tmpOp,tildeO,1.0,0.0)
+    #     BCH_Transform(Ops[i],Hflow,tmpOp,tmpOp2,Nested,ncom_flow,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+    #     aOp1_p_bOp2!(tmpOp,Hflow,1.0,0.0)
+    #     println("step $i Eseq ",Hflow.zerobody[1] )
+    # end
+
+    # println("E  seq. ", @sprintf("%12.4f",Hflow.zerobody[1]),
+    #         " H ", @sprintf("%15.8e",getNorm(Hflow,HFobj.modelspace.p_sps,HFobj.modelspace.n_sps,Chan2bD.Chan2b)),
+    #         " H1b ", @sprintf("%12.6e",getNorm1b(Hflow.onebody,HFobj.modelspace.p_sps,HFobj.modelspace.n_sps)),                
+    #         " H2b ", @sprintf("%12.6e",getNorm2b(Hflow.twobody,Chan2bD.Chan2b)),
+    #         " Oprod ", @sprintf("%12.6e",getNorm(tildeO,HFobj.modelspace.p_sps,HFobj.modelspace.n_sps,Chan2bD.Chan2b)))
+ 
+    # # flow with Oproduct 
+    # Hprod = deepcopy(HFobj.H)
+    # ncom_prod = zeros(Int64,3)
+    # BCH_Transform(tildeO,Hprod,tmpOp,tmpOp2,Nested,ncom_prod,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+    # aOp1_p_bOp2!(tmpOp,Hprod,1.0,0.0)         
+ 
+    # println("E prod. ", @sprintf("%12.4f",Hprod.zerobody[1]),            
+    #         " H ", @sprintf("%15.8e",getNorm(Hprod,HFobj.modelspace.p_sps,HFobj.modelspace.n_sps,Chan2bD.Chan2b)),
+    #         " H1b ", @sprintf("%12.6e",getNorm1b(Hprod.onebody,HFobj.modelspace.p_sps,HFobj.modelspace.n_sps)),                
+    #         " H2b ", @sprintf("%12.6e",getNorm2b(Hprod.twobody,Chan2bD.Chan2b))
+    #         )
+    # println("ncom_flow $(ncom_flow[1]) ncom_prod $(ncom_prod[1])")
+ 
+    # end
+        ### from vec
+        # pid = getpid()
+        # fn = "flowomega/omega_vec_$(pid)$(binfo.nuc.cnuc)_$(num).bin"
+        # fvec = read_fvec_bin(fn)
+        # update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+        # Omegavec = deepcopy(tOmega)    
+
+
+    return nothing 
+end
+
+function NewOmega(s, Omega, nOmega, binfo, Chan2bD, HFobj, IMSRGobj)       
     maxnormOmega = IMSRGobj.maxnormOmega
     MS = HFobj.modelspace; p_sps =MS.p_sps; n_sps=MS.n_sps
     Chan2b = Chan2bD.Chan2b
-    dim1b = size(Omega.onebody[1])[1]
     if getNorm(nOmega,p_sps,n_sps,Chan2b) >= maxnormOmega  
-        write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega)
+        write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega,s,IMSRGobj.H.zerobody[1])
         IMSRGobj.n_written_omega[1] += 1
         aOp!(Omega,0.0)
         H0 = IMSRGobj.H0
@@ -656,7 +788,7 @@ end
     write_omega_bin(binfo,n_written,Omega)
 Function to write temporary binary files of Operator matrix elements, when spliting the flow.
 """
-function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Omega::Operator;Oplabel="Omega")
+function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Omega::Operator,s::Float64,E0::Float64;Oplabel="Omega")
     if !isdir("flowOmega")  && n_written==0
         run(`mkdir flowOmega`)
     end    
@@ -676,6 +808,8 @@ function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Om
         push!(JPTzs,[J,P,Tz])
     end
     io = open(fname,"w")
+    write(io,s)
+    write(io,E0)
     write(io,Int64(dim1b))
     for i =1:dim1b
         for j=1:dim1b
@@ -691,7 +825,7 @@ function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Om
     write(io,dims)
     for ch = 1:nch
         for n = 1:3
-            write(io,JPTzs[ch][1])
+            write(io,Int64(JPTzs[ch][n]))
         end
     end
     for ch = 1:nch
@@ -713,9 +847,12 @@ end
 read written Omega file and update ```Op::Operator```
 """
 function read_omega_bin!(binfo::basedat,Chan2b::Vector{chan2b},nw::Int,Op::Operator,verbose=false;Oplabel="Omega")
+    aOp!(Op,0.0)
     pid = getpid()
     fn = "flowOmega/$(Oplabel)_$pid"*binfo.nuc.cnuc*"_$nw.bin"
     io = open(fn,"r")
+    s = read(io,Float64)
+    E = read(io,Float64)
     dim1b = read(io,Int64)
     for i = 1:dim1b
         for j=1:dim1b
@@ -788,7 +925,7 @@ function Gethhph(kets,sps)
     idx_hhph = Int64[ ]
     for (idx,ket) in enumerate(kets)
         p,q = ket 
-        occs = sps[p].occ + sps[q].occ 
+        occs = sps[p].occ[1] + sps[q].occ[1]
         if occs != 0.0; push!(idx_hhph,idx);end
     end
     return idx_hhph
@@ -811,9 +948,9 @@ Constructor for IMSRGobject
 - `n_written_omega::Int` # of written Omega by splitting to solve IMSRGflow
 - `Ncomm::Vector{Int}` # of commutator evaluated during IMSRG flow
 """
-function init_IMSRGobject(HFobj,filename;smax=500.0,dsmax=0.5,maxnormOmega=0.25,eta_criterion=1.e-6,denominatorDelta=0.0)
+function init_IMSRGobject(HFobj,filename;smax=500.0,dsmax=1.0,maxnormOmega=0.25,eta_criterion=1.e-6,denominatorDelta=0.0)
     tf = isfile(filename)
-    ds = min(dsmax,0.5)
+    ds = min(dsmax,1.0)
     s = [0.0,ds] 
     E0 = HFobj.E0
     fp = copy(HFobj.H.onebody[1])
@@ -840,12 +977,12 @@ end
 
 consistent IMSRG flow of scaler operators (Rp2) using written Omega
 """
-function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b::chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to)
+function flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b::chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,to;emulator=false)
     effOperators = Operator[ ]
     for c_op in Operators
         if c_op=="Rp2"
             println("Operator:$c_op")
-            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,to)
+            eOp = eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,to;emulator=emulator)
             push!(effOperators,eOp)
         else
             println("IMSRG flow of Operator=$c_op is not supported now ")
@@ -874,10 +1011,10 @@ function update_core_in_sps!(binfo,HFobj)
     nconfs_core = naive_filling(n_sps,cN,binfo.emax)    
     ini_occ!(pconfs_core,occ_p,nconfs_core,occ_n)
     for i = 1:dim1b
-        pTF = p_sps[i].occ==1.0 
-        nTF = n_sps[i].occ==1.0
-        p_sps[i].c = sps[2*(i-1)+1].c = ifelse(pTF,true,false)
-        n_sps[i].c = sps[2*i].c = ifelse(nTF,true,false)
+        pTF = p_sps[i].occ[1]==1.0 
+        nTF = n_sps[i].occ[1]==1.0
+        p_sps[i].c[1] = sps[2*(i-1)+1].c[1] = ifelse(pTF,true,false)
+        n_sps[i].c[1] = sps[2*i].c[1] = ifelse(nTF,true,false)
     end
     return nothing
 end
@@ -902,8 +1039,8 @@ function set_sps_to_core!(binfo,HFobj)
     for i = 1:dim1b
         cp = ifelse(occ_p[i,i]==1.0,1,0)
         cn = ifelse(occ_n[i,i]==1.0,1,0)
-        p_sps[i].occ = sps[2*(i-1)+1].occ = cp
-        n_sps[i].occ = sps[2*i].occ = cn
+        p_sps[i].occ[1] = sps[2*(i-1)+1].occ[1] = cp
+        n_sps[i].occ[1] = sps[2*i].occ[1] = cn
     end
     return nothing
 end
@@ -928,8 +1065,8 @@ function set_sps_to_modelspace!(binfo,HFobj)
     for i = 1:dim1b
         cp = ifelse(occ_p[i,i]==1.0,1,0)
         cn = ifelse(occ_n[i,i]==1.0,1,0)
-        p_sps[i].occ = sps[2*(i-1)+1].occ = cp
-        n_sps[i].occ = sps[2*i].occ = cn
+        p_sps[i].occ[1] = sps[2*(i-1)+1].occ[1] = cp
+        n_sps[i].occ[1] = sps[2*i].occ[1] = cn
     end
     return nothing
 end

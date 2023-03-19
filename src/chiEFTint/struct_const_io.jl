@@ -29,8 +29,11 @@ const nuclist = [
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
     "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
     "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
-delta(a,b) = ifelse(a==b,1.0,0.0)
-hat(a) = sqrt(2.0*a+1.0)
+
+delta(a::Int64,b::Int64) = ifelse(a==b,1.0,0.0)
+delta(a::Float64,b::Float64) = ifelse(a==b,1.0,0.0)
+hat(a::Int64) = sqrt(2.0*a+1.0)
+hat(a::Float64) = sqrt(2.0*a+1.0)
 function chara_SLJ(S,L,Lp,J) 
     if L==Lp
         return string(Int(2*S+1))*chara_L[L+1]*string(J)

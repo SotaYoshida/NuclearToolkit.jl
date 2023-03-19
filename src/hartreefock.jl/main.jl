@@ -681,7 +681,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     h_p = copy(mat1b); h_n = copy(mat1b)
     update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)
     calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
-    if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
+    #if verbose; print_V2b(h_p,p1b,h_n,n1b); print_F(h_p,h_n);end
     for it = 1:itnum        
         ## diagonalize proton/neutron 1b hamiltonian
         valsp,vecsp = eigen(h_p); valsn,vecsn = eigen(h_n)
@@ -693,7 +693,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
         ## Re-evaluate tilde(V) and Fock matrix
         calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,abcd,Chan1b)
         update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np)        
-        calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs)
+        calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs;verbose=verbose)
 
         if HF_conv_check(EHFs;tol=HFtol)
             #print("HF converged @ $it  \t")

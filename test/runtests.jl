@@ -15,7 +15,7 @@ using Test
         ## HF-MBPT from snt/snt.bin
         @testset "HFMBPT results under bare EM500,hw20,e2,nmesh50" begin
             Eref = [1.47561,-5.80114,0.39324] 
-            HFobj1 = hf_main(nucs,sntf,hw,emax;return_obj=true)
+            HFobj1 = hf_main(nucs,sntf,hw,emax;return_obj=true,verbose=true)
             Es1 = [HFobj1.E0, HFobj1.EMP2, HFobj1.EMP3]
             println("Eref $Eref")
             println("Es1 $Es1")

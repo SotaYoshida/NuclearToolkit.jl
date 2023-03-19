@@ -22,6 +22,7 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
 Combinatorics = "1"
+FLoops = "0.2"
 Glob = "1"
 LaTeXStrings = "1"
 LatinHypercubeSampling = "1.8"

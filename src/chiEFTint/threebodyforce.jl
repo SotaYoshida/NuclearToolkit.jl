@@ -1,31 +1,8 @@
-"""
-    struct `nine_j_stuff` 9j dict and keys used for HOBs in 3NF
-"""
-struct nine_j_stuff
-    dict9j_HOB::Vector{Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}}
-    tkeys9j::Vector{Vector{Int64}}
-end
-
-struct dWS3n
-    dcgm0::Dict{Int64,Float64}
-    d6j_hfspin::Dict{Int64,Float64}
-    d6j_int::Vector{Dict{Int64,Float64}}
-    d6j_dot::Dict{Int64,Dict{Int64,Float64}}
-    d6j_lj3::Dict{Int64,Dict{Int64,Float64}}
-    d9j::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
-    d9j_int::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
-    dtri::Dict{Vector{Int64},Float64}
-    keycg::Vector{Vector{Int64}}
-    key6j::Vector{Int64}
-    key9j::Vector{Int64}
-    ninej_stuff::nine_j_stuff
-end 
-
 struct dWS3N
     dtri::Dict{Int64,Float64}
     dcgm0::Dict{Int64,Float64}
-    d6j_int::Dict{Int64,Float64}
-    d6j_lj::Dict{Int64,Float64}
+    d6j_int::Dict{UInt64,Float64}
+    d6j_lj::Dict{UInt64,Float64}
     d9j_int::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
     d9j_lsj::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
     dictHOB::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
@@ -42,7 +19,8 @@ struct mesh_3NF
     wus::Vector{Float64}
 end
 
-struct params3b    
+struct params3b   
+    e2max::Int64
     e3max::Int64
     N3max::Int64
     L3max::Int64
@@ -109,6 +87,12 @@ function dev_param3NF()
     e3max = 4
     N3max = 10 # to be 40?
     j3max = 9 # said to be sufficient, but can be e3max*2 + 3
+
+    # for check
+    N3max = 5
+    j3max = 9
+    e3max = 3
+
     L3max = min(N3max,div(j3max-1,2))
     J12max = 2*j3max
     chiorder3b = 2 # NNLO
@@ -149,6 +133,7 @@ function make_3b_mesh_mats(pmax3,Np,Nq,Nangle)
 end
 
 function get_params3N(param_str,paramsNN,LECs,to;io=stdout)    
+    e2max = paramsNN.emax
     Np,Nq,Nangle,e3max,N3max,L3max,j3max,J12max,hw,chiorder3b,Lambda3NF,LambdaChi,TFrenorm,pmax3,rmax3,main_basis,regulator = dev_param3NF()
     if param_str != "dev"
         @error "param_str = $paramstr is not supported now"
@@ -157,7 +142,7 @@ function get_params3N(param_str,paramsNN,LECs,to;io=stdout)
     dWS = prep_dWS3N(N3max,J12max,j3max,to)
     
     meshpoints = make_3b_mesh_mats(pmax3,Np,Nq,Nangle)
-    return params3b(e3max,N3max,L3max,j3max,J12max,hw,chiorder3b,Lambda3NF,LambdaChi,TFrenorm,pmax3,rmax3,meshpoints,LECs,dWS,main_basis,regulator)
+    return params3b(e2max,e3max,N3max,L3max,j3max,J12max,hw,chiorder3b,Lambda3NF,LambdaChi,TFrenorm,pmax3,rmax3,meshpoints,LECs,dWS,main_basis,regulator)
 end
 
 function overwrite3NFparams(fn,e3max_in,N3max_in,L3max_in,j3max_in,J12max_in,hw_in,chiorder3b_in,Lambda3NF_in,LambdaChi_in,TFrenorm_in,pmax3_in,rmax3_in)
@@ -178,16 +163,6 @@ function overwrite3NFparams(fn,e3max_in,N3max_in,L3max_in,j3max_in,J12max_in,hw_
     rmax3_r = rmax3_in
 
     return e3max_r,N3max_r,L3max_r,j3max_r,J12max_r,hw_r,chiorder3b_r,Lambda3NF_r,LambdaChi_r,TFrenorm_r,pmax3_r,rmax3_r
-end
-
-"""
-    overwrite_key6!(s12,S,s45,key)
-
-overwrite key for 6j symbols
-"""
-function overwrite_key6!(s12,S,s45,key)
-    key[1]=s12; key[2]=S; key[3]=s45
-    return nothing
 end
 
 """
@@ -267,13 +242,10 @@ function nonlocal_regulator_3NF(p,q,npow,Lambda;type="Navratil")
 end
 
 """
-!PRC 66, 064001(2002)の式(A4)?
-! 6 E *(4 pi)^2 δJJ' δMM' δTT' δMTMT' δl0 δλ0 δl'0 δλ0 δsj δs'j' δI1/2 δI'1/2 δtt' δss' (-1)^(t+1) w6j(1/2,1/2,t,1/2,1/2,1) 
-! P.Navratil Few Body Syst. (2007) 41:117-140 式(14)に関連する表式が現れる
-! <τ2・τ3> = 6 (-1)^(t+t'+T+1/2) *wigner6j(t,t',1,1/2,1/2,1/2) * wigner6j(t,t',1,1/2,1/2,T) 
+<τ2・τ3> = 6 (-1)^(t+t'+T+1/2) *wigner6j(t,t',1,1/2,1/2,1/2) * wigner6j(t,t',1,1/2,1/2,T) 
 """
 function IsospinDot(t_ij::Int,t_kl::Int,dT::Int,d6j)
-    fac = 6.0 * (-1)^(t_ij + t_kl + (dT+1)//2 ) 
+    fac = 6.0 * (-1)^(t_ij + t_kl + div(dT+1,2) ) 
     if t_ij == t_kl == 0; return 0.0;end
     w6j1 = call_d6j(t_ij*2,t_kl*2,2,1,1,1,d6j)
     w6j2 = call_d6j(t_ij*2,t_kl*2,2,1,1,dT,d6j)

@@ -72,7 +72,8 @@ struct chan2b
     Tz::Int64
     prty::Int64
     J::Int64
-    kets::Vector{Vector{Int64}}
+    kets::Vector{NTuple{2,Int64}}    
+    nkets::Int64
 end
 
 """
@@ -80,13 +81,14 @@ struct `Chan2bD`
 # Fields
 - `Chan2b::Vector{chan2b}` array of chan2b (ch=1,...,nchan)
 - `dict_ch_JPT::Dict{Vector{Int64},VdictCh}` dict to get VdictCh by given key `[J,prty,T]`
-- `dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}` dict to get [ch,idx], having array structure [pnrank(=1/2/3)][J+1], `key`=ket
+- `dict_ch_idx_from_ket::Vector{Vector{Dict{Int64,Vector{Vector{Int64}}}}}` dict to get [ch,idx], having array structure [pnrank(=1/2/3)][J+1], `key`=ket
 - `dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}` dict to get idx from ket, having array structure [ch]
 """
 struct chan2bD
     Chan2b::Vector{chan2b}
-    dict_ch_JPT::Dict{Vector{Int64},VdictCh}
-    dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}
+    dict_ch_JPT::Dict{UInt64,VdictCh}
+    dict_ch_idx_from_ket::Dict{UInt64,NTuple{2,Int64}}
+    #dict_ch_idx_from_ket::Vector{Vector{Dict{UInt64,NTuple{2,Int64}}}}
     dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}   
 end
 
@@ -105,8 +107,8 @@ end
 struct `PandyaObject`, used for Pandya transformation (especially in `comm222ph_ss!`)
 """
 struct PandyaObject
-    numbers::Vector{Vector{Int64}}
-    numbers_addinv::Vector{Vector{Int64}}
+    numbers::Vector{NTuple{4,Int64}}
+    numbers_addinv::Vector{NTuple{4,Int64}}
     Chan2b::Vector{chan2b}
     phkets::Vector{Vector{Int64}}
     copy_1bmat::Vector{Matrix{Float64}}
@@ -139,6 +141,7 @@ struct `dictTBMEs` contains dictionaries for TBME/monopole
 struct dictSnt
     dictTBMEs::Vector{Dict{Vector{Int64},Vector{Float64}}}
     dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}
+    #dictMonopole::Vector{Dict{NTuple{2,Int64},valDictMonopole}}
 end
 
 
@@ -210,15 +213,15 @@ mutable struct `SingleParticleState`
 - `v::Bool` whether belongs to "valence" or not 
 - `q::Bool` whether belongs to "q-space" or not 
 """
-mutable struct SingleParticleState
+struct SingleParticleState  
     n::Int64
     l::Int64
     j::Int64
     tz::Int64
-    occ::Float64
-    c::Bool
-    v::Bool
-    q::Bool
+    occ::Vector{Float64}
+    c::Vector{Bool}
+    v::Vector{Bool}
+    q::Vector{Bool}
 end
 
 """
@@ -326,8 +329,8 @@ struct `dWS2n`, Wigner symbols used in PreCalcHOB
 struct dWS2n
     dtri::Dict{Int64,Float64}
     dcgm0::Dict{Int64,Float64}
-    d6j_int::Dict{Int64,Float64}
-    d6j_lj::Dict{Int64,Float64}
+    d6j_int::Dict{UInt64,Float64}
+    d6j_lj::Dict{UInt64,Float64}    
     d9j_lsj::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
     dictHOB::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
-end
+end 

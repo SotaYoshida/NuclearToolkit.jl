@@ -12,35 +12,31 @@ function updateLECs!(chiEFTobj,org_dLECs)
     return nothing
 end
 
-function nn_IMSRG_sampling(;is_show=false,itnum=1,nucs=[],corenuc="",ref="nucl",fn_params="sample_params.jl")
+function nn_IMSRG_sampling(nucs;is_show=false,itnum=1,corenuc="",ref="nucl",fn_params="ann_sample_params.jl")
     to = TimerOutput()    
     optimizer = ""
     MPIcomm = false
     io = stdout
-    chiEFTobj,OPTobj,d9j,HOBs = construct_chiEFTobj(false,itnum,optimizer,MPIcomm,io,to;fn_params)
+    chiEFTobj,OPTobj,dWS = construct_chiEFTobj(false,itnum,optimizer,MPIcomm,io,to;fn_params)
     org_dLECs = copy(chiEFTobj.LECs.dLECs)
-    nuc = "He4"
+    
     for it = 1:itnum
         calcualte_NNpot_in_momentumspace(chiEFTobj,to)
         V12mom = chiEFTobj.V12mom
         V12mom_2n3n = chiEFTobj.V12mom_2n3n
         SRG(chiEFTobj,to)
-        TMtrans(chiEFTobj,HOBs,to)
+        calc_vmom_3nf(chiEFTobj,it,to)
+        TMtrans(chiEFTobj,dWS,to)
         sntf = chiEFTobj.params.fn_tbme
         hw = chiEFTobj.params.hw
         emax = chiEFTobj.params.emax
-        hf_main([nuc],sntf,hw,emax;is_show=is_show,doIMSRG=true,corenuc="",ref="nuc",fn_params=fn_params,debugmode=2)
+        hf_main(nucs,sntf,hw,emax;is_show=is_show,doIMSRG=true,corenuc="",ref="nuc",fn_params=fn_params,debugmode=2,Hsample=true,Operators=["Rp2"])
         for ch = 1:length(V12mom)
-            V12mom[ch] .= 0.0; V12mom_2n3n[ch] .= 0.0
+            V12mom[ch] .= 0.0
+            V12mom_2n3n[ch] .= 0.0
         end
         updateLECs!(chiEFTobj,org_dLECs)
 
-        pid = getpid()
-
-        fname = "flowOmega/HF_$pid"*nuc*"_1.bin"
-        run(`mv $fname flowOmega/HF_$(it).snt.bin`)
-        fname = "flowOmega/Hs_$pid"*nuc*"_1.bin"
-        run(`mv $fname flowOmega/Hs_$(it).snt.bin`)
-    end
+     end
     show_TimerOutput_results(to;tf=is_show)
 end

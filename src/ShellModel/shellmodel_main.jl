@@ -217,8 +217,11 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
 
     if print_evec
         print("\n")
-        for (nth,Rv) in enumerate(Rvecs)
-            print_vec("nth = "*@sprintf("%4i",nth),Rv;long=true)
+        # for (nth,Rv) in enumerate(Rvecs)
+        #     print_vec("nth = "*@sprintf("%4i",nth),Rv;long=true)
+        # end
+        if target_nuc == "Li6"
+            svd_li6(Rvecs)
         end
     end
     

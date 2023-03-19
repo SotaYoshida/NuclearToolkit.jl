@@ -1,7 +1,9 @@
 module NuclearToolkit
 
+using AssociatedLegendrePolynomials
 using Base.Threads
 using Combinatorics
+using FLoops
 using Glob
 using LatinHypercubeSampling
 using LaTeXStrings
@@ -29,6 +31,7 @@ include("chiEFTint/renorm.jl")
 include("chiEFTint/threebodyforce.jl")
 include("chiEFTint/threebody_Jacobi.jl")
 include("chiEFTint/threebody_JacobiHO.jl")
+include("chiEFTint/threebody_lab.jl")
 include("chiEFTint/matter.jl")
 include("chiEFTint/nn_sampling.jl")
 export make_chiEFTint
@@ -50,6 +53,8 @@ export hf_main
 include("IMSRG.jl/imsrg_util.jl")
 include("IMSRG.jl/commutator.jl")
 include("IMSRG.jl/valencespace.jl")
+#include("IMSRG.jl/emulator_imsrg.jl")
+export imsrg_flow_check
 
 ### ShellModel.jl
 include("ShellModel/shellmodel_main.jl")

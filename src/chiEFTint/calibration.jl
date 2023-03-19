@@ -369,7 +369,7 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
     BOobj.Data[it] .= BOobj.params
     return nothing
 end
-function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
+function calcKernel!(it,BOobj;ini=false,myeps=1.e-8)
     Ktt = @view BOobj.Ktt[1:it,1:it]
     obs = BOobj.observed
     cand = BOobj.cand
@@ -391,7 +391,7 @@ function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
                 BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
                 Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
             end
-            Ktt[i,i] += eps
+            Ktt[i,i] += myeps
         end
     else
         i = it
@@ -404,7 +404,7 @@ function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
             BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
             Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
         end
-        Ktt[i,i] += eps
+        Ktt[i,i] += myeps
     end
     ## Calculate Ktt^{-1} 
     Ktinv = @view BOobj.Ktinv[1:it,1:it]

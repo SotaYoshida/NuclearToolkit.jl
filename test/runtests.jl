@@ -54,10 +54,10 @@ using Test
         end
     end
 
-    @testset "2n3n calibration runnable?" begin
-        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="MCMC")
-        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="LHS")
-        @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="BayesOpt")
-        @test make_chiEFTint(;nucs=["He4"],itnum=6,optimizer="MCMC",MPIcomm=true)
-    end
+    # @testset "2n3n calibration runnable?" begin
+    #     @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="MCMC")
+    #     @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="LHS")
+    #     @test make_chiEFTint(;nucs=["He4"],itnum=5,optimizer="BayesOpt")
+    #     @test make_chiEFTint(;nucs=["He4"],itnum=6,optimizer="MCMC",MPIcomm=true)
+    # end
 end

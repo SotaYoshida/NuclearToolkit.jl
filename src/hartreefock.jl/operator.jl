@@ -363,7 +363,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
         S1b = ifelse(Tz<=0,Op_Rp2.onebody[1],Op_Rp2.onebody[2])
         for ib = 1:nkets
             α, α_ = kets[ib]
-            na = sps[α].occ; naa = sps[α_].occ 
+            na = sps[α].occ[1]; naa = sps[α_].occ[1] 
             #if sps[α].occ + sps[α_].occ != 2;continue;end
             if (na ==0.0) || (naa == 0.0);continue;end
             tobe = Op2b[ib,ib] * Nocc * na * naa # needed?
@@ -377,12 +377,12 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
             idx_a = div(a,2)+ a%2
             idx_b = div(b,2)+ b%2
             #if (sps[a].occ ==1 || sps[b].occ ==1); continue; end            
-            if (sps[a].occ !=0.0 || sps[b].occ !=0.0); continue; end            
+            if (sps[a].occ[1] !=0.0 || sps[b].occ[1] !=0.0); continue; end            
             sqab = ifelse(a==b,sqrt(2.0),1.0)
             for ik = 1:nkets
                 i,j = kets[ik]
                 #if sps[i].occ == 0 || sps[j].occ ==0; continue; end
-                if sps[i].occ == 0.0 || sps[j].occ ==0.0; continue; end                
+                if sps[i].occ[1] == 0.0 || sps[j].occ[1] ==0.0; continue; end                
                 sqij = ifelse(i==j,sqrt(2.0),1.0)
                 sqfac = sqab * sqij
                 idx_i = div(i,2)+ i%2
@@ -396,7 +396,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 for ii = 1:nkets 
                     k,q= kets[ii] 
                     #if sps[k].occ + sps[q].occ != 1;continue;end
-                    if (sps[k].occ ==0.0 && sps[q].occ ==0.0) || (sps[k].occ !=0.0 && sps[q].occ !=0.0);continue;end
+                    if (sps[k].occ[1] ==0.0 && sps[q].occ[1] ==0.0) || (sps[k].occ[1] !=0.0 && sps[q].occ[1] !=0.0);continue;end
                     if !( q==b || k==b);continue;end
                     phase = 1.0
                     if k==b 
@@ -412,10 +412,10 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 for ii = 1:nkets
                     c,q = kets[ii]
                     #if sps[c].occ + sps[q].occ != 1; continue;end
-                    if (sps[c].occ ==0.0 && sps[q].occ == 0.0) || (sps[c].occ !=0.0 && sps[q].occ !=0.0) ; continue;end
+                    if (sps[c].occ[1] ==0.0 && sps[q].occ[1] == 0.0) || (sps[c].occ[1] !=0.0 && sps[q].occ[1] !=0.0) ; continue;end
                     if !( c==j || q==j);continue;end
                     phase = 1.0
-                    if sps[c].occ !=0.0 
+                    if sps[c].occ[1] !=0.0 
                         if c != j;println("errS2");exit();end                        
                         phase *= (-1)^(div(sps[c].j+sps[q].j,2)+J+1) 
                         c = q; q = kets[ii][1]
@@ -428,7 +428,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S3 term
                 for ii = 1:nkets
                     q,c = kets[ii]
-                    if sps[q].occ + sps[c].occ != 0.0; continue;end
+                    if sps[q].occ[1] + sps[c].occ[1] != 0.0; continue;end
                     if !( c==a || q==a);continue;end
                     phase = 1.0
                     if q != a && c ==a
@@ -443,7 +443,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S4 term 
                 for ii = 1:nkets
                     q,k = kets[ii]
-                    if sps[q].occ * sps[k].occ ==0.0; continue;end
+                    if sps[q].occ[1] * sps[k].occ[1] ==0.0; continue;end
                     if !( q==i || k==i);continue;end
                     phase = 1.0
                     if q != i && k == i
@@ -458,7 +458,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S7 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ + sps[d].occ != 0.0;continue;end
+                    if sps[c].occ[1] + sps[d].occ[1] != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Gam[ib,ii] * Op2b[ii,ik]
                     deno =  (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S7 += nume *sqfac/deno
@@ -466,7 +466,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S8 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ * sps[l].occ ==0.0;continue;end
+                    if sps[k].occ[1] * sps[l].occ[1] ==0.0;continue;end
                     nume = 0.125* Nocc * tGam * Gam[ik,ii] * Op2b[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S8 += nume *sqfac/deno
@@ -474,7 +474,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S10 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ +sps[d].occ != 0.0;continue;end
+                    if sps[c].occ[1] +sps[d].occ[1] != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ib,ik] * Gam[ii,ik]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S10 += nume/deno
@@ -482,7 +482,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
                 # S11 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ * sps[l].occ ==0.0;continue;end
+                    if sps[k].occ[1] * sps[l].occ[1] ==0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ik,ii] * Gam[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S11 += nume *sqfac/deno
@@ -785,13 +785,14 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMo
         # fns = ["reconst_omegavec_s$(strip(num)).bin" for num in nums]
      
         # to calculate Rp2 from Omega^{NN}
-        aOp!(tOmega,0.0)
-        fvec = read_fvec_bin(fns[end])
-        update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
-        aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)    
-        BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-        aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
-                
+        if length(fns) > 0
+            aOp!(tOmega,0.0)
+            fvec = read_fvec_bin(fns[end])
+            update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)    
+            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
+        end                
     else
         tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
         nwritten = IMSRGobj.n_written_omega[1]
@@ -821,7 +822,7 @@ function getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=f
     Cp = HFobj.Cp; Cn = HFobj.Cn
     holes = Int64[ ]
     for (ith,o) in enumerate(HFobj.modelspace.sps)
-        if o.occ != 0.0
+        if o.occ[1] != 0.0
             push!(holes,ith)
         end
     end 
@@ -833,7 +834,7 @@ function getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=f
     end
     ## 0-body from One-body 
     for (i,oi) in enumerate(sps)
-        ni = oi.occ
+        ni = oi.occ[1]
         if ni != 0.0
             pn = 1 + div(1+oi.tz,2)
             idx_i = div(i,2) + i%2            
@@ -854,15 +855,15 @@ function getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=f
         tsum = 0.0        
         for ib = 1:nket
             p,q = tkets[ib]
-            if sps[p].occ * sps[q].occ ==0.0;continue;end
-            tsum += sps[p].occ * sps[q].occ * O2b[ib,ib]
+            if sps[p].occ[1] * sps[q].occ[1] ==0.0;continue;end
+            tsum += sps[p].occ[1] * sps[q].occ[1] * O2b[ib,ib]
         end
         targetOp.zerobody[1] += tsum * hatfactor
 
         # => NO1B        
         tdict = dict_idx_from_chket[ch]
         for h in holes
-            jh = sps[h].j; nh = sps[h].occ
+            jh = sps[h].j; nh = sps[h].occ[1]
             for (a,oa) in enumerate(sps)
                 ja = oa.j
                 if !tri_check(jh,ja,2*J);continue;end

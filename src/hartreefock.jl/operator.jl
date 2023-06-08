@@ -29,6 +29,7 @@ function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a,b)
     end
     return nothing
 end
+
 """
     aOp1_p_bOp2(Op1::Operator,Op2::Operator,a,b)
 function to return new Operator = aOp1 + bOp2
@@ -91,7 +92,8 @@ function InitOp(Chan1b,Chan2b)
 end
 
 """
-function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
+    difA_RCM(Op::Operator,Aold,Anew)
+Function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
 """
 function difA_RCM(Op::Operator,Aold,Anew)
     for pn = 1:2
@@ -717,7 +719,7 @@ end
 
 evaluate charge radii with IMSRG.
 """
-function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,to;emulator=false,debug_mode=false)
+function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,restart_from_files,to;debug_mode=false)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -740,59 +742,51 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMo
     tmpOp  = deepcopy(Op_Rp2);aOp!(tmpOp,0.0)
     tmpOp2 = deepcopy(Op_Rp2);aOp!(tmpOp2,0.0)
     Nested = deepcopy(Op_Rp2);aOp!(Nested,0.0)
-    if emulator
-        ### function to read ANN Omega(s) bin will be inserted here
+    
+    if length(restart_from_files) >= 1 # hf5 files by emulator are specified
         tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
-        dict_idx_op_to_flatvec, dict_idx_flatvec_to_op = get_non0omega_idxs(HFobj,Omega)
-     
-        # fns = glob("ann_etavec*bin")
-        # nums = sort([ @sprintf("%6.2f", parse(Float64,split(split(split(fn,"_")[end],"s")[end],".bin")[1])) for fn in fns])
-        # fns = ["ann_etavec_s$(strip(num)).bin" for num in nums]
-        # EtaANN = deepcopy(tOmega); aOp!(EtaANN,0.0)
-        # ds = 0.5
-        # for fn in fns
-        #     aOp!(tOmega,0.0)
-        #     fvec = read_fvec_bin(fn)
-        #     s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".bin")[1])
-        #     update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
-
-        #     aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
-            
-        #     aOp!(tOmega,ds)
-        #     BCH_Product(tOmega,EtaANN,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-        #     aOp1_p_bOp2!(tmpOp,EtaANN,1.0,1.0)
-
-        #     BCH_Transform(EtaANN,HFobj.H,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-        #     println("eta ENN(s=",@sprintf("%7.3f",s),") = ",tmpOp.zerobody[1])
-        # end
-
-        fns = glob("ann_omegavec_emax$(binfo.emax)_$(binfo.nuc.cnuc)_s*bin")
-        nums = sort([ @sprintf("%6.2f", parse(Float64,split(split(split(fn,"_")[end],"s")[end],".bin")[1])) for fn in fns])
-        fns = ["ann_omegavec_emax$(binfo.emax)_$(binfo.nuc.cnuc)_s$(strip(num)).bin" for num in nums]
-        for fn in fns
+        dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,Omega,Chan2b)
+        for fn in restart_from_files[1]
             aOp!(tOmega,0.0)
-            fvec = read_fvec_bin(fn)
-            s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".bin")[1])
+            fvec = read_fvec_hdf5(fn)   
+            s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
+            aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
             update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
-
-            aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)    
-            BCH_Transform(tOmega,HFobj.H,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-            println("ENN(s=",@sprintf("%7.3f",s),") = ",tmpOp.zerobody[1])
-        end
-
-        # fns = glob("reconst_omegavec_*bin")
-        # nums = sort([ @sprintf("%6.2f", parse(Float64,split(split(split(fn,"_")[end],"s")[end],".bin")[1])) for fn in fns])
-        # fns = ["reconst_omegavec_s$(strip(num)).bin" for num in nums]
-     
-        # to calculate Rp2 from Omega^{NN}
-        if length(fns) > 0
-            aOp!(tOmega,0.0)
-            fvec = read_fvec_bin(fns[end])
-            update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
-            aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)    
             BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-            aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
-        end                
+            Rpp = tmpOp.zerobody[1]
+            Rch2_emu = Rpp + Rp2 + N/Z *Rn2 + DF
+            Rch_emu = sqrt(Rch2_emu)
+            println("s="*strip(@sprintf("%10.2f",s))*"(Net): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_emu))
+            aOp!(tOmega,0.0)
+
+            ## remnant for IMSRG-Net ##
+            # if s == 20.00
+            #     aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
+            #     update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            #     BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            #     Rpp = tmpOp.zerobody[1]
+            #     Rch2_20 = Rpp + Rp2 + N/Z *Rn2 + DF
+            #     Rch_20 = sqrt(Rch2_20)
+            #     println("s=20(Net): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_20))
+            #     aOp!(tOmega,0.0)
+            #     target_dir = "../imsrg_data/runlog_e$(binfo.emax)_$(inttype)/"
+            #     target_dir = "../../Desktop/imsrg_data/runlog_e$(binfo.emax)_$(inttype)/"
+            #     fn_20 = glob(target_dir * "omega_vec_*$(binfo.nuc.cnuc)_s20.00.h5")[1]
+            #     fvec = read_fvec_hdf5(fn_20)   
+            #     aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
+            #     update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            #     BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            #     Rpp = tmpOp.zerobody[1]
+            #     Rch2_20 = Rpp + Rp2 + N/Z *Rn2 + DF
+            #     Rch_20 = sqrt(Rch2_20)
+            #     println("s=20(IMSRG): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_20))
+            #     aOp!(tOmega,0.0)
+            # end    
+            if fn == restart_from_files[1][end]
+                aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
+            end
+        
+        end     
     else
         tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
         nwritten = IMSRGobj.n_written_omega[1]
@@ -802,7 +796,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMo
             aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
         end
     end
-    Rpp = tmpOp.zerobody[1]
+    Rpp = Op_Rp2.zerobody[1]
     Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
     Rch = sqrt(Rch2)
     println("IMSRG point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch))

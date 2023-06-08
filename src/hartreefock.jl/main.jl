@@ -1,6 +1,7 @@
 """
     hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl")
-main function to carry out HF/HFMBPT calculation from snt file
+
+Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 # Arguments
 - `nucs::Vector{String}` target nuclei
 - `sntf` path to input interaction file
@@ -12,11 +13,11 @@ main function to carry out HF/HFMBPT calculation from snt file
 - `Operators=String[]` target observables other than Hamiltonian
 - `is_show=false` to show TimerOutput log (summary of run time and memory allocation)
 - `doIMSRG=false` to carry out IMSRG/VSIMSRG calculation 
-- `valencespace=[]` to spacify the valence space (e.g., ["sd-shell"]), if this is not empty, it tries to do vsimsrg calculations
+- `valencespace=[]` to spacify the valence space (e.g., "sd-shell" or ["sd-shell"], [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]]), if this is not empty, it tries to perform VS-IMSRG calculations
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,emulator=false)
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
@@ -72,7 +73,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode,Hsample=Hsample)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
@@ -90,10 +91,10 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
 end
 
 """
-    hf_main_mem(chiEFTobj,nucs,dict_TM,dWS,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core")    
+    hf_main_mem(chiEFTobj,nucs,dict_TM,dWS,to;verbose=false,Operators=String[],valencespace="",corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbose=false,Operators=String[],valencespace=[],corenuc="",ref="core",io=stdout) 
+function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbose=false,Operators=String[],valencespace="",corenuc="",ref="core",io=stdout) 
     emax = chiEFTobj.params.emax
     hw = chiEFTobj.params.hw
     sntf = chiEFTobj.params.fn_tbme   

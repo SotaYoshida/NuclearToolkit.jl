@@ -718,12 +718,6 @@ function get_phase_j3(j1::Int64,j2::Int64,j3::Int64)::Float64
 end
 
 function call_d6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6j::Dict{UInt64,Float64})::Float64
-    # if j1 == 0; return delta(j5,j6) * delta(j2,j3) * (-1)^((j4+j5+j3)/2) / sqrt((j3+1)*(j6+1)); end
-    # if j2 == 0; return delta(j1,j3) * delta(j4,j6) * (-1)^((j5+j1+j6)/2) / sqrt((j1+1)*(j4+1)); end
-    # if j3 == 0; return delta(j1,j2) * delta(j4,j5) * (-1)^((j2+j4+j6)/2) / sqrt((j2+1)*(j5+1)); end
-    # if j4 == 0; return delta(j3,j5) * delta(j2,j6) * (-1)^((j1+j2+j3)/2) / sqrt((j3+1)*(j6+1)); end
-    # if j5 == 0; return delta(j3,j4) * delta(j1,j6) * (-1)^((j1+j2+j3)/2) / sqrt((j1+1)*(j4+1)); end
-    # if j6 == 0; return delta(j1,j5) * delta(j2,j4) * (-1)^((j1+j2+j3)/2) / sqrt((j2+1)*(j5+1)); end
     if j1 == 0; return delta(j5,j6) * delta(j2,j3) * get_phase_j3(j4,j5,j3) / sqrt((j3+1)*(j6+1)); end
     if j2 == 0; return delta(j1,j3) * delta(j4,j6) * get_phase_j3(j5,j1,j6) / sqrt((j1+1)*(j4+1)); end
     if j3 == 0; return delta(j1,j2) * delta(j4,j5) * get_phase_j3(j2,j4,j6) / sqrt((j2+1)*(j5+1)); end
@@ -763,7 +757,7 @@ function get_canonical_order_6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int6
     return o
 end
 
-function get_key6j_sym(j1,j3,j5,j2,j4,j6)::UInt64
+function get_key6j_sym(j1::Int64,j3::Int64,j5::Int64,j2::Int64,j4::Int64,j6::Int64)::UInt64
     tj1 = j1; tj3 = j3; tj5 = j5
     tj2 = j2; tj4 = j4; tj6 = j6
     column_order = get_canonical_order_6j(j1,j2,j3,j4,j5,j6)

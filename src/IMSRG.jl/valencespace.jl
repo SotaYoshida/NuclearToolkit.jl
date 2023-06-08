@@ -5,7 +5,7 @@ check validity of specified valence space
 """
 function check_valence_space(HFobj,valencespace)
     v = Int64[ ]
-    if length(valencespace)==0
+    if length(valencespace)==0 # "" or [ ]
         return v
     elseif typeof(valencespace)== String
         check_major_valencespace(valencespace,HFobj,v)
@@ -222,7 +222,7 @@ end
 
 Function to write out valence space effective interaction in snt (KSHELL/ShellModel.jl) format.
 """
-function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspace)
+function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,vspace;effOps=Operator[])
     hw = binfo.hw
     emax = binfo.emax
     dict_ms2snt = Chan1b.ms2snt
@@ -234,7 +234,7 @@ function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspac
         cOp = "Hamiltonian"
         refnuc = ifelse(ref=="core",binfo.nuc.corenuc,binfo.nuc.cnuc)
         fname = "vsimsrg_" * vspace * "_core"*binfo.nuc.corenuc* "ref"*refnuc* "_" * binfo.nuc.cnuc *"_"*"hw"*string(hw)*"e"*string(emax)* "_Delta$cDelta.snt"
-        if i !=1
+        if i != 1
             Op = effOps[i-1]; cOp = Operators[i-1]
             fname = "vsimsrg_" * vspace * "_core" *binfo.nuc.corenuc* "ref"*refnuc * "_" * binfo.nuc.cnuc * "_"*"hw"*string(hw)*"e"*string(emax)*"_Delta"*cDelta*"_"*cOp*".snt"
         end

@@ -88,8 +88,7 @@ struct chan2bD
     Chan2b::Vector{chan2b}
     dict_ch_JPT::Dict{UInt64,VdictCh}
     dict_ch_idx_from_ket::Dict{UInt64,NTuple{2,Int64}}
-    #dict_ch_idx_from_ket::Vector{Vector{Dict{UInt64,NTuple{2,Int64}}}}
-    dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}   
+    dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}
 end
 
 """
@@ -141,7 +140,6 @@ struct `dictTBMEs` contains dictionaries for TBME/monopole
 struct dictSnt
     dictTBMEs::Vector{Dict{Vector{Int64},Vector{Float64}}}
     dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}
-    #dictMonopole::Vector{Dict{NTuple{2,Int64},valDictMonopole}}
 end
 
 
@@ -297,7 +295,8 @@ mutable struct `IMSRGobject`
 - `s::Vector{Float}` current ``s`` and ``ds``
 - `smax::Float` maximum ``s``
 - `dsmax::Float` maximum ``ds``
-- `maxnormOmega::Float` maximum ||Omega||
+- `maxnormOmega::Float` maximum ||Omega|| for spliting
+- `magnusmethod::String` "" or "split" => spliting method, "NS" or "no-split" => w/o spliting
 - `eta::Operator` generator of IMSRG flow (antihermite Operator)
 - `Omega::Operator` generator of IMSRG flow (antihermite Operator) 
 - `eta_criterion::Float` ||eta|| to check convergence
@@ -312,6 +311,7 @@ mutable struct IMSRGobject
     smax::Float64
     dsmax::Float64
     maxnormOmega::Float64
+    magnusmethod::String
     eta::Operator
     Omega::Operator
     eta_criterion::Float64

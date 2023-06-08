@@ -12,7 +12,7 @@ function updateLECs!(chiEFTobj,org_dLECs)
     return nothing
 end
 
-function nn_IMSRG_sampling(nucs;is_show=false,itnum=1,corenuc="",ref="nucl",fn_params="ann_sample_params.jl")
+function nn_IMSRG_sampling(nucs;is_show=false,itnum=1,corenuc="",ref="nucl",fn_params="ann_sample_params.jl",valencespace="")
     to = TimerOutput()    
     optimizer = ""
     MPIcomm = false
@@ -30,7 +30,11 @@ function nn_IMSRG_sampling(nucs;is_show=false,itnum=1,corenuc="",ref="nucl",fn_p
         sntf = chiEFTobj.params.fn_tbme
         hw = chiEFTobj.params.hw
         emax = chiEFTobj.params.emax
-        hf_main(nucs,sntf,hw,emax;is_show=is_show,doIMSRG=true,corenuc="",ref="nuc",fn_params=fn_params,debugmode=2,Hsample=true,Operators=["Rp2"])
+        if valencespace == ""
+            hf_main(nucs,sntf,hw,emax;is_show=is_show,doIMSRG=true,corenuc="",ref="nuc",fn_params=fn_params,debugmode=2,Hsample=true,Operators=["Rp2"])
+        else
+            hf_main(nucs,sntf,hw,emax;is_show=is_show,doIMSRG=true,valencespace=valencespace,corenuc=corenuc,ref=ref,fn_params=fn_params,debugmode=2,Hsample=true,Operators=["Rp2"])
+        end
         for ch = 1:length(V12mom)
             V12mom[ch] .= 0.0
             V12mom_2n3n[ch] .= 0.0

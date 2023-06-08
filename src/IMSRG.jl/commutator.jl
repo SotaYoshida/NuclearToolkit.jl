@@ -27,6 +27,35 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1
 end
 
 """
+    Bernoulli_number(k::Int64)::Float64
+
+Return the k-th Bernoulli number. Some special cases are listed below 
+- B(0) = 1
+- B(1) = -1/2. In some literature, B(1) = 1/2.
+- B(2) = 1/6
+- B(2n+1) = 0 (for n >=1)
+
+For others, see the references [A000367](https://oeis.org/A000367) and [A002445](https://oeis.org/A002445).
+"""
+function Bernoulli_number(k::Int64)::Float64
+    @assert k >=0 "Domain error on Bernoulli_number(k) k<0"
+    if k == 0; return 1.0; end
+    if k == 1; return -1/2; end
+    if k >= 3 && k%2 == 1; return 0.0; end
+    if k > 35
+        @warn "Domein error for Bernoulli_number(k=$k). It returs 0, inaccurate for even input"
+    end
+
+	nume = (1, -1, 1, -1, 5, -691, 7, -3617, 43867, -174611, 854513, -236364091, 8553103, -23749461029, 8615841276005, -7709321041217, 2577687858367, -26315271553053477373, 2929993913841559, -261082718496449122051)
+    deno = (6, 30, 42, 30, 66, 2730, 6, 510, 798, 330, 138, 2730, 6, 870, 14322, 510, 6, 1919190, 6, 13530, 1806, 690, 282, 46410, 66, 1590, 798, 870, 354, 56786730, 6, 510, 64722, 30, 4686, 140100870, 6, 30, 3318, 230010, 498, 3404310, 6, 61410, 272118, 1410, 6, 4501770, 6, 33330, 4326, 1590, 642, 209191710, 1518, 1671270, 42)
+    n = div(k,2)
+    return Float64(nume[n]/deno[n]) 
+end
+
+const berfac = [Float64(Bernoulli_number(k)/factorial(big(k))) for k = collect(1:35)]
+
+
+"""
     BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-4) where Op <:Operator
 
 returns ``Z``  to satisfy: ``e^Z = e^X e^Y``.
@@ -39,11 +68,7 @@ For IMSRG flow of ``H(s)``, ``X=\\eta(s) ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega
 """
 function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
                      dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-4,verbose=false) where Op <:Operator
-    Nested.hermite = true; Nested.antihermite=false
-    berfac = Float64.([-1/2, 1/12, 0.0, -1/720, 0.0, 1/30240, 0.0, -1/120960, 0.0, 5/239500800,
-               0.0, -691/2730/factorial(12), 0.0, 7/6/factorial(14),0.0, -3617/510/factorial(16),0.0,43867/798/factorial(18),0.0,-174611/330/factorial(20),
-               0.0, 854513/138/factorial(big(22)),0.0,-236364091/2730/factorial(big(24)),0.0,8553103/6/factorial(big(26)), 0.0,	-23749461029/870/factorial(big(28))]
-    )
+    Nested.hermite = true; Nested.antihermite=false    
     Chan2b = Chan2bD.Chan2b
     p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps
     ## clear old history
@@ -77,10 +102,10 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
         aOp1_p_bOp2!(tmpOp,Nested,1.0,0.0)
         Ncomm += 1
         k +=1
-        if k > 28; break; end
-    end
-    if  k > 28;
-        println("warn! iteration exceeds 28 in BCH_Product. results can be inaccurate...")
+        if k > 35
+            @warn "warning! iteration exceeds 35 in BCH_Product. results may be inaccurate..."
+            break
+        end
     end
     # if verbose
     #     println("$Ncomm times commuatator is needed in BCH_Product w/ tol = $tol ")
@@ -92,114 +117,114 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
     return nothing
 end
 
-function BCH_Product_acc(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
-                     dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-8,verbose=false) where Op <:Operator
-    Nested.hermite = true; Nested.antihermite=false
-    @timeit to "berfac" berfac = Float64.([-1/2, 1/12, 0.0, -1/720, 0.0, 1/30240, 0.0, -1/120960, 0.0, 5/239500800,
-               0.0, -691/2730/factorial(12), 0.0, 7/6/factorial(14),0.0, -3617/510/factorial(16),0.0,43867/798/factorial(18),0.0,-174611/330/factorial(20),
-               0.0, 854513/138/factorial(big(22)),0.0,-236364091/2730/factorial(big(24)),0.0,8553103/6/factorial(big(26)), 0.0,	-23749461029/870/factorial(big(28))]
-    )
-    Chan2b = Chan2bD.Chan2b
-    p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps
-    ## clear old history
-    aOp!(Z,0.0); aOp!(tmpOp,0.0); aOp!(Nested,0.0)
-    ## comm0 term: X+Y -> Z
-    Ncomm = 0
-    aOp1_p_bOp2_Op3!(X,Y,Z,1.0,1.0,0.0)
+# function BCH_Product_acc(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
+#                      dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-8,verbose=false) where Op <:Operator
+#     Nested.hermite = true; Nested.antihermite=false
+#     @timeit to "berfac" berfac = Float64.([-1/2, 1/12, 0.0, -1/720, 0.0, 1/30240, 0.0, -1/120960, 0.0, 5/239500800,
+#                0.0, -691/2730/factorial(12), 0.0, 7/6/factorial(14),0.0, -3617/510/factorial(16),0.0,43867/798/factorial(18),0.0,-174611/330/factorial(20),
+#                0.0, 854513/138/factorial(big(22)),0.0,-236364091/2730/factorial(big(24)),0.0,8553103/6/factorial(big(26)), 0.0,	-23749461029/870/factorial(big(28))]
+#     )
+#     Chan2b = Chan2bD.Chan2b
+#     p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps
+#     ## clear old history
+#     aOp!(Z,0.0); aOp!(tmpOp,0.0); aOp!(Nested,0.0)
+#     ## comm0 term: X+Y -> Z
+#     Ncomm = 0
+#     aOp1_p_bOp2_Op3!(X,Y,Z,1.0,1.0,0.0)
 
-    max_k = 3
-    # X,Y term
-    if  max_k >= 1
-        OpCommutator!(X,Y,Nested,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-        aOp1_p_bOp2!(Nested,Z,0.5,1.0)
+#     max_k = 3
+#     # X,Y term
+#     if  max_k >= 1
+#         OpCommutator!(X,Y,Nested,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#         aOp1_p_bOp2!(Nested,Z,0.5,1.0)
 
-        XY = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
-        YX = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
+#         XY = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
+#         YX = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
  
-        if max_k >= 2
-            aOp!(tmpOp,0.0)
-            OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-            aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
+#         if max_k >= 2
+#             aOp!(tmpOp,0.0)
+#             OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
 
-            aOp!(tmpOp,0.0)
-            OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-            aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
-            XXY = deepcopy(tmpOp)
+#             aOp!(tmpOp,0.0)
+#             OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
+#             XXY = deepcopy(tmpOp)
 
-            aOp!(tmpOp,0.0)
-            OpCommutator!(Y,YX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-            aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
-            YYX = deepcopy(tmpOp)
-            if max_k >= 3
-                aOp!(tmpOp,0.0)
-                OpCommutator!(Y,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                aOp1_p_bOp2!(tmpOp,Z,-1/24,1.0)
-                YXXY = deepcopy(tmpOp)
-                norm_YXXY = getNorm(YXXY,p_sps,n_sps,Chan2b)
-                aOp!(tmpOp,0.0); OpCommutator!(X,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                XXXY = deepcopy(tmpOp)
-                norm_XXXY = getNorm(XXXY,p_sps,n_sps,Chan2b)
+#             aOp!(tmpOp,0.0)
+#             OpCommutator!(Y,YX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
+#             YYX = deepcopy(tmpOp)
+#             if max_k >= 3
+#                 aOp!(tmpOp,0.0)
+#                 OpCommutator!(Y,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                 aOp1_p_bOp2!(tmpOp,Z,-1/24,1.0)
+#                 YXXY = deepcopy(tmpOp)
+#                 norm_YXXY = getNorm(YXXY,p_sps,n_sps,Chan2b)
+#                 aOp!(tmpOp,0.0); OpCommutator!(X,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                 XXXY = deepcopy(tmpOp)
+#                 norm_XXXY = getNorm(XXXY,p_sps,n_sps,Chan2b)
 
-                aOp!(tmpOp,0.0); OpCommutator!(X,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                XYYX = deepcopy(tmpOp)
-                norm_XYYX = getNorm(XYYX,p_sps,n_sps,Chan2b)
+#                 aOp!(tmpOp,0.0); OpCommutator!(X,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                 XYYX = deepcopy(tmpOp)
+#                 norm_XYYX = getNorm(XYYX,p_sps,n_sps,Chan2b)
 
-                aOp!(tmpOp,0.0); OpCommutator!(Y,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                YYYX = deepcopy(tmpOp)
-                norm_YYYX = getNorm(YYYX,p_sps,n_sps,Chan2b)
+#                 aOp!(tmpOp,0.0); OpCommutator!(Y,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                 YYYX = deepcopy(tmpOp)
+#                 norm_YYYX = getNorm(YYYX,p_sps,n_sps,Chan2b)
 
-                #println("norm YXXY $norm_YXXY XXXY $norm_XXXY XYYX $norm_XYYX YYYX $norm_YYYX")
+#                 #println("norm YXXY $norm_YXXY XXXY $norm_XXXY XYYX $norm_XYYX YYYX $norm_YYYX")
 
-                if max_k >= 4
+#                 if max_k >= 4
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(Y,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(Y,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(X,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(X,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(Y,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(Y,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(Y,XYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(Y,XYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
 
-                    aOp!(tmpOp,0.0)
-                    OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
+#                     aOp!(tmpOp,0.0)
+#                     OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
 
-                    # aOp!(tmpOp,0.0)
-                    # OpCommutator!(X,YXYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-                    # aOp1_p_bOp2!(tmpOp,Z,1/120,1.0)
-
-
-                end
-            end
-        end
-    end
+#                     # aOp!(tmpOp,0.0)
+#                     # OpCommutator!(X,YXYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
+#                     # aOp1_p_bOp2!(tmpOp,Z,1/120,1.0)
 
 
-    ### update norms for Omega(s+1)
-    ncomm[1] += 8
-    norms[1] = getNorm1b(Z.onebody,p_sps,n_sps)
-    norms[2] = getNorm2b(Z.twobody,Chan2b)
-    return nothing
-end
+#                 end
+#             end
+#         end
+#     end
+
+
+#     ### update norms for Omega(s+1)
+#     ncomm[1] += 8
+#     norms[1] = getNorm1b(Z.onebody,p_sps,n_sps)
+#     norms[2] = getNorm2b(Z.twobody,Chan2b)
+#     return nothing
+# end
 
 
 """
     BCH_Transform(Omega,O0,Os,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to;tol=1.e-9,maxit=50,verbose=false)
 
 Update ``Os`` via ``e^ABe^{-A} =B+[A,B]+1/2![A,[A,B]]+1/3![A,[A,[A,B]]]+...``
-
+Note that ``Os,tOp,Nested`` are set zero.
 - `Omega`: ``\\Omega(s+ds)``
 - `O0`: ``O(s=0)``
 - `Os`: ``O(s+ds)``
@@ -377,7 +402,7 @@ end
 """
     single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
 
-calc 121part ``[X_1,Y_2]-[Y_1,X_2]`` for given `i`,`j` and `a`,`b`.
+Function to calculate 121part ``[X_1,Y_2]-[Y_1,X_2]`` for given `i`,`j` and `a`,`b`.
 
 ``\\sum_{J} [J]^2 (o_{1,ab}o_{2,biaj} - o_{1,ba}o_{2,aibj})``
 """
@@ -399,11 +424,11 @@ function single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
     for tmp_ket in targetDict[key1].vals
         ch,i_aj,J = tmp_ket
         o2b = o2bs[ch]; NJ = (2*J+1)
-        phase_aj = ifelse(flip_aj, (-1)^(div(ja+jj,2)+J+1), 1.0)
+        phase_aj = ifelse(flip_aj, (-1)^(div(ja+jj,2)+J+1), 1)
         for tmp_bra in targetDict[key2].vals
             ch_bra,i_bi,Jbra = tmp_bra
             if ch_bra != ch;continue;end
-            phase_bi = ifelse(flip_bi, (-1)^(div(jb+ji,2)+Jbra+1),1.0)
+            phase_bi = ifelse(flip_bi, (-1)^(div(jb+ji,2)+Jbra+1),1)
             tmp = fac * NJ * phase_aj * phase_bi * o1b[idx_a,idx_b] *o2b[i_bi,i_aj]
             r_ajbi += tmp
         end
@@ -422,11 +447,11 @@ function single_121(a,b,i,j,o1b,o2bs,sps,key,targetDict;verbose=false)
     for tmp_ket in targetDict[key1].vals
         ch,i_ai,J = tmp_ket
         o2b = o2bs[ch]; NJ = (2*J+1)
-        phase_ai = ifelse(flip_ai, (-1)^(div(ja+ji,2)+J+1), 1.0)
+        phase_ai = ifelse(flip_ai, (-1)^(div(ja+ji,2)+J+1), 1)
         for tmp_bra in targetDict[key2].vals
             ch_bra,i_bj,Jbra = tmp_bra
             if ch_bra != ch;continue;end
-            phase_bj = ifelse(flip_bj, (-1)^(div(jb+jj,2)+Jbra+1),1.0)
+            phase_bj = ifelse(flip_bj, (-1)^(div(jb+jj,2)+Jbra+1),1)
             r_aibj += fac * NJ * phase_ai * phase_bj * o1b[idx_b,idx_a] *o2b[i_ai,i_bj]
         end
     end
@@ -491,7 +516,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
                 jdeno = 1.0/(ji+1)
                 sqfac_ci = ifelse(c==i,sqrt(2.0),1.0)
                 fflip_ci = (-1)^(div(ji+jc,2)+J+1)
-                phase_ci = ifelse(c>i,fflip_ci,1.0)
+                phase_ci = ifelse(c>i,fflip_ci,1)
                 i_ci = 0
                 nkey = get_nkey4_ketJT(c,i,J,Tz)
                 if c>i; nkey=get_nkey4_ketJT(i,c,J,Tz);end
@@ -509,7 +534,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
                     
                     sqfac_cj = ifelse(c==j,sqrt(2.0),1.0)
                     fflip_cj = (-1)^(div(jj+jc,2)+J+1)                    
-                    phase_cj = ifelse(c>j,fflip_cj,1.0)
+                    phase_cj = ifelse(c>j,fflip_cj,1)
                     i_cj = 0                    
                     nkey = get_nkey4_ketJT(c,j,J,Tz)
                     if c > j; nkey = get_nkey4_ketJT(j,c,J,Tz);end
@@ -719,7 +744,7 @@ function prep122(HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::chan2bD
                 phaseaj = (-1)^(div(sps[a].j+jj,2)+J+1)
                 @assert phaseaj == phaseij "phasej must be identicall with phaseij"
                 #### just in case...
-                tfac = ifelse(a>j,phaseij,1.0) * ifelse(a==j,sqrt(2.0),1.0)
+                tfac = ifelse(a>j,1.0*phaseij,1.0) * ifelse(a==j,sqrt(2.0),1.0)
                 push!(factor_ia, tfac)
             end
             if i!=j
@@ -738,7 +763,7 @@ function prep122(HFobj::HamiltonianNormalOrdered,Chan1b::chan1b,Chan2bD::chan2bD
                     phaseai = (-1)^(div(sps[a].j+ji,2)+J+1)
                     @assert phaseai == phaseij "phaseai != phaseij"
                     ###
-                    tfac = ifelse(i>a,phaseij,1.0) * ifelse(i==a,sqrt(2.0),1.0)
+                    tfac = ifelse(i>a,1.0*phaseij,1.0) * ifelse(i==a,sqrt(2.0),1.0)
                     push!(factor_ja,tfac)
                 end
             end

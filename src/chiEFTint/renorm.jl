@@ -156,13 +156,13 @@ function srg_RK4(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;r_err=1.e-8,a_err=1.e-8,
         Ho .= Hs        
         RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
+        Ho .= Hs; axpy!(0.5*ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
+        Ho .= Hs; axpy!(0.5*ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(ds,R,Ho)
+        Ho .= Hs; axpy!(ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
 
         Hs .= Ht

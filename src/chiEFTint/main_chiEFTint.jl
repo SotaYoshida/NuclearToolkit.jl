@@ -273,7 +273,7 @@ function make_sp_state(chiEFTobj::chiEFTparams;io=stdout)
     kl = Dict{Vector{Int64},Int64}()
     kj = Dict{Vector{Int64},Int64}()
     maxsps = Int((emax+1) * (emax+2) / 2)
-    println(io,"# of sp states $maxsps")    
+    println(io,"# of sp states $maxsps")
     n = 0
     for NL=0:emax
         for L=0:NL
@@ -307,6 +307,7 @@ function get_twobody_channels(emax::Int,kh,kn,kl,kj,maxsps::Int,jab_max::Int)
     infos = Vector{Int64}[ ]  
     izs_ab = Vector{Vector{Int64}}[ ] 
     ichan = nTBME = 0
+    num2b = 0
     for izz = -2:2:2
         for ipp = -1:2:1
             for jjx = 0:2*emax+1
@@ -333,7 +334,7 @@ function get_twobody_channels(emax::Int,kh,kn,kl,kj,maxsps::Int,jab_max::Int)
                 end
                 if ndim != 0
                     ichan += 1
-                    #println("ichan $ichan ndim $ndim")
+                    num2b +=div(ndim*(ndim+1),2)
                     push!(infos,[izz,ipp,jjx,ndim])
                     nTBME += Int(ndim*(ndim+1)/2)
                     push!(izs_ab,tl)
@@ -341,6 +342,27 @@ function get_twobody_channels(emax::Int,kh,kn,kl,kj,maxsps::Int,jab_max::Int)
             end
         end
     end
+    # num1b = 0
+    # nljs = Vector{Int64}[ ]
+    # for e = 0:emax
+    #     for n = 0:div(e,2)
+    #         l = e - 2*n
+    #         for j = max(1,2*l-1):2:2*l+1
+    #             push!(nljs,[n,l,j])
+    #         end
+    #     end
+    # end
+    # for ia = 1:length(nljs)
+    #     oa = nljs[ia]
+    #     for ib = ia+1:length(nljs)
+    #         ob = nljs[ib]
+    #         if oa[2]==ob[2] && oa[3]==ob[3]
+    #             num1b += 1
+    #         end
+    #     end
+    # end
+    # numtot = 2* num1b + num2b
+    # println("num tot $numtot num1b $num1b num2b $num2b")
     return infos,izs_ab,nTBME
 end
 

@@ -6,20 +6,22 @@
 - `Chan1b::chan1b` struct for one-body stuffs
 - `Chan2bD::chan2bD` struct for two-body stuffs (e.g., dict to get idx from JPT)
 - `HFobj::HamiltonianNormalOrdered` struct HNO, which includes info. of HF solution (HF energy, occupation, f,Gamma,...)
-- `dictMono::Dict` dictionary to get Vmonopole
+- `dictsnt::Dict` dictionary to get Vmonopole
 - `dWS` dictionary of preallocated wigner-symbols
 - `valencespace` to specify valence space  
 - `Operators::Vector{String}` non-Hamiltonian operators
+- `MatOp`::Matrix{Float64} intermediate matrix used in IMSRG methods
 - `to` TimerOutput object to measure runtime&memory allocations
 
 # Optional Arguments
 - `core_generator_type` only the "atan" is available
 - `valence_generator_type` only the "shell-model-atan" is available
-- `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
-- `debugmode::Int` 2: sample HF/IMSRG files
+- `fn_params::String` file name like "optional_parameters.jl"
+- `Hsample::Bool` if true, Omega and Eta vectors are sampled in hdf5 format
+- `restart_from_files` if length(restart_from_files) >= 1, IMSRG flow is restarted from the specified files. Note that multistep IMSRG flow is not supported yet.
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,dWS,valencespace,Operators,MatOp,to;
-                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2,Hsample=false,restart_from_files=String[])
+                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",Hsample=false,restart_from_files=String[])
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[]&&valencespace!="",true,false)
     update_core_in_sps!(binfo,HFobj)
@@ -31,7 +33,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
     if length(restart_from_files) >= 1; IMSRGobj.smax = 0.5;end
-    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
+    IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;Hsample=Hsample,restart_from_files=restart_from_files)
     if vsIMSRG && length(restart_from_files) == 0
         IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;valenceflow=true,Hsample=Hsample)
         effOps = flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,restart_from_files,to)
@@ -52,28 +54,26 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     end
 
     if length(restart_from_files) >= 1
-        println("cZ $(binfo.nuc.cZ) Z $(binfo.nuc.Z) cN $(binfo.nuc.cN) N $(binfo.nuc.N)")
-        if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
-            println("normal ordering...")
-            getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;undo=true,OpeqH=true)
-            println("onebody@1 ", IMSRGobj.H.onebody[1][1,:])
-            set_sps_to_core!(binfo,HFobj)
-            getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;OpeqH=true)            
-            println("onebody@2 ", IMSRGobj.H.onebody[1][1,:])
-            for Op in effOps
-                set_sps_to_modelspace!(binfo,HFobj)
-                getNormalOrderedO(HFobj,Op,Chan1b,Chan2bD,to;undo=true,OpeqH=false)
-                set_sps_to_core!(binfo,HFobj)
-                getNormalOrderedO(HFobj,Op,Chan1b,Chan2bD,to;OpeqH=false)
+        for (nth,fn) in enumerate(restart_from_files[1])
+            aOp!(Omega,0.0)
+            fvec = read_fvec_hdf5(fn)
+            s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
+            update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
+            BCH_Transform(Omega,HFobj.H,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
+            println("En(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])
+            if valenceflow & length(restart_from_files) >=2
+                if length(restart_from_files[2]) >=1
+                    Hcopy = deepcopy(tmpOp)
+                    fn = restart_from_files[2][nth]
+                    fvec = read_fvec_hdf5(fn)
+                    update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
+                    BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+                    aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
+                end
             end
         end
-        write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,valencespace)
     end
-
-    # emulator
-    # if length(restart_from_files) > 0
-    #     flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,restart_from_files,to)
-    # end
     return IMSRGobj
 end
 
@@ -613,7 +613,7 @@ function get_lookup_ketJT(i::Int64,j::Int64,ji::Int64,jj::Int64,J::Int64,Tz::Int
 end
 
 function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,PandyaObj::PandyaObject,Chan1b::chan1b,Chan2bD,dictMono,dWS,
-                   core_generator,valence_generator,to;valenceflow=false,debugmode=0,maxstep=2000,Hsample=false,num_Hsample=50,modsample=4,
+                   core_generator,valence_generator,to;valenceflow=false,maxstep=2000,Hsample=false,num_Hsample=50,modsample=4,
                    restart_from_files=String[]) 
     Chan2b = Chan2bD.Chan2b
     ncomm = IMSRGobj.Ncomm
@@ -753,7 +753,7 @@ end
 
 function gather_omega_sofar_write(Hsample::Bool, istep, s, fvec, oOmega, nOmega, tmpOp, binfo, Chan1b, Chan2bD,
                                   HFobj, IMSRGobj, dictMono, dWS, PandyaObj,to,
-                                  dict_idx_op_to_flatvec, dict_idx_flatvec_to_op,dict_if_idx_for_hdf5;debug_mode=true)
+                                  dict_idx_op_to_flatvec, dict_idx_flatvec_to_op,dict_if_idx_for_hdf5)
     if !Hsample; return nothing;end
     magnusmethod = IMSRGobj.magnusmethod
     #splitting = ifelse((magnusmethod!="" && magnusmethod!="split"),true,false)
@@ -954,20 +954,6 @@ function GatherOmega(Omega::Op,nOmega::Op,gatherer::Op,tmpOp::Op,Nested::Op,
     set_dictMonopole!(dictMono,HFobj,IMSRGobj.H.twobody)
     aOp1_p_bOp2!(gatherer,Omega,1.0,0.0)
     return true    
-end
-
-function debug_print(debugmode,Hs,Omega,eta,label;ch=1)
-    if debugmode == 2
-        label *= ";ch1"
-        print_vec("Omega($label ,ch=$ch) \t",Omega.twobody[ch][1,:])
-        print_vec("Eta($label ,ch=$ch) \t",eta.twobody[ch][1,:])
-    elseif debugmode == 1
-        println("proton 1b($label):") 
-        for i=1:size(Hs.onebody[1])[1]
-            print_vec("",Hs.onebody[1][i,:])
-        end
-    end
-    return nothing
 end
 
 """

@@ -1,5 +1,5 @@
 """
-    hf_main(nucs,sntf,hw,emax;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace=[],corenuc="",ref="nucl")
+    hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
 
 Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 # Arguments
@@ -16,6 +16,7 @@ Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 - `valencespace=[]` to spacify the valence space (e.g., "sd-shell" or ["sd-shell"], [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]]), if this is not empty, it tries to perform VS-IMSRG calculations
 - `corenuc=""` core nucleus, example=> "He4"
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
+- `restart_from_files=String[]` to start IMSRG flow from Omega files (in hdf5 fmt)
 """
 function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
     @assert isfile(sntf) "sntf:$sntf is not found!"

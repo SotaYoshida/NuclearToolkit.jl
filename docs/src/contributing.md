@@ -48,7 +48,7 @@ The current test codes check
 - MPI and sampling stuffs are runnable
 
 !!! note
-    If you submit a major change to the code, please consider to update the test codes mathing to your modifications.
+    If you submit a major change to the code, please consider to update the test codes matching to your modifications.
 
 ## Reporting bugs by opening a new issue
 

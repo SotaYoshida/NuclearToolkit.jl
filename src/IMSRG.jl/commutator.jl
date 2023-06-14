@@ -67,7 +67,7 @@ returns ``Z``  to satisfy: ``e^Z = e^X e^Y``.
 For IMSRG flow of ``H(s)``, ``X=\\eta(s) ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)``
 """
 function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
-                     dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-4,verbose=false) where Op <:Operator
+                     dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-6,verbose=false) where Op <:Operator
     Nested.hermite = true; Nested.antihermite=false    
     Chan2b = Chan2bD.Chan2b
     p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps
@@ -116,109 +116,6 @@ function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64}
     norms[2] = getNorm2b(Z.twobody,Chan2b)
     return nothing
 end
-
-# function BCH_Product_acc(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
-#                      dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-8,verbose=false) where Op <:Operator
-#     Nested.hermite = true; Nested.antihermite=false
-#     @timeit to "berfac" berfac = Float64.([-1/2, 1/12, 0.0, -1/720, 0.0, 1/30240, 0.0, -1/120960, 0.0, 5/239500800,
-#                0.0, -691/2730/factorial(12), 0.0, 7/6/factorial(14),0.0, -3617/510/factorial(16),0.0,43867/798/factorial(18),0.0,-174611/330/factorial(20),
-#                0.0, 854513/138/factorial(big(22)),0.0,-236364091/2730/factorial(big(24)),0.0,8553103/6/factorial(big(26)), 0.0,	-23749461029/870/factorial(big(28))]
-#     )
-#     Chan2b = Chan2bD.Chan2b
-#     p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps
-#     ## clear old history
-#     aOp!(Z,0.0); aOp!(tmpOp,0.0); aOp!(Nested,0.0)
-#     ## comm0 term: X+Y -> Z
-#     Ncomm = 0
-#     aOp1_p_bOp2_Op3!(X,Y,Z,1.0,1.0,0.0)
-
-#     max_k = 3
-#     # X,Y term
-#     if  max_k >= 1
-#         OpCommutator!(X,Y,Nested,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#         aOp1_p_bOp2!(Nested,Z,0.5,1.0)
-
-#         XY = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
-#         YX = aOp1_p_bOp2(Nested,tmpOp,-1.0,0.0)
- 
-#         if max_k >= 2
-#             aOp!(tmpOp,0.0)
-#             OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
-
-#             aOp!(tmpOp,0.0)
-#             OpCommutator!(X,XY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
-#             XXY = deepcopy(tmpOp)
-
-#             aOp!(tmpOp,0.0)
-#             OpCommutator!(Y,YX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#             aOp1_p_bOp2!(tmpOp,Z,1.0/12.0,1.0)
-#             YYX = deepcopy(tmpOp)
-#             if max_k >= 3
-#                 aOp!(tmpOp,0.0)
-#                 OpCommutator!(Y,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                 aOp1_p_bOp2!(tmpOp,Z,-1/24,1.0)
-#                 YXXY = deepcopy(tmpOp)
-#                 norm_YXXY = getNorm(YXXY,p_sps,n_sps,Chan2b)
-#                 aOp!(tmpOp,0.0); OpCommutator!(X,XXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                 XXXY = deepcopy(tmpOp)
-#                 norm_XXXY = getNorm(XXXY,p_sps,n_sps,Chan2b)
-
-#                 aOp!(tmpOp,0.0); OpCommutator!(X,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                 XYYX = deepcopy(tmpOp)
-#                 norm_XYYX = getNorm(XYYX,p_sps,n_sps,Chan2b)
-
-#                 aOp!(tmpOp,0.0); OpCommutator!(Y,YYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                 YYYX = deepcopy(tmpOp)
-#                 norm_YYYX = getNorm(YYYX,p_sps,n_sps,Chan2b)
-
-#                 #println("norm YXXY $norm_YXXY XXXY $norm_XXXY XYYX $norm_XYYX YYYX $norm_YYYX")
-
-#                 if max_k >= 4
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(Y,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,-1/720,1.0)
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(X,YYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(Y,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,1/360,1.0)
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(Y,XYYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
-
-#                     aOp!(tmpOp,0.0)
-#                     OpCommutator!(X,XXXY,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     aOp1_p_bOp2!(tmpOp,Z,-1/120,1.0)
-
-#                     # aOp!(tmpOp,0.0)
-#                     # OpCommutator!(X,YXYX,tmpOp,HFobj,Chan1b,Chan2bD,dictMono,dWS,PandyaObj,to)
-#                     # aOp1_p_bOp2!(tmpOp,Z,1/120,1.0)
-
-
-#                 end
-#             end
-#         end
-#     end
-
-
-#     ### update norms for Omega(s+1)
-#     ncomm[1] += 8
-#     norms[1] = getNorm1b(Z.onebody,p_sps,n_sps)
-#     norms[2] = getNorm2b(Z.twobody,Chan2b)
-#     return nothing
-# end
-
 
 """
     BCH_Transform(Omega,O0,Os,tOp,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to;tol=1.e-9,maxit=50,verbose=false)

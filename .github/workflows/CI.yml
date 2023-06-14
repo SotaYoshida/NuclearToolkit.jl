@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches:
+      - dev
       - develop
     tags: '*'
     exclude: "log_sample_script.txt"
@@ -35,12 +36,12 @@ jobs:
         if: ${{ matrix.payload == 'serial' }}
         continue-on-error: ${{ matrix.version == 'nightly' }}
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.8',   os: 'ubuntu-latest',  payload: mpi}
+          - {version: '1.8',   os: 'ubuntu-18.04',  payload: mpi}
         mpi: [ 'openmpi' ]
     name: mpi test
     steps:
@@ -62,12 +63,12 @@ jobs:
           export PATH=$PATH:/home/runner/.julia/bin
           mpiexecjl -n 4 julia --depwarn=yes --project=@. ./test/mpirun_test.jl	  
   build2:    
-    runs-on: 'ubuntu-latest'
+    runs-on: 'ubuntu-18.04'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.8',   os: 'ubuntu-latest'}
+          - {version: '1.8',   os: 'ubuntu-18.04'}
     name: Run sample_script.jl
     steps:     
       - uses: actions/checkout@v2
@@ -86,7 +87,7 @@ jobs:
           commit_message: Update log_sample_script.txt  
   docs:
     name: Documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

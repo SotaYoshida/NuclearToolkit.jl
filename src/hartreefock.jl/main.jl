@@ -1,5 +1,5 @@
 """
-    hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
+    hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",Hsample=false,restart_from_files=String[])
 
 Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 # Arguments
@@ -18,7 +18,7 @@ Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 - `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
 - `restart_from_files=String[]` to start IMSRG flow from Omega files (in hdf5 fmt)
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",Hsample=false,restart_from_files=String[])
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
@@ -74,7 +74,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,Hsample=Hsample,restart_from_files=restart_from_files)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators

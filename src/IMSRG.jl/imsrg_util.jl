@@ -30,7 +30,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
 
     Chan2b = Chan2bD.Chan2b
     init_dictMonopole!(dictMono,Chan2b)
-    IMSRGobj = init_IMSRGobject(HFobj,fn_params)
+    IMSRGobj = init_IMSRGobject(HFobj,fn_params)    
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
     if length(restart_from_files) >= 1; IMSRGobj.smax = 0.5;end
     IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,dWS,core_generator_type,valence_generator_type,to;Hsample=Hsample,restart_from_files=restart_from_files)
@@ -51,28 +51,6 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
         write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,valencespace;effOps=effOps)
     else        
         flow_Operators(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dWS,dictMono,Operators,MatOp,restart_from_files,to)
-    end
-
-    if length(restart_from_files) >= 1
-        for (nth,fn) in enumerate(restart_from_files[1])
-            aOp!(Omega,0.0)
-            fvec = read_fvec_hdf5(fn)
-            s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
-            update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
-            BCH_Transform(Omega,HFobj.H,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-            aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
-            println("En(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])
-            if valenceflow & length(restart_from_files) >=2
-                if length(restart_from_files[2]) >=1
-                    Hcopy = deepcopy(tmpOp)
-                    fn = restart_from_files[2][nth]
-                    fvec = read_fvec_hdf5(fn)
-                    update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
-                    BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-                    aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
-                end
-            end
-        end
     end
     return IMSRGobj
 end
@@ -708,33 +686,21 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
     if length(restart_from_files) >= 1
         for (nth,fn) in enumerate(restart_from_files[1])
             aOp!(Omega,0.0)
-            fvec = read_fvec_hdf5(fn)   
+            fvec = read_fvec_hdf5(fn)
             s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
             update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
             BCH_Transform(Omega,HFobj.H,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-            println("IMSRG from file $fn")
-            println("En(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])    
-            if length(restart_from_files) == 2
-                Hcopy = deepcopy(tmpOp)
-                                
-                # to check
-                # nw = 2 
-                # read_omega_bin!(binfo,Chan2b,nw,Omega;fn="vsrunlog_e4_em500/Omega_82794O18_2.bin")
-                # println("Onebody from Omega ", Omega.onebody[1][1,:])
-                # s = parse(Float64,split(split(fn,"_s")[end],".h5")[1])
-                # BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-                # println("p1b=> ", tmpOp.onebody[1][1,:])                
-                # 
-
-                fn = restart_from_files[2][nth]
-                fvec = read_fvec_hdf5(fn)
-                update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
-                println("Onebody from fvecENN ", Omega.onebody[1][1,:])
-                BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
-                println("p1b=> ", tmpOp.onebody[1][1,:])  
-
-                println("VSIMSRG from file $fn \nEn(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])
-                aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
+            aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
+            println("Eemu(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])
+            if length(restart_from_files) >=2
+                if length(restart_from_files[2]) >=1
+                    Hcopy = deepcopy(tmpOp)
+                    fn = restart_from_files[2][nth]
+                    fvec = read_fvec_hdf5(fn)
+                    update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
+                    BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+                    aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
+                end
             end
         end
     end

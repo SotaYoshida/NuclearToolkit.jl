@@ -67,7 +67,7 @@ returns ``Z``  to satisfy: ``e^Z = e^X e^Y``.
 For IMSRG flow of ``H(s)``, ``X=\\eta(s) ds``, ``Y=\\Omega(s)``, and ``Z=\\Omega(s+ds)``
 """
 function BCH_Product(X::Op,Y::Op,Z::Op,tmpOp::Op,Nested::Op,ncomm::Vector{Int64},norms::Vector{Float64},Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,
-                     dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-6,verbose=false) where Op <:Operator
+                     dictMono,dWS,PandyaObj::PandyaObject,to;tol=1.e-4,verbose=false) where Op <:Operator
     Nested.hermite = true; Nested.antihermite=false    
     Chan2b = Chan2bD.Chan2b
     p_sps = HFobj.modelspace.p_sps; n_sps = HFobj.modelspace.n_sps

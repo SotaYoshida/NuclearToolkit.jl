@@ -29,3 +29,5 @@ If you do not specify the optional argument `fn_params`, the pacakege tries to r
     - `dsmax::Float64` maximum step size for IMSRG flow
     - `maxnormOmega::Float64` tol for norm of IMSRG generator
     - `denominatorDelta::Float64` denominator delta for multi-shell interaction
+    - `BetaCM::Float64`  beta for center-of-mass correction
+    - `magnusamethod::String` specifying IMSRG solver ("" or "split" => multi-step splitting (as a default), "no-split" or "NS"=> no-splitting)

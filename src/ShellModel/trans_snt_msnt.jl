@@ -8,13 +8,13 @@ function make_dict_convention(similar_to_prevwork::Bool)
     return dict_sps
 end
 
-function write_msnt_sps_spe(io,p_sps,n_sps,mstates_p,mstates_n,SPEs,similar_to_prevwork)
+function write_msnt_sps_spe(io,p_sps,n_sps,m_p_sps,msps_n,SPEs,similar_to_prevwork)
     println(io, "!single particle space and SPEs")
     println(io, "!num   n   l   j  tz   mz       SPE(MeV)")
     ii = 0
     for pn = 1:2
         sps  = ifelse(pn==1,p_sps,n_sps)
-        msps = ifelse(pn==1,mstates_p,mstates_n)
+        msps = ifelse(pn==1,m_p_sps,msps_n)
         SPE = SPEs[pn]
         for i = 1:length(msps)
             n,l,j,tz,mz,idx = msps[i]
@@ -26,11 +26,11 @@ function write_msnt_sps_spe(io,p_sps,n_sps,mstates_p,mstates_n,SPEs,similar_to_p
     return nothing
 end
 
-function trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+function trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
     io = open(replace(fn,".snt"=>".msnt"),"w")
     println(io,"!snt:$(fn)\n!")
-    write_msnt_sps_spe(io,p_sps,n_sps,mstates_p,mstates_n,SPEs,similar_to_prevwork)
-    write_msnt_tbmes(io,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+    write_msnt_sps_spe(io,p_sps,n_sps,m_p_sps,msps_n,SPEs,similar_to_prevwork)
+    write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
     close(io)
     return nothing
 end
@@ -41,16 +41,16 @@ struct ket_abJ
     J::Int64
 end
 
-function write_msnt_tbmes(io,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
     lp = length(p_sps)
-    lpm = length(mstates_p)
-    m_sps = vcat(mstates_p,mstates_n)
+    lpm = length(m_p_sps)
+    m_sps = vcat(m_p_sps,msps_n)
     allSPEs = vcat(SPEs[1],SPEs[2])
     dict_msps2sps = Dict{Int64,Int64}()
-    for (idx,tmp) in enumerate(mstates_p)
+    for (idx,tmp) in enumerate(m_p_sps)
         dict_msps2sps[idx] = tmp[end]
     end
-    for (idx,tmp) in enumerate(mstates_n)
+    for (idx,tmp) in enumerate(msps_n)
         dict_msps2sps[idx+lpm] = tmp[end] + lp
     end
 
@@ -67,8 +67,8 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,o
         if pnrank==2; ctxt = "!Vpn:";end
         if pnrank==3; ctxt = "!Vnn:";end
         println(io,ctxt)
-        msps_a = ifelse(pnrank<=2,mstates_p,mstates_n)
-        msps_b = ifelse(pnrank>=2,mstates_n,mstates_p)
+        msps_a = ifelse(pnrank<=2,m_p_sps,msps_n)
+        msps_b = ifelse(pnrank>=2,msps_n,m_p_sps)
         ofst_a = ifelse(pnrank<=2,0,lpm)
         ofst_b = ifelse(pnrank>=2,lpm,0)
         for (ia,a) in enumerate(msps_a)
@@ -122,6 +122,9 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,o
                 SPE_b = allSPEs[sps_b]
                 e1b = ifelse(a==c && b==d,SPE_a+SPE_b,0.0)
                 mat[idx_bra,idx_ket] = mat[idx_ket,idx_bra] = e1b + tbme_M
+                if a == 7 && b ==8
+                    println("abcd <$a $b|V|$c $d>J=$Jket =$tbme => tbme_M $tbme_M CG1 $CG1 CG2 $CG2")
+                end
                 println(io, @sprintf("%5i",qbit_a),@sprintf("%5i",qbit_b),
                         @sprintf("%5i",qbit_c),@sprintf("%5i",qbit_d), @sprintf("%5i",Jket), @sprintf("%15.6f",tbme_M))               
             end
@@ -172,8 +175,8 @@ function main_trans_msnt(fn,target_nuc,target_Js=[];similar_to_prevwork=false)
 
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
-    mstates_p,mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
-    trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,mstates_p,mstates_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+    m_p_sps,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
+    trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
 end
 
 function svd_li6(Rvecs)
@@ -207,10 +210,6 @@ function svd_li6(Rvecs)
             print_vec("",V[j,:];long=true)
         end 
         println("")
-        # println("Vt")
-        # for j = 1:nsps
-        #     print_vec("",Vt[j,:])
-        # end 
         Mat .= 0.0
     end
 end

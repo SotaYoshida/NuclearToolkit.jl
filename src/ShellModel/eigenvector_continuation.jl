@@ -16,15 +16,15 @@ function myCholesky!(tmpA,ln::Int64,cLL::LowerTriangular{Float64,Array{Float64,2
         for j=1:i-1
             cLL[i,j] = tmpA[i,j]
             for k = 1:j-1
-                cLL[i,j] += - cLL[i,k]*cLL[j,k]                
+                cLL[i,j] += - cLL[i,k]*cLL[j,k]
             end
-            cLL[i,j] = cLL[i,j] / cLL[j,j]            
+            cLL[i,j] = cLL[i,j] / cLL[j,j]
         end
         cLL[i,i] = tmpA[i,i]
         for j=1:i-1
             cLL[i,i] += -cLL[i,j]^2
         end
-        cLL[i,i] = sqrt(cLL[i,i])             
+        cLL[i,i] = sqrt(cLL[i,i])
     end
     nothing
 end
@@ -110,7 +110,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsnt(sntf,Anum)
+    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
     hw, bpar = init_ho_by_mass(Anum,1) # mass formula 
     if 16<= Anum <= 40
         hw, bpar = init_ho_by_mass(Anum,2) # 2: mass formula for sd-shell
@@ -123,10 +123,10 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
     
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
-    mstates_p,mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
-    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,mstates_p,mz_p,vp,
-                                                  n_sps,mstates_n,mz_n,vn,Mtot)
-    oPP,oNN,oPNu,oPNd = prep_J(tdims,p_sps,n_sps,mstates_p,mstates_n,
+    msps_p,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
+    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,
+                                                  n_sps,msps_n,mz_n,vn,Mtot)
+    oPP,oNN,oPNu,oPNd = prep_J(tdims,p_sps,n_sps,msps_p,msps_n,
                                pbits,nbits)
     mdim = tdims[end]
     lblock=length(pbits)
@@ -135,18 +135,11 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
         for (iter,sntf) in enumerate(Hs)
             @timeit to "make sample" begin
                 println("sntf: $sntf")
-                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsnt(sntf,Anum)
-                bV1,V1 = HbitT1(p_sps,n_sps,mstates_p,mstates_n,labels,TBMEs)
-                bVpn,Vpn,delMs = Hbitpn(p_sps,n_sps,mstates_p,mstates_n,
-                                        labels[3],TBMEs[3])
-                ppinfo = prep_pp(mstates_p,pbits,bV1[1],V1[1])
-                nninfo = prep_nn(mstates_n,nbits,bV1[2],V1[2])
-                bV1 = nothing
-                l_pbit = length(mstates_p);l_nbit = length(mstates_n)
-                bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,tdims,
-                                                           l_pbit,l_nbit,
-                                                           pbits,nbits,
-                                                           Mps,delMs,bVpn,Vpn)
+                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+                pp_2bjump,nn_2bjump = prep_Hamil_T1(p_sps,n_sps,msps_p,msps_n,pbits,nbits,labels,TBMEs)   
+                bVpn,Vpn,delMs = prep_Hamil_pn(p_sps,n_sps,msps_p,msps_n,labels[3],TBMEs[3])
+                l_pbit = length(msps_p);l_nbit = length(msps_n)
+                bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,pbits,nbits,Mps,delMs,bVpn,Vpn)
                 bVpn=nothing
                 block_tasks = make_distribute(num_task)
 
@@ -166,7 +159,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 initialize_wf(vks[1],"rand",tJ,mdim)
                 @timeit to "Lanczos" elit = TRL(vks,uks,Tmat,itmin,
                                                 pbits,nbits,jocc_p,jocc_n,SPEs,
-                                                ppinfo,nninfo,bis,bfs,block_tasks,
+                                                pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                                                 p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
                                                 eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
                                                 tdims,num_ev,num_history,lm,ls,en,
@@ -183,8 +176,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 Jv = zeros(Float64,mdim)
                 for (nth,Rv) in enumerate(Rvecs)
                     Jv .= 0.0
-                    operate_J!(Rv,Jv,pbits,nbits,tdims,
-                               Jidxs,oPP,oNN,oPNu,oPNd)
+                    operate_J!(Rv,Jv,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
                     Js[nth] += dot(Rv,Jv)
                 end
                 totJs = J_from_JJ1.(Js)
@@ -198,7 +190,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 end
                 if calc_moment                    
                     @timeit to "moment" tx_mom = eval_moment(Mtot,Rvecs,totJs,p_sps,n_sps,
-                                                          mstates_p,mstates_n,tdims,
+                                                          msps_p,msps_n,tdims,
                                                           jocc_p,jocc_n,pbits,nbits,bpar,
                                                           gfactors,effcharge)
                     if tx_mom != "";print(tx_mom);end
@@ -252,13 +244,13 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                         zeros(Float64,length(n_sps))
                         ] for Nij = 1:length(idxs)  ]
             calcOBTD(OBTDs,idxs,p_sps,n_sps,
-                     mstates_p,mstates_n,tdims,
+                     msps_p,msps_n,tdims,
                      jocc_p,jocc_n,pbits,nbits,svecs)
         end
         
         @timeit to "prepTBTD" begin
             opTBTD1,pjumps,njumps,bif_idxs = prepTBTD(tJ,idxs,p_sps,n_sps,
-                                                      mstates_p,mstates_n,
+                                                      msps_p,msps_n,
                                                       pbits,nbits,
                                                       labels,TBMEs,svecs,
                                                       tdims,Mps)
@@ -350,14 +342,14 @@ function solveEC(Hs,target_nuc,tJNs;
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsnt(sntf,Anum)
+    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
     hw, bpar = init_ho_by_mass(Anum,1) # mass formula 
     if 16<= Anum <= 40
         hw, bpar = init_ho_by_mass(Anum,2) # 2: mass formula for sd-shell
     end
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)  
-    mstates_p,mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
+    msps_p,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
     #println("nuc: $target_el")
     exlines = ""
     try 
@@ -374,8 +366,8 @@ function solveEC(Hs,target_nuc,tJNs;
     for (jidx,tmp) in enumerate(tJNs)
         tJ,num_ev_target = tmp
         Mtot = tJ
-        pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,mstates_p,mz_p,vp,
-                                                      n_sps,mstates_n,mz_n,vn,Mtot)
+        pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,
+                                                      n_sps,msps_n,mz_n,vn,Mtot)
         mdim = tdims[end]        
         @timeit to "read TDmat" begin
             inpf = tdmatpath*target_nuc*"_J"*string(tJ)*".dat"
@@ -408,7 +400,7 @@ function solveEC(Hs,target_nuc,tJNs;
             sntf = Hs[sntidx]
             tMat .= 0.0
             @timeit to "Hmat" begin
-                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsnt(sntf,Anum)
+                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
                 MEs = [SPEs[1],SPEs[2],oTBMEs]
                 MEs = [(MEs...)...]
                 for (idx,TD) in enumerate(TDs)
@@ -418,9 +410,10 @@ function solveEC(Hs,target_nuc,tJNs;
                 end
                 @timeit to "Gen. Eigen" begin
                     mul!(tMat,Linv,Hmat)
-                    mul!(tildH,Linv',tMat)                                    
-                    vals,vecs = real.(Arpack.eigs(tildH,nev=num_ev_target,which=:SR,
-                                                  tol=1.e-8, maxiter=300))
+                    mul!(tildH,Linv',tMat)                                
+                    #vals,vecs = real.(Arpack.eigs(tildH,nev=num_ev_target,which=:SR,tol=1.e-8, maxiter=300))
+                    vals = real.(eigsolve(tildH,num_ev_target,:SR;tol=1.e-8, maxiter=300)[1])[1:num_ev_target]
+                    println("vals $vals ln $(length(vals)) num_ev_target $num_ev_target")
                     if verbose
                         print_vec("$target_nuc 2J=$tJ  En(EC)",vals)
                     end
@@ -483,7 +476,7 @@ function solveEC_UQ(Hs,target_nuc,tJNs,Erefs,errors;
     end
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)  
-    mstates_p,mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
+    msps_p,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
     println("nuc: $target_nuc")
 
     Dims = Int64[]
@@ -729,8 +722,9 @@ function intMCMC(itnum_MCMC,burnin,var_M,iThetas,Theta,c_Theta,Vint,Vopt,
             BLAS.gemm!('N','N',1.0,Linv,Hmat,0.0,tMat)
             BLAS.gemm!('T','N',1.0,Linv,tMat,0.0,tildH)
 
-            @timeit to "Arpack" vals = real.(Arpack.eigs(tildH,nev=num_ev_target,which=:SR,
-                                                         tol=1.e-8, maxiter=300))[1]
+            #@timeit to "Arpack" vals = real.(Arpack.eigs(tildH,nev=num_ev_target,which=:SR,tol=1.e-8, maxiter=300))[1]
+            vals = real.(eigsolve(tildH,num_ev_target,:SR;tol=1.e-8, maxiter=300)[1])[1:num_ev_target]
+
             nllh += L2_llh(vals,Erefs[jidx],errors[jidx])
             if itM > burnin
                 @timeit to "push" for i=1:num_ev_target
@@ -835,9 +829,9 @@ function intMCMC_PT(itnum_MCMC,burnin,var_M,Ts,
                 BLAS.gemm!('N','N',1.0,Linv,Hmat,0.0,tMat)
                 BLAS.gemm!('T','N',1.0,Linv,tMat,0.0,tildH)                
               
-                @timeit to "Arpack" begin
-                    Eval .= Arpack.eigs(tildH,nev=num_ev_target,
-                                        which=:SR,tol=1.e-6,maxiter=150)[1]
+                @timeit to "eigsolve" begin
+                    #Eval .= Arpack.eigs(tildH,nev=num_ev_target,which=:SR,tol=1.e-6,maxiter=150)[1]
+                    Eval .= real.(eigsolve(tildH,num_ev_target,:SR)[1])[1:num_ev_target]
                 end
                 nllhs[ridx] += L2_llh(Eval,Erefs[jidx],errors[jidx];T=Ts[ridx])
                 if ridx == 1
@@ -1174,7 +1168,7 @@ struct Tridx
 end
 
 function calcOBTD(OBTDs,idxs,p_sps,n_sps,
-                  mstates_p,mstates_n,
+                  msps_p,msps_n,
                   tdims,
                   jocc_p,jocc_n,
                   pbits,nbits,
@@ -1239,16 +1233,11 @@ struct T0ifc
     fac::Float64
 end
 
-function prepTBTD(tJ,idxs,p_sps,n_sps,
-                  mstates_p::Array{Array{Int64,1},1},
-                  mstates_n::Array{Array{Int64,1},1},
-                  pbits,nbits,
-                  labels,TBMEs,
-                  wfs::Array{Array{Float64,1}},
-                  tdims,Mps)
+function prepTBTD(tJ,idxs,p_sps,n_sps,msps_p::Array{Array{Int64,1},1},msps_n::Array{Array{Int64,1},1},
+                  pbits,nbits,labels,TBMEs,wfs::Array{Array{Float64,1}},tdims,Mps)
     lblock=length(pbits)
-    lp = length(mstates_p); ln = length(mstates_n)    
-    mstates = [mstates_p,mstates_n]
+    lp = length(msps_p); ln = length(msps_n)    
+    mstates = [msps_p,msps_n]
     sps = [p_sps,n_sps]
     loffs = [ 0, length(p_sps)]
     TBTD1 = [ T1ifc[ ] , T1ifc[] ]
@@ -1331,7 +1320,7 @@ function prepTBTD(tJ,idxs,p_sps,n_sps,
     delMs = Int64[]
     for j = 1:lp
         for i = 1:lp
-            push!(delMs,mstates_p[i][5]-mstates_p[j][5])
+            push!(delMs,msps_p[i][5]-msps_p[j][5])
         end
     end
     unique!(delMs);sort!(delMs,rev=true)
@@ -1364,10 +1353,10 @@ function prepTBTD(tJ,idxs,p_sps,n_sps,
     for (nth,ME) in enumerate(TBMEs[vrank])
         a,b,c,d,totJ,vidx = labels[vrank][nth]
         J2  = 2*totJ
-        ja,ma_s,ma_idxs = possible_mz(p_sps[a],mstates_p) 
-        jc,mc_s,mc_idxs = possible_mz(p_sps[c],mstates_p)
-        jb,mb_s,mb_idxs = possible_mz(n_sps[b-loff],mstates_n)         
-        jd,md_s,md_idxs = possible_mz(n_sps[d-loff],mstates_n)
+        ja,ma_s,ma_idxs = possible_mz(p_sps[a],msps_p) 
+        jc,mc_s,mc_idxs = possible_mz(p_sps[c],msps_p)
+        jb,mb_s,mb_idxs = possible_mz(n_sps[b-loff],msps_n)         
+        jd,md_s,md_idxs = possible_mz(n_sps[d-loff],msps_n)
         for (ic,mc) in enumerate(mc_s)
             initialize_tvec!(vec_ani_p); vec_ani_p[mc_idxs[ic]] = true
             bit_c = bitarr_to_int(vec_ani_p)

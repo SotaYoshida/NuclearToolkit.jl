@@ -1,7 +1,7 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
 authors = ["SotaYoshida <s.yoshida@nt.phys.s.u-tokyo.ac.jp> and contributors"]
-version = "0.3.4"
+version = "0.3.5"
 
 [deps]
 AssociatedLegendrePolynomials = "2119f1ac-fb78-50f5-8cc0-dda848ebdb19"

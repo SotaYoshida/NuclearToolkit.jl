@@ -6,9 +6,11 @@ using Combinatorics
 using FLoops
 using Glob
 using HDF5
+using KrylovKit
 using LatinHypercubeSampling
 using LaTeXStrings
 using LinearAlgebra
+using MKL # for intel machine
 using MPI
 using Printf
 using Random
@@ -66,6 +68,7 @@ include("ShellModel/eigenvector_continuation.jl")
 include("ShellModel/KSHELL.jl")
 include("ShellModel/betadecay.jl")
 include("ShellModel/trans_snt_msnt.jl")
+include("ShellModel/variational_ansatz.jl")
 export read_smsnt
 export main_sm,samplerun_sm # from shellmodel.
 export prepEC,solveEC,solveEC_UQ # from eigenvector_continuation.jl

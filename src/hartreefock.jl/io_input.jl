@@ -118,14 +118,12 @@ function readsnt(sntf,binfo,to)
     @inbounds for i = 1:lp
         ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
         if (2*n+l <= emax_calc)
-            #push!(p_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
             push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     @inbounds for i = 1:lp
         ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
         if (2*n+l <= emax_calc)
-            #push!(n_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
             push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
@@ -465,7 +463,7 @@ function store_1b2b(sps,dicts1b::Dict1b,dicts,binfo)
     Chan1b = def_chan1b(dim1b,sps,dicts1b)
     Chan2bD,Gamma,maxnpq,V2 = def_chan2b(binfo,dicts,sps)
     dictsnt = dictSnt(dictTBMEs,dictMonopole)
-    Hamil = Operator([0.0],[p1b,n1b],V2,true,false)
+    Hamil = Operator([0.0],[p1b,n1b],V2,[true],[false])
     return Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq
 end
 
@@ -628,19 +626,19 @@ function def_chan2b(binfo,dicts,sps)
                         end
                     end
                 end
-                push!(V2b, vmat)                     
+                push!(V2b, vmat)
             end
         end
     end
     nch = length(Chan2b)
-    dict_ch_idx_from_ket = Dict{UInt64,NTuple{2,Int64}}( ) 
+    dict_ch_idx_from_ket = [ Dict{UInt64,NTuple{2,Int64}}( ) for Tz = -2:2:2] # Tz vector
     dict_idx_from_chket = [Dict{Vector{Int64},Int64}( ) for _ = 1:nch]
     for ch = 1:nch
         tbc = Chan2b[ch]; tkets = tbc.kets; Tz = tbc.Tz; J = tbc.J
-        target = dict_ch_idx_from_ket#[div(Tz+2,2)+1][J+1]
+        target = dict_ch_idx_from_ket[div(Tz+2,2)+1]
         target2 = dict_idx_from_chket[ch]
         for (idx,ket) in enumerate(tkets)
-            nkey = get_nkey4_ketJT(ket[1],ket[2],J,Tz)        
+            nkey = get_nkey3_ketJ(ket[1],ket[2],J)
             target[nkey] = (ch,idx)
             target2[[ket[1],ket[2]]] = idx
         end

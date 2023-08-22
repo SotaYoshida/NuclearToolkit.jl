@@ -2,7 +2,7 @@
     aOp!(Op::Operator,a::Float64)
 function to multiply scaler to an operator.
 """
-function aOp!(Op::Operator,a)
+function aOp!(Op::Operator,a::Float64)
     Op.zerobody .*= a 
     for pn =1:2
         lmul!(a,Op.onebody[pn])
@@ -17,7 +17,7 @@ end
     aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
 function to overwrite ```Op2``` by ```a*Op1 + b*Op2```
 """
-function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a,b)
+function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
     aOp!(Op2,b)
     Op2.zerobody[1] += a * Op1.zerobody[1]
     for pn = 1:2
@@ -34,7 +34,7 @@ end
     aOp1_p_bOp2(Op1::Operator,Op2::Operator,a,b)
 function to return new Operator = aOp1 + bOp2
 """
-function aOp1_p_bOp2(Op1::Operator,Op2::Operator,a,b)
+function aOp1_p_bOp2(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
     ret = deepcopy(Op1); aOp!(ret,0.0)
     ret.zerobody[1] = a*Op1.zerobody[1] + b*Op2.zerobody[1]
     for pn = 1:2
@@ -53,7 +53,7 @@ end
     aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
 function to overwrite `Op3` by `c*Op3 + a*Op1 + b*Op2`
 """
-function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
+function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a::Float64,b::Float64,c::Float64)
     aOp!(Op3,c)
     Op3.zerobody[1] += a * Op1.zerobody[1] + b * Op2.zerobody[1]
     for pn = 1:2
@@ -88,7 +88,7 @@ function InitOp(Chan1b,Chan2b)
         npq = length(tkets)
         push!(twobody,zeros(Float64,npq,npq))
     end
-    return Operator([0.0],onebody,twobody,true,false)
+    return Operator([0.0],onebody,twobody,[true],[false])
 end
 
 """
@@ -719,7 +719,7 @@ end
 
 evaluate charge radii with IMSRG.
 """
-function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,MatOp,restart_from_files,to)
+function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_defbyrun,dictMono,MatOp,restart_from_files,to;debug_mode=false)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -752,7 +752,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMo
             s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
             aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
             update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
-            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
             Rpp = tmpOp.zerobody[1]
             Rch2_emu = Rpp + Rp2 + N/Z *Rn2 + DF
             Rch_emu = sqrt(Rch2_emu)
@@ -792,7 +792,7 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMo
         nwritten = IMSRGobj.n_written_omega[1]
         for i = 1:nwritten
             read_omega_bin!(binfo,Chan2b,i,tOmega)
-            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
             aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
         end
     end

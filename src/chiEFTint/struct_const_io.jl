@@ -34,6 +34,8 @@ delta(a::Int64,b::Int64) = ifelse(a==b,1.0,0.0)
 delta(a::Float64,b::Float64) = ifelse(a==b,1.0,0.0)
 hat(a::Int64) = sqrt(2.0*a+1.0)
 hat(a::Float64) = sqrt(2.0*a+1.0)
+hahat(a::Int64) = 2.0*a+1.0
+
 function chara_SLJ(S,L,Lp,J) 
     if L==Lp
         return string(Int(2*S+1))*chara_L[L+1]*string(J)

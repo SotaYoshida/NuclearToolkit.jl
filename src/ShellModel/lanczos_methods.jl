@@ -26,7 +26,7 @@ function TRL(vks,uks,Tmat,k,
         for it = k:lm-1
             vk =vks[it]; vkp1 =vks[it+1]
             @timeit to "operate H" begin
-                operate_H!(vks[it],vks[it+1],vks[it+2],
+                operate_H!(vks[it],vks[it+1],
                            pbits,nbits,
                            jocc_p,jocc_n,SPEs,
                            pp_2bjump,nn_2bjump,
@@ -107,7 +107,7 @@ function get_mscheme_idx()::Int64
 
 end
 
-function operate_H!(wf,twf,vkp2,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,tdims,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to=nothing) 
+function operate_H!(wf,twf,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,tdims,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to=nothing) 
     @inbounds @threads for bi in block_tasks
         if bi==0; continue;end #empty job
         ret = [0,0,0]; ret2 = [0,0,0]

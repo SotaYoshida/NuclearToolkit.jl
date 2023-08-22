@@ -81,13 +81,13 @@ struct `Chan2bD`
 # Fields
 - `Chan2b::Vector{chan2b}` array of chan2b (ch=1,...,nchan)
 - `dict_ch_JPT::Dict{Vector{Int64},VdictCh}` dict to get VdictCh by given key `[J,prty,T]`
-- `dict_ch_idx_from_ket::Vector{Vector{Dict{Int64,Vector{Vector{Int64}}}}}` dict to get [ch,idx], having array structure [pnrank(=1/2/3)][J+1], `key`=ket
+- `dict_ch_idx_from_ket::Vector{Dict{UInt64,NTuple{2,Int64}}}` dict to get `(ch,idx)`, having array structure [pnrank(=1/2/3)] and key structure [i_ket,j_ket,J].
 - `dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}` dict to get idx from ket, having array structure [ch]
 """
 struct chan2bD
     Chan2b::Vector{chan2b}
     dict_ch_JPT::Dict{UInt64,VdictCh}
-    dict_ch_idx_from_ket::Dict{UInt64,NTuple{2,Int64}}
+    dict_ch_idx_from_ket::Vector{Dict{UInt64,NTuple{2,Int64}}}
     dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}
 end
 
@@ -111,21 +111,23 @@ struct PandyaObject
     Chan2b::Vector{chan2b}
     phkets::Vector{Vector{Int64}}
     copy_1bmat::Vector{Matrix{Float64}}
-    mats_nab::Vector{Matrix{Float64}}
-    mats_nab_bar::Vector{Matrix{Float64}}
-    dict_ich_idx_from_ketcc::Vector{Dict{Int64,Int64}}
+    vecs_nab::Vector{Vector{Float64}}
+    vecs_nab_bar::Vector{Vector{Float64}}
+    dict_ich_idx_from_ketcc::Vector{Dict{UInt64,Int64}}
     XYbars::Vector{Vector{Matrix{Float64}}}
     Zbars::Vector{Matrix{Float64}}
     PhaseMats::Vector{Matrix{Float64}}
     tMat::Vector{Matrix{Float64}}
-    dict_ch2ich::Dict{Int64,Int64}
+    dict_ch2ich::Vector{Int64}
     keys6j::Vector{Vector{Int64}}
     util122::Vector{Vector{single_util122}}
     Mats_hh::Vector{Matrix{Float64}}
     Mats_pp::Vector{Matrix{Float64}}
     Mats_ph::Vector{Matrix{Float64}}
+    vec_flat::Vector{Float64}
+    idxdict_nth::Dict{UInt64,Int64}
+    Pandya3Channels::Vector{NTuple{3,Int64}}
 end
-
 
 mutable struct valDictMonopole
     monopole::Vector{Float64}
@@ -246,7 +248,7 @@ struct ModelSpace
 end
 
 """
-mutable struct `Operator`
+struct `Operator`
 # Fields
 - `zerobody::Vector{Float64}` zerobody part of the operator
 - `onebody::Vector{Matrix{Float64}}` one-body matrix elements ([1]=>proton, [2]=>neutron)
@@ -254,12 +256,12 @@ mutable struct `Operator`
 - `hermite::Bool` whether it is hermitian operator or not
 - `antihermite::Bool` antihermitian or not
 """
-mutable struct Operator
+struct Operator
     zerobody::Vector{Float64}
     onebody::Vector{Matrix{Float64}}
     twobody::Vector{Matrix{Float64}}
-    hermite::Bool
-    antihermite::Bool
+    hermite::Vector{Bool}
+    antihermite::Vector{Bool}
 end
 
 """

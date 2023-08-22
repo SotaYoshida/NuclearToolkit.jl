@@ -649,32 +649,36 @@ end
 function get_nkey2(i,j;ofst=10^3)
     return i + j * ofst
 end
-function get_nkey2_u(i,j;ofst=10^3)::UInt64
-    return UInt64(i + j * ofst)
+
+function get_nkey2_u(i,j)::UInt64
+    return (UInt64(i) << 10) +  UInt64(j)
 end
 
 function get_nkey3(i,j,k;ofst=10^3)
     return i + ofst * j + ofst^2 * k
 end
 
-function get_nkey3_JPT(arr::Vector{Int64};ofst=10^3)
-    aTz,P,J = arr
-    return UInt64(aTz + ofst *(P+2) + ofst^2 * J)
+function get_nkey3_u(i,j,k)::UInt64
+    return (UInt64(i) << 20) + (UInt64(j) << 10) +  UInt64(k)
 end
-function get_nkey3_JPT(aTz,P,J;ofst=10^3)
-    return UInt64(aTz + ofst *(P+2) + ofst^2 * J)
+
+function get_nkey3_JPT(arr::Vector{Int64})::UInt64
+    return (UInt64(arr[1]+2) << 20) + (UInt64(arr[2]+2) << 10) +  UInt64(arr[3])
+end
+function get_nkey3_JPT(aTz::Int64,P::Int64,J::Int64)::UInt64
+    return (UInt64(aTz+2) << 20) + (UInt64(P+2) << 10) +  UInt64(J)
+end
+
+function get_nkey3_ketJ(i,j,J)::UInt64
+    return (UInt64(i) << 20) + (UInt64(j) << 10) +  UInt64(J)
 end
 
 function get_nkey4(i,j,k,l;ofst=10^3)
     return i + ofst * j + ofst^2 * k + ofst^3 * l
 end
 
-function get_nkey4_ketJT(i,j,J,Tz;ofst=10^3)::UInt64
-    return UInt64(i + ofst * j + ofst^2 * J + ofst^3 * (Tz+2))
-end
-
-function get_nkey6(i,j,k,l,m,n;ofst=10^3)::UInt64
-    return UInt64(i + ofst * j + ofst^2 * k + ofst^3 * l+ ofst^4 * m + ofst^5 * n)
+function get_nkey6(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::UInt64
+    return  (UInt64(j1) << 50) + (UInt64(j2) << 40) +(UInt64(j3) << 30) +  (UInt64(j4) << 20) + (UInt64(j5) << 10) +  UInt64(j6)
 end
 
 """
@@ -718,20 +722,63 @@ function get_phase_j3(j1::Int64,j2::Int64,j3::Int64)::Float64
 end
 
 function call_d6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6j::Dict{UInt64,Float64})::Float64
-    if j1 == 0; return delta(j5,j6) * delta(j2,j3) * get_phase_j3(j4,j5,j3) / sqrt((j3+1)*(j6+1)); end
-    if j2 == 0; return delta(j1,j3) * delta(j4,j6) * get_phase_j3(j5,j1,j6) / sqrt((j1+1)*(j4+1)); end
-    if j3 == 0; return delta(j1,j2) * delta(j4,j5) * get_phase_j3(j2,j4,j6) / sqrt((j2+1)*(j5+1)); end
-    if j4 == 0; return delta(j3,j5) * delta(j2,j6) * get_phase_j3(j1,j2,j3) / sqrt((j3+1)*(j6+1)); end
-    if j5 == 0; return delta(j3,j4) * delta(j1,j6) * get_phase_j3(j1,j2,j3) / sqrt((j1+1)*(j4+1)); end
-    if j6 == 0; return delta(j1,j5) * delta(j2,j4) * get_phase_j3(j1,j2,j3) / sqrt((j2+1)*(j5+1)); end
-    nkey = get_key6j_sym(j1,j2,j3,j4,j5,j6)
+    if j1 == 0; return delta(j5,j6) * delta(j2,j3) * get_phase_j3(j4,j5,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j2 == 0; return delta(j1,j3) * delta(j4,j6) * get_phase_j3(j5,j1,j6) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j3 == 0; return delta(j1,j2) * delta(j4,j5) * get_phase_j3(j2,j4,j6) / sqrt(1.0*(j2+1)*(j5+1)); end
+    if j4 == 0; return delta(j3,j5) * delta(j2,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j5 == 0; return delta(j3,j4) * delta(j1,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j6 == 0; return delta(j1,j5) * delta(j2,j4) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j2+1)*(j5+1)); end 
+    return d6j[get_key6j_sym(j1,j2,j3,j4,j5,j6)]
+end
+
+function call_d6j_defined(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6j::Dict{UInt64,Float64})::Float64
+    if j1 == 0; return delta(j5,j6) * delta(j2,j3) * get_phase_j3(j4,j5,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j2 == 0; return delta(j1,j3) * delta(j4,j6) * get_phase_j3(j5,j1,j6) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j3 == 0; return delta(j1,j2) * delta(j4,j5) * get_phase_j3(j2,j4,j6) / sqrt(1.0*(j2+1)*(j5+1)); end
+    if j4 == 0; return delta(j3,j5) * delta(j2,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j5 == 0; return delta(j3,j4) * delta(j1,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j6 == 0; return delta(j1,j5) * delta(j2,j4) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j2+1)*(j5+1)); end 
+    nkey = get_nkey6(j1,j2,j3,j4,j5,j6)
     return d6j[nkey]
+end
+function call_d6j_defbyrun(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6j::Dict{UInt64,Float64};def_mode=false)::Float64
+    if j1 == 0; return delta(j5,j6) * delta(j2,j3) * get_phase_j3(j4,j5,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j2 == 0; return delta(j1,j3) * delta(j4,j6) * get_phase_j3(j5,j1,j6) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j3 == 0; return delta(j1,j2) * delta(j4,j5) * get_phase_j3(j2,j4,j6) / sqrt(1.0*(j2+1)*(j5+1)); end
+    if j4 == 0; return delta(j3,j5) * delta(j2,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
+    if j5 == 0; return delta(j3,j4) * delta(j1,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j1+1)*(j4+1)); end
+    if j6 == 0; return delta(j1,j5) * delta(j2,j4) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j2+1)*(j5+1)); end 
+    if def_mode
+        nkey = get_nkey6(j1,j2,j3,j4,j5,j6)
+        t6j = wigner6j(Float64,j1//2,j2//2,j3//2,j4//2,j5//2,j6//2)
+        if !haskey(d6j,nkey) #&& t6j != 0.0
+            d6j[nkey] = t6j
+            return t6j 
+        end
+        return 0.0
+    else
+        nkey = get_nkey6(j1,j2,j3,j4,j5,j6)
+        return d6j[nkey]
+        #return get(d6j,nkey,0.0)
+    end
 end
 
 function j_col_score(j1::Int64,j2::Int64)::Int64
     100 * (j1 + j2) + min(j1,j2)
 end
 
+"""
+Function to get *canonical* order of 6j-symbol arguments:
+```math
+\\left\\{ \\begin{matrix} j_1 & j_3  & j_5 \\\\ j_2 & j_4 & j_6\\end{matrix} \\right\\} 
+```
+
+The canonical order is defined as follows:
+- Since the 6j-symbol is invariant under permutation of any two columns, we can always re-order the columns such that ``j_1+j_2 \\leq j_3+j_4 \\leq j_5+j_6``.
+- If sum of two columns are equal, we re-order columns based on `j_col_score`, using the minimum j value of the two columns.
+- Since the 6j-symbol is invariant under permutation rows for any two columns, we can always re-order the rows such that ``j_1 \\leq j_2, j_3 \\leq j_4, j_5 \\leq j_6`` if any column have the same j.
+- If the elements of any column are different from each other, the relation between upper and lower j will always be either ``\\vee \\vee \\vee \\& \\vee \\land\\land`` or ``\\land\\land\\land \\& \\land \\vee \\vee ``. We can always re-order the rows such that the ``\\land\\land\\land`` or ``\\vee \\vee \\vee`` is satisfied.
+"""
 function get_canonical_order_6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::Int64
     o = 0
     cscore_12 = j_col_score(j1,j2)
@@ -740,7 +787,7 @@ function get_canonical_order_6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int6
     if cscore_12 <= cscore_34 #12 is fixed => 312, 132, 123
         if cscore_34 <= cscore_56 
             o = 123            
-        elseif cscore_56 < cscore_12 # 3 < 12
+        elseif cscore_56 < cscore_12 # col-3 should be the first column
             o = 312
         else
             o = 132
@@ -801,6 +848,7 @@ function get_key6j_sym(j1::Int64,j3::Int64,j5::Int64,j2::Int64,j4::Int64,j6::Int
             return get_nkey6(tj1,tj4,tj6,tj2,tj3,tj5)
         end
     end
+    @error "This never happens."
 end
 
 function call_d9j_int(j1,j2,j3,j4,j5,j6,j7,j8,j9,d9j)
@@ -849,7 +897,7 @@ function call_d9j_lsj(j1,j2,j3,j4,j5,j6,j7,j8,j9,d9j)
 end
 
 """
-`dWS2n` struct 
+Function to construct `dWS2n` struct.
 """
 function prep_dWS2n(params,to;emax_calc=0)
     emax = ifelse(emax_calc!=0,emax_calc,params.emax)
@@ -862,12 +910,11 @@ function prep_dWS2n(params,to;emax_calc=0)
     @timeit to "d6j_int" d6j_int = prep_d6j_int(emax,jmax,to)
     @timeit to "d6j_lj" d6j_lj  = prep_d6j_lj(jmax)
     @timeit to "d9j" d9j_lsj = prep_d9j_lsj(jmax,lmax)
-    @timeit to "HOB" dictHOB = prep_dictHOB(e2max,dtri,dcgm0,d6j_int,to)
-
+    @timeit to "HOB" dictHOB = prep_dictHOB(e2max,dtri,dcgm0,d6j_int,to)    
     println("size of dWS (jmax $jmax lmax $lmax e2max $e2max Nnmax $Nnmax):\n",
             show_size_inMB("   dtri",dtri), show_size_inMB("  dcgm0",dcgm0),
             show_size_inMB("d6j_int",d6j_int),show_size_inMB(" d6j_lj",d6j_lj),"\n",
-            show_size_inMB("d9j_lsj",d9j_lsj),show_size_inMB("dictHOB",dictHOB))            
+            show_size_inMB("d9j_lsj",d9j_lsj),show_size_inMB("dictHOB",dictHOB))  
     return dWS2n(dtri,dcgm0,d6j_int,d6j_lj,d9j_lsj,dictHOB)
 end
 

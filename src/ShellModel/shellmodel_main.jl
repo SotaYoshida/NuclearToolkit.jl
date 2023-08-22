@@ -1,15 +1,9 @@
-const element = ["H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne",
-                 "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
-                 "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-                 "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
-                 "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn",
-                 "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
-                 "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
-                 "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
-                 "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
-                 "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
-                 "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
-                 "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
+const element = ["H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
+                 "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
+                 "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
+                 "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+                 "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
+                 "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
 
 const reg = r"[0-9]+"
 
@@ -32,6 +26,13 @@ struct Jpninfo
     njump::Array{ifph,1}
 end
 
+"""
+Struct to store 2b-jumps (T=1).
+
+This includes the following information:
+`f::Int64` the final index `f` for a given index `i`/
+`coef::Float64` the coefficient of the 2b-jump.
+"""
 struct T1info
     f::Int64
     coef::Float64
@@ -69,70 +70,68 @@ Digonalize the model-space Hamiltonian
 - `in_wf=""`      path to initial w.f. (for preprocessing) 
 - `mdimmode=false`   `true` => calculate only the M-scheme dimension
 - `calc_moment=false`  `true` => calculate mu&Q moments 
+- `calc_entropy=false` `true` => calculate entropy, which is not optimized yet.
 - `visualize_occ=false` `true` => visualize all configurations to be considered
 - `gfactors=[1.0,0.0,5.586,-3.826]` angular momentum and spin g-factors 
 - `effcgarge=[1.5,0.5]` effective charges 
+- `truncation_scheme==""` option to specify a truncation scheme, "jocc" and "pn-pair" is supported and you can use multiple schemes by separating them with camma like "jocc,pn-pair".
+- `truncated_jocc=Dict{String,Vector{Int64}}()` option to specify the truncation scheme for each orbit, e.g. Dict("p0p1"=>[1],"n0p3"=>[2,3]) means that the occupation number for proton 0p1 is truncated upto 1, and for neutron 0p3 min=2 and max=3"
 """
-function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
-              q=1,is_block=false,is_show=false,
-              num_history=3,lm=100,ls=20,tol=1.e-8,
-              in_wf="",mdimmode=false,
-              print_evec=false,
-              calc_moment = false,
-              visualize_occ = false,
-              gfactors = [1.0,0.0,5.586,-3.826],
-              effcharge=[1.5,0.5])
+function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-8,
+                 in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
+                 gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}())
+
     to = TimerOutput()
     Anum = parse(Int64, match(reg,target_nuc).match)
     lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
-    massformula = 1
-    if 16 <= Anum <= 40; massformula = 2;end
+    massformula = ifelse(16<=Anum<= 40,2,1)
     ## massformula=2: J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
     ## we use this for the sd-shell nuclei
     hw, bpar = init_ho_by_mass(Anum,massformula)
 
-    if length(target_J) > 1;
-        println("warn! Multiple J is not supported now.");exit()
-    end
-    Mtot = 0;if Anum % 2 != 0; Mtot = 1;end
+    @assert length(target_J) <= 1 "Invalid `target_J` Multiple J is not supported now."
+    Mtot = ifelse(Anum%2==0,0,1)
     tJ = -1; eval_jj = -1.0
     if length(target_J) > 0; Mtot = minimum(target_J);tJ=target_J[1]
         eval_jj = 0.5*tJ*(tJ/2+1)
     end
     if Anum % 2 != Mtot % 2; println("invalid targetJ $tJ");exit();end
-    target_el = replace.(target_nuc, string(Anum)=>"")
+    target_el = replace(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
-    mstates_p, mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
-    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,mstates_p,mz_p,vp,
-                                                  n_sps,mstates_n,mz_n,vn,Mtot)
+    tf_pnpair = ifelse(occursin("pn-pair",truncation_scheme),true,false)
+    if tf_pnpair
+        #if Z!=N; @error "Invalid truncation scheme: pn-pair is not supported for Z != N nuclei"; exit();end
+        if is_block; @error "Block Lanczos method is not supported for pn-pair truncation"; exit();end
+    end
+    msps_p,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
+    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot;truncation_scheme=truncation_scheme,truncated_jocc=truncated_jocc)
+
     lblock=length(pbits)
-    mdim = tdims[end]; if mdim==0;exit();end    
+    mdim = tdims[end]; if mdim==0;exit();end
+    num_ev = min(num_ev,mdim)
     mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ)
     if mdimmode; return nothing;end
-    if visualize_occ; visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim); end
+    if visualize_occ; visualize_configurations(msps_p,msps_n,pbits,nbits,mdim); end
+    if tf_pnpair && mdim > 500
+        @warn "pn-pair truncation, constructing H explicitly, is not recommended for large model space."
+    end
 
-    @timeit to "prep. 1bjumps" begin
-        ## bit representation of Hamiltonian operators
-        bV1,V1 = HbitT1(p_sps,n_sps,mstates_p,mstates_n,labels,TBMEs)
-        bVpn,Vpn,delMs = Hbitpn(p_sps,n_sps,mstates_p,mstates_n,labels[3],TBMEs[3])
-
+    ##Making bit representation of Hamiltonian operators, and storing them
+    @timeit to "prep. 1b&2b-jumps" begin
         ## storing two-body jumps for pp/nn 2b interaction
-        ppinfo = prep_pp(mstates_p,pbits,bV1[1],V1[1])
-        nninfo = prep_nn(mstates_n,nbits,bV1[2],V1[2])
-        bV1 = nothing
+        pp_2bjump,nn_2bjump = prep_Hamil_T1(p_sps,n_sps,msps_p,msps_n,pbits,nbits,labels,TBMEs)        
+        bVpn,Vpn,delMs = prep_Hamil_pn(p_sps,n_sps,msps_p,msps_n,labels[3],TBMEs[3])
 
         ## storing one-body jumps for pn 2b interaction
-        l_pbit = length(mstates_p);l_nbit = length(mstates_n)
-        bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,tdims,l_pbit,l_nbit,
-                                                   pbits,nbits,Mps,delMs,bVpn,Vpn)
+        bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,pbits,nbits,Mps,delMs,bVpn,Vpn)
         bVpn=nothing
+        #Hamil_util = HamilUtil(bis,bfs,pp_2bjump,nn_2bjump,p_NiNfs,n_NiNfs)
+        ## distribute task
+        block_tasks = make_distribute(num_task)
     end
-    ## distribute task
-    block_tasks = make_distribute(num_task)
-
+   
     @timeit to "Jcalc." begin
-        oPP,oNN,oPNu,oPNd = prep_J(tdims,p_sps,n_sps,mstates_p,mstates_n,
-                                   pbits,nbits)
+        oPP,oNN,oPNu,oPNd = prep_J(tdims,p_sps,n_sps,msps_p,msps_n,pbits,nbits)
         Js = [ 0.5*Mtot*(0.5*Mtot+1) for i = 1:num_ev]
         Jtasks = zeros(Int64,lblock)
         for i = 1:lblock
@@ -169,7 +168,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
                 bl_QR!(V',Beta_H,mdim,q)
             end
             elit = TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
-                         ppinfo,nninfo,bis,bfs,block_tasks,
+                         pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                          p_NiNfs,n_NiNfs,Mps,delMs,Vpn,tdims,
                          eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
                          num_ev,num_history,lm,ls_sub,en,tol,to,doubleLanczos)
@@ -183,7 +182,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
             end
             elit = TRL(vks,uks,Tmat,itmin,
                        pbits,nbits,jocc_p,jocc_n,SPEs,
-                       ppinfo,nninfo,bis,bfs,block_tasks,
+                       pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                        p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
                        eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
                        tdims,num_ev,num_history,lm,ls,en,tol,to,doubleLanczos)
@@ -194,24 +193,24 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
         vals,vecs = eigen(@views Tmat[1:elit*q,1:elit*q])
         @inbounds for (nth,Rvec) in enumerate(Rvecs)
             if is_block == false
-                @inbounds for k=1:length(vals)
+                for k=1:length(vals)
                     Rvec .+= vecs[k,nth] .* vks[k]
                 end
             else
-                @inbounds for k=1:length(vals)
+                for k=1:length(vals)
                     it = div(k-1,q)
                     b = k - q*it 
                     Rvec .+= @views vecs[k,nth] .* vks[it+1][b,:]
                 end
             end
             Rvec .*= 1.0/sqrt(dot(Rvec,Rvec))
-        end
-    end   
+        end        
+    end
+
     vt = zeros(Float64,mdim)
     for (nth,Rv) in enumerate(Rvecs)
         vt .= 0.0
-        operate_J!(Rv,vt,pbits,nbits,tdims,
-                   Jidxs,oPP,oNN,oPNu,oPNd)
+        operate_J!(Rv,vt,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
         Js[nth] += dot(Rv,vt)
     end
 
@@ -229,10 +228,8 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
     #println("totJs $totJs")
     tx_mom =""
     if calc_moment 
-        tx_mom = eval_moment(Mtot,Rvecs,totJs,p_sps,n_sps,
-                             mstates_p,mstates_n,tdims,
-                             jocc_p,jocc_n,pbits,nbits,bpar,
-                             gfactors,effcharge)
+        tx_mom = eval_moment(Mtot,Rvecs,totJs,p_sps,n_sps,msps_p,msps_n,tdims,
+                             jocc_p,jocc_n,pbits,nbits,bpar,gfactors,effcharge)
     end        
     if save_wav
         @timeit to "I/O" begin
@@ -242,23 +239,31 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,
             writeRitzvecs(mdim,Mtot,en[1],totJs,Rvecs,oupf)
         end
     end
-    show_TimerOutput_results(to;tf=is_show)
     #println("sntf: $sntf")
     if length(target_J) == 0
         println("J $totJs")
-        print("En. ");map(x -> @printf("%9.3f ",x), en[1])
+        print("En. ");map(x -> @printf("%10.4f ",x), en[1])
         print("\nEx. ")
-        map(x -> @printf("%9.3f ",x),[en[1][i]-en[1][1] for i=1:num_ev])
+        map(x -> @printf("%10.4f ",x),[en[1][i]-en[1][1] for i=1:num_ev])
     else
         tJ = Int(2*totJs[1])
         print("2J= $tJ  En.")
         map(x -> @printf("%12.5f ",x), en[1])
-        #map(x -> @printf("%9.3f ",x), en[1])       
     end
     print("\n")
     if tx_mom != ""
         println(tx_mom)
     end
+
+    if tf_pnpair
+        main_vmc(Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd)
+    end
+
+    if calc_entropy
+        entropy(Rvecs,pbits,nbits,tdims,to)
+    end
+
+    show_TimerOutput_results(to;tf=is_show)
     return en[1]
 end
 
@@ -290,7 +295,7 @@ function readsmsnt(sntf,Anum)
     end
     nsp,zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
     SPEs = [ [0.0 for i=1:lp],[0.0 for i=1:ln]]
-    @inbounds for i = 1:nsp
+    for i = 1:nsp
         ttxt = rm_nan(split(lines[1+ln+lp+1+i]," "))
         j = parse(Int64,ttxt[1])
         idx = ifelse(j<=lp,1,2)
@@ -341,22 +346,22 @@ function readsmsnt(sntf,Anum)
 end
 
 """
-   def_mstates(p_sps,n_sps)
+   construct_msps(p_sps,n_sps)
 
-to define the single particle states specified by `[n,l,j,tz,mz,p(n)idx]`.
-The last elements `pidx` and `nidx` to represent original index of j states, [n,l,j,tz].
+Function to define the single particle states specified by `[n,l,j,tz,mz,p(n)idx]`.
+The last elements `pidx` and `nidx` to represent original index of `p_sps`/`n_sps`, which is specified by `[n,l,j,tz]``.
 """
-function def_mstates(p_sps,n_sps)
-    mstates_p = Vector{Int64}[] ; mstates_n = Vector{Int64}[]; mz_p = Int64[]; mz_n = Int64[]
+function construct_msps(p_sps,n_sps)
+    msps_p = Vector{Int64}[] ; msps_n = Vector{Int64}[]; mz_p = Int64[]; mz_n = Int64[]
     for (pidx,tsps) in enumerate(p_sps)
         n,l,j,tz = tsps
-        for mz = -j:2:j;push!(mstates_p,[n,l,j,tz,mz,pidx]);push!(mz_p,mz);end
+        for mz = -j:2:j;push!(msps_p,[n,l,j,tz,mz,pidx]);push!(mz_p,mz);end
     end
     for (nidx,tsps) in enumerate(n_sps)
         n,l,j,tz = tsps
-        for mz = -j:2:j;push!(mstates_n,[n,l,j,tz,mz,nidx]);push!(mz_n,mz);end
+        for mz = -j:2:j;push!(msps_n,[n,l,j,tz,mz,nidx]);push!(mz_n,mz);end
     end
-    return mstates_p, mstates_n,mz_p,mz_n
+    return msps_p, msps_n,mz_p,mz_n
 end
 
 """
@@ -370,23 +375,20 @@ valence orbits(0p1/2,0p3/2) => -1/2, 1/2, -3/2, -1/2, 1/2, 3/2
 
 configurations are represented like:
 
- proton: 000011, 000101, ..., 110000
+proton: 000011, 000101, ..., 110000
 
 neutron: 000001, 000010, ..., 100000
 """
-function all_perm!(ln::Int64,num_valence::Int64,
-                   occs::Array{Array{Bool,1}})
+function all_perm!(ln::Int64, num_valence::Int64, occs::Array{Array{Bool,1}})
     for (i,tcomb) in enumerate(collect(combinations(collect(1:ln),num_valence)))
-        @inbounds for nth in tcomb
+        for nth in tcomb
             occs[i][nth] = 1
         end
     end
     return nothing
 end
 
-function Mcount!(ln::Int64,mzs::Array{Int64,1},
-                 occ::Array{Bool,1},
-                 Mret::Array{Int64,1})
+function Mcount!(ln::Int64,mzs::Array{Int64,1}, occ::Array{Bool,1}, Mret::Array{Int64,1})
     Mret[1] = 0
     @inbounds for i = 1:ln
         if occ[i]
@@ -394,6 +396,136 @@ function Mcount!(ln::Int64,mzs::Array{Int64,1},
         end
     end
     return nothing
+end
+
+"""
+Function to check if the specified configuration `tocc_j` is valid within a given truncation scheme.
+"""
+function check_jocc_truncation(tz,m_sps,tocc_j,truncated_jocc,truncation_scheme="")
+    if truncation_scheme == ""
+        return true
+    end
+    if occursin("jocc",truncation_scheme)
+        if typeof(truncated_jocc) == Dict{String,Vector{Int64}}
+            if length(keys(truncated_jocc)) == 0 
+                @error "You should specify `truncated_jocc::Dict{String,Vector{Int64}}`, see the document of `main_sm` (main API of ShellModel) for more details."
+                exit()
+            end
+            return jocc_truncation_dict(tz,m_sps,tocc_j,truncated_jocc)        
+        elseif typeof(truncated_jocc) == Vector{Vector{Int64}}
+            if length(truncated_jocc) == 0 
+                @error "Inappropriate specification of `truncated_jocc::Vector{Vector{Int64}`! You must specify it like [ [n,l,j,tz,max_occ],... ] or [ [n,l,j,tz,min_occ,max_occ],... ]."
+                exit()
+            end
+            return jocc_truncation(tz,m_sps,tocc_j,truncated_jocc)
+        else
+            @error "Invalid type of truncated_jocc !!! $(typeof(truncated_jocc)) is not supported!!"   
+            exit()     
+        end
+    elseif occursin("pn-pair",truncation_scheme) # it doesn't care pn-pair for now
+        return true
+    else
+        @error "truncation_scheme $truncation_scheme is not defined now!!"
+        exit()
+    end 
+    return false
+end
+
+function jocc_truncation_dict(target_tz,m_sps,tocc_j,truncated_jocc_dict::Dict{String,Vector{Int64}})
+    regex = r"(\d+)(\D)(\d+)"  
+    for tkey in keys(truncated_jocc_dict)
+        if length(tkey) < 4
+            @error "KeyError: length(tkey=$tkey) < 4,  key must include proton/neutron, n, l, j such as p0p1, p1s1, n0d5"
+            exit()
+        end
+        if string(tkey[1]) !="p" && string(tkey[1]) != "n"
+            @error "KeyError: ($tkey) key must include proton/neutron, n, l, j such as p0p1, p1s1, n0d5, etc."
+            exit()
+        end       
+        tz = ifelse(string(tkey[1])=="p",-1,1)
+        if tz != target_tz; continue;end
+
+        n = l = j = -1
+        tmp = match(regex, tkey)    
+        n = parse(Int64,tmp.captures[1])
+        j = parse(Int64,tmp.captures[3])
+        lstr = tmp.captures[2]
+        l = findall(x->x==lstr, chara_l)[1] - 1 
+        if n == -1 || l == -1 || j == -1        
+            println("something wrong! key $tkey => n $n l $l j $j")
+            exit()
+        end
+        min_occ = 0; max_occ = truncated_jocc_dict[tkey][end]
+        if length(truncated_jocc_dict[tkey]) == 2
+            min_occ = truncated_jocc_dict[tkey][1]
+        end
+        occupation_number = 0
+        for (idx, occ_num) in enumerate(tocc_j)
+            tn, tl, tj, ttz, tjz, idx_orb = m_sps[idx]
+            if tn != n || tl != l || tj != j || ttz != tz
+                continue
+            end
+            if occ_num #bool
+                occupation_number += 1
+            end
+        end
+        if occupation_number < min_occ || occupation_number > max_occ
+            return false
+        end
+    end
+    return true
+end
+
+function jocc_truncation(target_tz,m_sps,tocc_j,truncated_jocc)
+    for tkey in truncated_jocc
+        ln = length(tkey)
+        if ln < 5 || ln > 6
+            @error "KeyError: key must be either [n,l,j,tz,occ_max] or [n,l,j,tz,occ_min,occ_max]"
+            exit()
+        end
+        n = l = j = -1; min_occ = max_occ = 0
+
+        if ln == 5 
+            n,l,j,tz,max_occ = tkey
+        elseif ln == 6
+            n,l,j,tz,min_occ,max_occ = tkey
+        end
+        if tz != target_tz; continue;end
+
+        occupation_number = 0
+        for (idx, occ_bool) in enumerate(tocc_j)
+            tn, tl, tj, ttz, tjz, idx_orb = m_sps[idx]
+            if tn != n || tl != l || tj != j || ttz != tz
+                continue
+            end
+            if occ_bool
+                occupation_number += 1
+            end
+        end
+        if occupation_number < min_occ || occupation_number > max_occ
+            return false
+        end
+    end
+    return true
+end
+
+"""
+Function to check occupations in proton and neutron are only in time-reversal pairs.
+"""
+function check_pnpair_truncation(msps_p,msps_n,ovec_p,ovec_n,truncation_scheme="")
+    if !occursin("pn-pair",truncation_scheme); return true; end
+    tf = true
+    for (idx_p,occ_p) in enumerate(ovec_p)
+        n_p,l_p,j_p,tz_p,mz_p = msps_p[idx_p][1:5]
+        for (idx_n,occ_n) in enumerate(ovec_n)
+            n_n,l_n,j_n,tz_n,mz_n = msps_n[idx_n][1:5]
+            if n_p != n_n || l_p != l_n || j_p != j_n || tz_p != -tz_n || mz_p != -mz_n
+                continue
+            end
+            tf *= ifelse(occ_p == occ_n,true,false)
+        end
+    end
+    return tf
 end
 
 function possible_mz(nljtz,mstates)
@@ -417,23 +549,22 @@ function initialize_tvec!(tvec::Array{Bool,1})
 end
 
 """
-    function HbitT1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}},
-                mstates_p::Array{Array{Int64,1},1},mstates_n::Array{Array{Int64,1},1},
+    function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}},
+                msps_p::Array{Array{Int64,1},1},msps_n::Array{Array{Int64,1},1},
                 labels::Array{Array{Array{Int64,1},1},1},TBMEs::Array{Array{Float64,1}})
 
-make bit representation of T=1 (proton-proton&neutron-neutron) interactions for each {m_z}
+First, this makes bit representations of T=1 (proton-proton&neutron-neutron) interactions for each {m_z}.
+
 """
-function HbitT1(p_sps::Array{Array{Int64,1}},
-                n_sps::Array{Array{Int64,1}},
-                mstates_p::Array{Array{Int64,1},1},
-                mstates_n::Array{Array{Int64,1},1},
-                labels::Array{Array{Array{Int64,1},1},1},
-                TBMEs::Array{Array{Float64,1}})
-    lp = length(mstates_p)
-    ln = length(mstates_n)
+function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}},
+                 msps_p::Array{Array{Int64,1},1},msps_n::Array{Array{Int64,1},1},
+                 pbits,nbits,
+                 labels::Array{Array{Array{Int64,1},1},1},TBMEs::Array{Array{Float64,1}})
+    lp = length(msps_p)
+    ln = length(msps_n)
     bV1 = [ bit2b[] for i=1:2 ]
     V1 = [ Float64[] for i=1:2]
-    mstates = [mstates_p,mstates_n]
+    mstates = [msps_p,msps_n]
     sps = [p_sps,n_sps]
     loffs = [ 0, length(p_sps)]
 
@@ -450,8 +581,8 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
             jb,mb_s,mb_idxs = possible_mz(sps[vrank][b-loff],mstates[vrank])
             jc,mc_s,mc_idxs = possible_mz(sps[vrank][c-loff],mstates[vrank])
             jd,md_s,md_idxs = possible_mz(sps[vrank][d-loff],mstates[vrank])
-            @inbounds for (ic,mc) in enumerate(mc_s)
-                @inbounds for (id,md) in enumerate(md_s)
+            for (ic,mc) in enumerate(mc_s)
+                for (id,md) in enumerate(md_s)
                     if c == d && mc >= md; continue;end
                     if abs(mc + md) > J2; continue;end
                     M_ani = mc + md
@@ -459,8 +590,8 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
                     bit_c = bitarr_to_int(vecs[vrank][1])
                     initialize_tvec!(vecs[vrank][1]); vecs[vrank][1][md_idxs[id]] = true
                     bit_d = bitarr_to_int(vecs[vrank][1])
-                    @inbounds for (ia,ma) in enumerate(ma_s)
-                        @inbounds for (ib,mb) in enumerate(mb_s)
+                    for (ia,ma) in enumerate(ma_s)
+                        for (ib,mb) in enumerate(mb_s)
                             if a == b && ma>=mb; continue;end
                             if ma + mb != M_ani;continue;end
                             initialize_tvec!(vecs[vrank][2]);vecs[vrank][2][ma_idxs[ia]] = true
@@ -475,7 +606,7 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
                                 push!(Vs, ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2)
                                 continue
                             end
-                            @inbounds for kk = 1:length(blist)
+                            for kk = 1:length(blist)
                                 if blist[kk] == tl
                                     Vs[kk] += ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2
                                     break
@@ -489,29 +620,33 @@ function HbitT1(p_sps::Array{Array{Int64,1}},
         bV1[vrank] = blist
         V1[vrank] = Vs
     end
-    return bV1,V1 
+    pp_2bjump = prep_2bjumps(msps_p,pbits,bV1[1],V1[1])
+    nn_2bjump = prep_2bjumps(msps_n,nbits,bV1[2],V1[2])
+
+    
+    return pp_2bjump,nn_2bjump
 end
 
 """
-    Hbitpn(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}},
-           mstates_p::Array{Array{Int64,1},1},mstates_n::Array{Array{Int64,1},1},
+    prep_Hamil_pn(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}},
+           msps_p::Array{Array{Int64,1},1},msps_n::Array{Array{Int64,1},1},
            labels::Array{Array{Int64,1}},TBMEs::Array{Float64,1},zeroME=false)
 
 make bit representation of T=0 (proton-neutron) interactions for each {m_z}
 """
-function Hbitpn(p_sps::Array{Array{Int64,1}},
+function prep_Hamil_pn(p_sps::Array{Array{Int64,1}},
                 n_sps::Array{Array{Int64,1}},
-                mstates_p::Array{Array{Int64,1},1},
-                mstates_n::Array{Array{Int64,1},1},
+                msps_p::Array{Array{Int64,1},1},
+                msps_n::Array{Array{Int64,1},1},
                 labels::Array{Array{Int64,1}},
                 TBMEs::Array{Float64,1},
                 zeroME=false)
-    lp = length(mstates_p); ln = length(mstates_n)
+    lp = length(msps_p); ln = length(msps_n)
     loff = length(p_sps)
     Mzs = Int64[]
     for j = 1:lp
         for i = 1:lp
-            push!(Mzs,mstates_p[i][5]-mstates_p[j][5])
+            push!(Mzs,msps_p[i][5]-msps_p[j][5])
         end
     end
     unique!(Mzs);sort!(Mzs,rev=true)
@@ -528,10 +663,10 @@ function Hbitpn(p_sps::Array{Array{Int64,1}},
     @inbounds for (i,ME) in enumerate(TBMEs)
         a,b,c,d,totJ,dummy = labels[i]
         J2  = 2*totJ
-        ja,ma_s,ma_idxs = possible_mz(p_sps[a],mstates_p)
-        jc,mc_s,mc_idxs = possible_mz(p_sps[c],mstates_p)
-        jb,mb_s,mb_idxs = possible_mz(n_sps[b-loff],mstates_n)
-        jd,md_s,md_idxs = possible_mz(n_sps[d-loff],mstates_n)
+        ja,ma_s,ma_idxs = possible_mz(p_sps[a],msps_p)
+        jc,mc_s,mc_idxs = possible_mz(p_sps[c],msps_p)
+        jb,mb_s,mb_idxs = possible_mz(n_sps[b-loff],msps_n)
+        jd,md_s,md_idxs = possible_mz(n_sps[d-loff],msps_n)
         ja = ja//2; jb=jb//2;jc = jc//2; jd=jd//2
         for (ic,mc) in enumerate(mc_s)
             initialize_tvec!(vec_ani_p); vec_ani_p[mc_idxs[ic]] = true
@@ -559,7 +694,7 @@ function Hbitpn(p_sps::Array{Array{Int64,1}},
                             push!(tV,fac)
                             continue
                         end
-                        @inbounds for kk = 1:length(bV)
+                        for kk = 1:length(bV)
                             if bV[kk] == tl
                                 tV[kk] += fac
                                 break
@@ -596,8 +731,8 @@ function deltaf(i::Int64,j::Int64)
 end
 
 """
-    occ(p_sps::Array{Array{Int64,1}},mstates_p::Array{Array{Int64,1}},mzp::Array{Int64,1},num_vp::Int64,
-        n_sps::Array{Array{Int64,1}},mstates_n::Array{Array{Int64,1}},mzn::Array{Int64,1},num_vn::Int64,Mtot::Int64)
+    occ(p_sps::Array{Array{Int64,1}},msps_p::Array{Array{Int64,1}},mzp::Array{Int64,1},num_vp::Int64,
+        n_sps::Array{Array{Int64,1}},msps_n::Array{Array{Int64,1}},mzn::Array{Int64,1},num_vn::Int64,Mtot::Int64;pnpair_truncated=false)
 
 prepare bit representations of proton/neutron Slater determinants => pbits/nbits
 
@@ -614,33 +749,42 @@ tdims: array of cumulative number of M-scheme dimensions for "blocks"
 tdims =[ # of possible configurations of (-3,3),  
          # of possible configurations of (-1,1),...]  
 """
-function occ(p_sps::Array{Array{Int64,1}},
-             mstates_p::Array{Array{Int64,1}},
-             mzp::Array{Int64,1},num_vp::Int64,
-             n_sps::Array{Array{Int64,1}},
-             mstates_n::Array{Array{Int64,1}},
-             mzn::Array{Int64,1},num_vn::Int64,
-             Mtot::Int64)
+function occ(p_sps::Vector{Vector{Int64}}, msps_p::Vector{Vector{Int64}}, mzp::Array{Int64,1}, num_vp::Int64,
+             n_sps::Vector{Vector{Int64}}, msps_n::Vector{Vector{Int64}}, mzn::Array{Int64,1}, num_vn::Int64, Mtot::Int64;
+             truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}())
     lp = length(mzp); ln = length(mzn)
-    pDim = binomial(lp,num_vp)
-    occs_p =[ [false for j=1:lp] for i = 1:pDim]
-    all_perm!(lp,num_vp,occs_p)
+    all_pDim = binomial(lp,num_vp)
+    all_occs_p =[ [false for j=1:lp] for i = 1:all_pDim]
+    all_perm!(lp,num_vp,all_occs_p)
 
-    nDim = binomial(ln,num_vn)
-    occs_n =[ [false for j=1:ln] for i = 1:nDim]
-    all_perm!(ln,num_vn,occs_n)
+    all_nDim = binomial(ln,num_vn)
+    all_occs_n =[ [false for j=1:ln] for i = 1:all_nDim]
+    all_perm!(ln,num_vn,all_occs_n)
+
+    occs_p = Vector{Bool}[ ]
+    occs_n = Vector{Bool}[ ]
 
     mdim = 0;tdims=Int64[];push!(tdims,0)
     Mret = Int64[0]; Mps = Int64[]; Mns = Int64[]
-    for i=1:pDim
-        Mcount!(lp,mzp,occs_p[i],Mret); push!(Mps, Mret[1])
+    for i=1:all_pDim
+        tocc = all_occs_p[i]
+        Mcount!(lp,mzp,tocc,Mret)
+        if !check_jocc_truncation(-1,msps_p,tocc,truncated_jocc,truncation_scheme); continue; end
+        push!(occs_p,copy(tocc))
+        push!(Mps, Mret[1])
     end
-    for i=1:nDim
-        Mcount!(ln,mzn,occs_n[i],Mret); push!(Mns, Mret[1])
+    for i=1:all_nDim
+        tocc = all_occs_n[i]
+        Mcount!(ln,mzn,tocc,Mret)
+        if !check_jocc_truncation(1,msps_n,tocc,truncated_jocc,truncation_scheme); continue;end
+        push!(occs_n,copy(tocc))
+        push!(Mns, Mret[1])
     end
+    pDim = length(occs_p); nDim = length(occs_n)
+
     Mps = unique(Mps); Mns = unique(Mns)
     sort!(Mps,rev=false); sort!(Mns,rev=true)
-    possidxs = []
+    possidxs = Vector{Int64}[]
     for i = 1:length(Mps)
         for j = 1:length(Mns)
             if Mps[i] + Mns[j] == Mtot
@@ -663,31 +807,25 @@ function occ(p_sps::Array{Array{Int64,1}},
         if Mp + Mn != Mtot;@error "something wrong in occ func" ;end
         for i = 1:pDim
             Mcount!(lp,mzp,occs_p[i],Mret)
-            if Mp != Mret[1]; continue;end           
-            pbit =bitarr_to_int(occs_p[i])
+            if Mp != Mret[1]; continue;end
             push!(pbits[ith], bitarr_to_int(occs_p[i]))
-            count_jocc!(p_sps,mstates_p,occs_p[i],tocc_p_j)
+            count_jocc!(p_sps,msps_p,occs_p[i],tocc_p_j)
             push!(occ_p_j[ith],copy(tocc_p_j))
             for j=1:nDim
                 Mcount!(ln,mzn,occs_n[j],Mret)
-                if Mret[1] + Mp == Mtot
-                    mdim += 1
-                end
+                if Mp + Mret[1] != Mtot; continue; end   
+                mdim += 1
             end
         end
-        push!(tdims,mdim)
-    end
-    for ith = 1:length(possidxs)
-        ni,nj = possidxs[ith]
-        Mp = Mps[ni]; Mn = Mns[nj]
         for j=1:nDim
             Mcount!(ln,mzn,occs_n[j],Mret)
-            if Mret[1] == Mn
-                push!(nbits[ith], bitarr_to_int(occs_n[j]))
-                count_jocc!(n_sps,mstates_n,occs_n[j],tocc_n_j)
-                push!(occ_n_j[ith],copy(tocc_n_j))
-            end
+            if Mn != Mret[1]; continue; end   
+            nbit = bitarr_to_int(occs_n[j])
+            push!(nbits[ith], nbit)
+            count_jocc!(n_sps,msps_n,occs_n[j],tocc_n_j)
+            push!(occ_n_j[ith],copy(tocc_n_j))
         end
+        push!(tdims,mdim)
     end
     return pbits,nbits,occ_p_j,occ_n_j,Mps,Mns,tdims
 end
@@ -711,8 +849,7 @@ function TF_connectable_1(Phi::Int64,a::Int64,c::Int64,TF::Array{Bool,1})
     return nothing
 end
 
-function calc_phase!(Phi::Int64,bVs::bit2b,
-                     ln::Int64,ret::Array{Int64,1})
+function calc_phase!(Phi::Int64,bVs::bit2b,ln::Int64,ret::Array{Int64,1})
     ret[1] = 0; ret[2] = -1 # ret=[phase,nPhi]
     ## anihilation c
     ret[1] += count_ones(Phi& (~(bVs.c-1)))
@@ -771,7 +908,7 @@ function ThickRestart(vks,uks,Tmat,lm,ls)
         tmp = beta .* vecs[lm-1,k]
         Tmat[ls+1,k] = tmp; Tmat[k,ls+1] = tmp
         uk .= 0.0
-        @inbounds for j=1:lm-1
+        for j=1:lm-1
             axpy!(vecs[j,k],vks[j],uk)
         end
     end
@@ -779,7 +916,7 @@ function ThickRestart(vks,uks,Tmat,lm,ls)
         vks[k] .= uk .* (1.0 /sqrt(dot(uk,uk)))
     end
     vks[ls+1] .= vks[lm]
-    @inbounds for k = ls+2:lm
+    for k = ls+2:lm
         vks[k] .= 0.0
     end
     return nothing
@@ -895,18 +1032,17 @@ function Check_Orthogonality(it::Int,vks,en)
     return nothing
 end
 
-function myQR!(Q,R::FA2,
-               d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
+function myQR!(Q,R::FA2,d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
     R .= 0.0
     @inbounds for j = 1:d2
-        @inbounds for i = 1:d1
+        for i = 1:d1
             R[j,j] += Q[i,j] .* Q[i,j]
         end
         R[j,j] = sqrt(R[j,j])
-        @inbounds for i = 1:d1
+        for i = 1:d1
             Q[i,j] /= R[j,j]
         end
-        @inbounds for k = j+1:d2
+        for k = j+1:d2
             for i = 1:d1
                 R[j,k] += Q[i,j] .* Q[i,k]
             end
@@ -925,7 +1061,7 @@ function bl_QR!(Q,R::FA2,d1::Int64,d2::Int64) where{FA2<:Array{Float64,2}}
         t = sqrt(dot(q,q))
         R[j,j] = t
         q .*= 1.0/t
-        @inbounds for k = j+1:d2
+        for k = j+1:d2
             for i = 1:d1
                 R[j,k] += q[i] .* Q[i,k]
             end
@@ -975,7 +1111,7 @@ function func_j(j1::I,j2::I,m1::I,m2::I) where{I<:Int64}
 end
 
 function J_from_JJ1(JJ,tol=1.e-6)
-    for J = 0:100 ## ad hoc J<=50
+    for J = 0:100
         hJ = 0.5*J
         if abs(hJ*(hJ+1.0)-JJ) <tol
             return hJ
@@ -984,66 +1120,32 @@ function J_from_JJ1(JJ,tol=1.e-6)
     return -1.0
 end
 
+function prep_2bjumps(msps::Array{Array{Int64,1},1},bits::Array{Array{Int64,1}},bVT1::Array{bit2b,1},VT1::Array{Float64,1}) 
+    n_block=length(bits)
+    lmsps = length(msps)
+    twobody_jump = [ [ T1info[] for j=1:length(bits[i]) ] for i = 1:n_block]
 
-function prep_pp(mstates_p::Array{Array{Int64,1},1},
-                 pbits::Array{Array{Int64,1}},
-                 bVpp::Array{bit2b,1},
-                 Vpp::Array{Float64,1}) 
-    lMp=length(pbits)
-    lmstates_p = length(mstates_p)
-    ppinfo = [ [ T1info[] for j=1:length(pbits[i]) ] for i = 1:lMp]
-
-    @inbounds @threads for pblock_i = 1:lMp # number of proton subblock
+    @inbounds @threads for block_i = 1:n_block # number of proton subblock
         TF=[true]; ret=[1,-1]; ridx=[-1,-1,-1]
-        @inbounds for (Npi,Phi) in enumerate(pbits[pblock_i])
-            @inbounds for nth = 1:length(Vpp)
-                if Vpp[nth] == 0.0; continue;end
-                TF_connectable(Phi,bVpp[nth],TF)
+        for (i_idx_conf,Phi) in enumerate(bits[block_i])
+            for nth = 1:length(VT1)
+                if VT1[nth] == 0.0; continue;end
+                TF_connectable(Phi,bVT1[nth],TF)
                 if TF[1]==false; continue;end
-                calc_phase!(Phi,bVpp[nth],lmstates_p,ret)#ret=>phase,fpbit
-                bisearch!(pbits[pblock_i],ret[2],ridx)#ridx=Npf
-                if Npi <= ridx[1]
-                    coef = Vpp[nth]*ret[1]*ifelse(Npi==ridx[1],0.5,1.0)
-                    push!(ppinfo[pblock_i][Npi], T1info(ridx[1],coef))
+                calc_phase!(Phi,bVT1[nth],lmsps,ret)#ret=>phase,final p/n bit
+                bisearch!(bits[block_i],ret[2],ridx)#ridx=Npf
+                if i_idx_conf <= ridx[1]
+                    coef = VT1[nth]*ret[1]*ifelse(i_idx_conf==ridx[1],0.5,1.0)
+                    push!(twobody_jump[block_i][i_idx_conf], T1info(ridx[1],coef))
                 end
             end
         end
     end
-    return ppinfo
+    return twobody_jump
 end
 
-function prep_nn(mstates_n::Array{Array{Int64,1},1},
-                 nbits::Array{Array{Int64,1}},
-                 bVnn::Array{bit2b,1},
-                 Vnn::Array{Float64,1}) 
-    lMn=length(nbits)
-    lmstates_n = length(mstates_n)
-    nninfo = [ [ T1info[ ] for j=1:length(nbits[i]) ] for i = 1:lMn]
-    @inbounds @threads for nblock_i = 1:lMn
-        TF=[true]; ret=[0,-1];ridx=[-1,-1,-1]
-        @inbounds for (Nni,Phi) in enumerate(nbits[nblock_i])
-            @inbounds for nth = 1:length(Vnn)
-                if Vnn[nth] == 0.0; continue;end
-                TF_connectable(Phi,bVnn[nth],TF)
-                if TF[1]==false; continue;end
-                calc_phase!(Phi,bVnn[nth],lmstates_n,ret)
-                bisearch!(nbits[nblock_i],ret[2],ridx)
-                if Nni <= ridx[1]
-                    coef = Vnn[nth]*ret[1]*ifelse(Nni==ridx[1],0.5,1.0)
-                    push!(nninfo[nblock_i][Nni],T1info(ridx[1],coef))
-                end
-            end
-        end
-    end
-    return nninfo
-end
-function prep_pn(lblock::Int64,tdims::IA,
-                 l_pbit::Int64,l_nbit::Int64,
-                 pbits::Array{Array{Int64,1}},
-                 nbits::Array{Array{Int64,1}},
-                 Mps::IA,delMs::IA,
-                 bVpn::Array{Array{Array{Int64,1},1},1},
-                 Vpn::Array{Array{Float64,1},1}) where {IA<:Array{Int64,1}}
+function prep_pn(lblock::Int64,pbits::Array{Array{Int64,1}},nbits::Array{Array{Int64,1}},
+                 Mps::IA,delMs::IA,bVpn::Array{Array{Array{Int64,1},1},1},Vpn::Array{Array{Float64,1},1}) where {IA<:Array{Int64,1}}
     #to = TimerOutput()
     maxDeltaM = maximum(delMs)
     bfs = [ Int64[ ] for i = 1:lblock]
@@ -1066,32 +1168,22 @@ function prep_pn(lblock::Int64,tdims::IA,
             deltaM = Mps[bf] - Mps[bi]
             if (deltaM in delMs) == false;continue;end
             bisearch!(delMs,deltaM,ret) # Vidx=ret[1]
-            hits[bi] += calc_1b_jumps!(bi,bf,j,lblock,tdims,
-                                   l_pbit,l_nbit,pbits,nbits,
-                                   bVpn[ret[1]],Vpn[ret[1]],
-                                   p_NiNfs,n_NiNfs)
+            hits[bi] += calc_1b_jumps!(bi,bf,j,pbits,nbits,bVpn[ret[1]],Vpn[ret[1]],p_NiNfs,n_NiNfs)
         end
     end
     return bis,bfs,p_NiNfs,n_NiNfs, hits
 end
 
-function calc_1b_jumps!(bi::Int64,bf::Int64,j::Int64,
-                        lblock::Int64,tdims::IA,
-                        l_pbit::Int64,l_nbit::Int64,
-                        pbits::AAI,nbits::AAI,
-                        bVpn::AAI,Vpn::Array{Float64,1},
-                        p_NiNfs::Aifph,
-                        n_NiNfs::Aifph) where {IA<:Array{Int64,1},
-                                               AAI<:Array{Array{Int64,1},1},
-                                               Aifph<:Array{Array{Array{Array{ifph,1},1},1},1}}
+function calc_1b_jumps!(bi::Int64,bf::Int64,j::Int64,pbits::AAI,nbits::AAI,bVpn::AAI,Vpn::Array{Float64,1},
+                        p_NiNfs::Aifph,n_NiNfs::Aifph) where {AAI<:Array{Array{Int64,1},1},Aifph<:Array{Array{Array{Array{ifph,1},1},1},1}}
     TF=[true]; ret=[1,-1] # [phase,possible]
     ridx=[-1,-1,-1]
-    plist =  [ ifph[ ] for i =1:length(Vpn) ]
-    nlist =  [ ifph[ ] for i =1:length(Vpn) ]
+    plist = [ ifph[ ] for i =1:length(Vpn) ]
+    nlist = [ ifph[ ] for i =1:length(Vpn) ]
     hits = [0,0]
     @inbounds for nth = 1:length(Vpn)
         a,b,c,d = bVpn[nth]; if Vpn[nth] == 0.0; continue;end
-        @inbounds for (Npi,pPhi) in enumerate(pbits[bi])# Npi:idx pPhi:bit pSD
+        for (Npi,pPhi) in enumerate(pbits[bi])# Npi:idx pPhi:bit pSD
             TF_connectable_1(pPhi,a,c,TF)
             if TF[1]==false; continue;end
             calc_phase_1!(pPhi,a,c,ret)# ret<=[phase,bit]
@@ -1100,7 +1192,7 @@ function calc_1b_jumps!(bi::Int64,bf::Int64,j::Int64,
             push!(plist[nth],ifph(Npi,ridx[1],ret[1]==-1))
             hits[1] += 1
         end
-        @inbounds for (Nni,nPhi) in enumerate(nbits[bi]) # Nni:idx
+        for (Nni,nPhi) in enumerate(nbits[bi]) # Nni:idx
             TF_connectable_1(nPhi,b,d,TF);if TF[1]==false; continue;end
             calc_phase_1!(nPhi,b,d,ret)
             bisearch!(nbits[bf],ret[2],ridx) # ridx=[Nnf]
@@ -1175,19 +1267,6 @@ function make_distribute(num_task)
         imin += n
     end
     task_idxs =[(tmp...)...]
-    # println("idxs $idxs")
-    # println("tmp $tmp")
-    # println("task_idxs $task_idxs")
-    # println("uniq ", unique(task_idxs), " lblock: $lblock")
-    # am = zeros(Float64,n)
-    # for i = 1:n
-    #     for j = 1:length(tmp[i])
-    #         if tmp[i][j] != 0
-    #             am[i] += tasks[tmp[i][j]]
-    #         end
-    #     end
-    # end
-    # println("task amount ", log10.(am))
     return task_idxs
 end
 
@@ -1251,14 +1330,10 @@ function mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ=-1)
 end
 
 
-function JT1(bi,oPP,oNN,
-             p_sps,n_sps,
-             mstates_p,mstates_n,
-             pbits,nbits,
-             tdims)
+function JT1(bi,oPP,oNN, p_sps,n_sps, msps_p,msps_n, pbits,nbits, tdims)
     pMat = zeros(Float64,length(pbits[bi]),length(pbits[bi]))
     nMat = zeros(Float64,length(nbits[bi]),length(nbits[bi]))
-    lp = length(mstates_p);ln = length(mstates_n)
+    lp = length(msps_p);ln = length(msps_n)
     TF=[true];ridx=[-1,-1,-1]
     ret_a = [-1,-1];ret_b = [-1,-1]
     ret_c = [-1,-1];ret_d = [-1,-1]
@@ -1270,9 +1345,9 @@ function JT1(bi,oPP,oNN,
         j2 = p_sps[i2][3]
         for m2 = -j2:2:j2-2
             vec_ani .= false; vec_cre .= false
-            @inbounds for k = 1:lp-1
-                if @views mstates_p[k][1:4] != p_sps[i2];continue;end
-                if mstates_p[k][5] == m2
+            for k = 1:lp-1
+                if @views msps_p[k][1:4] != p_sps[i2];continue;end
+                if msps_p[k][5] == m2
                     vec_ani[k] = true; vec_cre[k+1] = true
                     break
                 end
@@ -1286,9 +1361,9 @@ function JT1(bi,oPP,oNN,
                     j1 = p_sps[i1][3]
                     @inbounds for m1 = -j1+2:2:j1
                         vec_ani .= false; vec_cre .= false
-                        @inbounds for k = 2:lp
-                            if @views mstates_p[k][1:4] != p_sps[i1];continue;end
-                            if mstates_p[k][5] == m1
+                        for k = 2:lp
+                            if @views msps_p[k][1:4] != p_sps[i1];continue;end
+                            if msps_p[k][5] == m1
                                 vec_ani[k] = true; vec_cre[k-1] = true
                                 break
                             end
@@ -1316,9 +1391,9 @@ function JT1(bi,oPP,oNN,
         j2 = n_sps[i2][3]
         for m2 = -j2:2:j2-2
             vec_ani_2 .= false ; vec_cre_2 .= false
-            @inbounds for k = 1:ln-1
-                if @views mstates_n[k][1:4] != n_sps[i2];continue;end
-                if mstates_n[k][5] == m2
+            for k = 1:ln-1
+                if @views msps_n[k][1:4] != n_sps[i2];continue;end
+                if msps_n[k][5] == m2
                     vec_ani_2[k] = true; vec_cre_2[k+1] = true;break
                 end
             end
@@ -1327,13 +1402,13 @@ function JT1(bi,oPP,oNN,
                 TF_connectable_1(Phi,ret_c[1],ret_d[1],TF)
                 if TF[1]==false;continue;end
                 APhi = ret_c[1] | ((~ret_d[1]) & Phi)
-                @inbounds for i1 = 1:length(n_sps)
+                for i1 = 1:length(n_sps)
                     j1 = n_sps[i1][3]
-                    @inbounds for m1 = -j1+2:2:j1
+                    for m1 = -j1+2:2:j1
                         vec_ani .= false; vec_cre .= false
-                        @inbounds for k = 2:ln
-                            if @views mstates_n[k][1:4] != n_sps[i1];continue;end
-                            if mstates_n[k][5] == m1
+                        for k = 2:ln
+                            if @views msps_n[k][1:4] != n_sps[i1];continue;end
+                            if msps_n[k][5] == m1
                                 vec_ani[k] = true; vec_cre[k-1]=true;break
                             end
                         end
@@ -1371,19 +1446,18 @@ function JT1(bi,oPP,oNN,
 end
 
 function prep_J(tdims,p_sps,n_sps,
-                mstates_p::Array{Array{Int64,1},1},
-                mstates_n::Array{Array{Int64,1},1},
+                msps_p::Array{Array{Int64,1},1},
+                msps_n::Array{Array{Int64,1},1},
                 pbits::Array{Array{Int64,1},1},
                 nbits::Array{Array{Int64,1},1})
     #to = TimerOutput()
-    lp=length(mstates_p); ln=length(mstates_n)
+    lp=length(msps_p); ln=length(msps_n)
     lblock = length(nbits)
     oPP = [ MiMf[] for i =1:lblock]
     oNN = [ MiMf[] for i =1:lblock]
     #@timeit to "nn//pp" begin
     @inbounds @threads for bi=1:lblock
-        JT1(bi,oPP,oNN,p_sps,n_sps,
-            mstates_p,mstates_n,pbits,nbits,tdims)
+        JT1(bi,oPP,oNN,p_sps,n_sps,msps_p,msps_n,pbits,nbits,tdims)
     end
     oPNu = [ Jpninfo[]  for i =1:lblock]
     oPNd = [ Jpninfo[]  for i =1:lblock]
@@ -1401,8 +1475,8 @@ function prep_J(tdims,p_sps,n_sps,
             jn = n_sps[nidx][3]
             mn_range = [-jn+2:2:jn,-jn:2:jn-2]
             for ud = 1:2 # up:1 down:2
-                @inbounds for mp in mp_range[ud]
-                    @inbounds for mn in mn_range[ud]
+                for mp in mp_range[ud]
+                    for mn in mn_range[ud]
                         fac = 1.0
                         if ud == 1
                             fac = func_j(jn,jp,mn,mp)
@@ -1414,42 +1488,42 @@ function prep_J(tdims,p_sps,n_sps,
                         vec_n_ani .= false; vec_n_cre .= false
 
                         if ud == 2  ### for pn down
-                            @inbounds for k = 2:lp
-                                if mstates_p[k][1] != p_sps[pidx][1];continue;end
-                                if mstates_p[k][2] != p_sps[pidx][2];continue;end
-                                if mstates_p[k][3] != p_sps[pidx][3];continue;end
-                                if mstates_p[k][4] != p_sps[pidx][4];continue;end
-                                if mstates_p[k][5] == mp
+                            for k = 2:lp
+                                if msps_p[k][1] != p_sps[pidx][1];continue;end
+                                if msps_p[k][2] != p_sps[pidx][2];continue;end
+                                if msps_p[k][3] != p_sps[pidx][3];continue;end
+                                if msps_p[k][4] != p_sps[pidx][4];continue;end
+                                if msps_p[k][5] == mp
                                     vec_p_ani[k] = true; vec_p_cre[k-1] = true
                                     break
                                 end
                             end
-                            @inbounds for k = 1:ln-1
-                                if mstates_n[k][1] != n_sps[nidx][1];continue;end
-                                if mstates_n[k][2] != n_sps[nidx][2];continue;end
-                                if mstates_n[k][3] != n_sps[nidx][3];continue;end
-                                if mstates_n[k][4] != n_sps[nidx][4];continue;end
-                                if mstates_n[k][5] == mn
+                            for k = 1:ln-1
+                                if msps_n[k][1] != n_sps[nidx][1];continue;end
+                                if msps_n[k][2] != n_sps[nidx][2];continue;end
+                                if msps_n[k][3] != n_sps[nidx][3];continue;end
+                                if msps_n[k][4] != n_sps[nidx][4];continue;end
+                                if msps_n[k][5] == mn
                                     vec_n_ani[k] = true; vec_n_cre[k+1] = true
                                     break
                                 end
                             end
                         else  ### for p up n down
-                            @inbounds for k = 1:lp-1
-                                if mstates_p[k][1] != p_sps[pidx][1];continue;end
-                                if mstates_p[k][2] != p_sps[pidx][2];continue;end
-                                if mstates_p[k][3] != p_sps[pidx][3];continue;end
-                                if mstates_p[k][4] != p_sps[pidx][4];continue;end
-                                if mstates_p[k][5] == mp
+                            for k = 1:lp-1
+                                if msps_p[k][1] != p_sps[pidx][1];continue;end
+                                if msps_p[k][2] != p_sps[pidx][2];continue;end
+                                if msps_p[k][3] != p_sps[pidx][3];continue;end
+                                if msps_p[k][4] != p_sps[pidx][4];continue;end
+                                if msps_p[k][5] == mp
                                     vec_p_ani[k] = true;vec_p_cre[k+1] = true;break
                                 end
                             end
-                            @inbounds for k = 2:ln
-                                if mstates_n[k][1] != n_sps[nidx][1];continue;end
-                                if mstates_n[k][2] != n_sps[nidx][2];continue;end
-                                if mstates_n[k][3] != n_sps[nidx][3];continue;end
-                                if mstates_n[k][4] != n_sps[nidx][4];continue;end
-                                if mstates_n[k][5] == mn
+                            for k = 2:ln
+                                if msps_n[k][1] != n_sps[nidx][1];continue;end
+                                if msps_n[k][2] != n_sps[nidx][2];continue;end
+                                if msps_n[k][3] != n_sps[nidx][3];continue;end
+                                if msps_n[k][4] != n_sps[nidx][4];continue;end
+                                if msps_n[k][5] == mn
                                     vec_n_ani[k] = true;vec_n_cre[k-1] = true;break
                                 end
                             end
@@ -1459,7 +1533,7 @@ function prep_J(tdims,p_sps,n_sps,
                         bitarr_to_int!(vec_n_ani,ret_d)
                         bitarr_to_int!(vec_n_cre,ret_b)
 
-                        @inbounds @threads for bi in birange[ud]
+                        @threads for bi in birange[ud]
                             TF=[true]; ret_p=[0,0];ret_n=[0,0]
                             ridx_p=[-1,-1,-1];ridx_n=[-1,-1,-1]
                             bf = bi + Int64(2*(1.5-ud))
@@ -1498,8 +1572,7 @@ function prep_J(tdims,p_sps,n_sps,
     return oPP,oNN,oPNu,oPNd
 end
 
-function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
-                    oPP,oNN,oPNu,oPNd,beta_J=1.0)
+function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd,beta_J=1.0)
     #to = TimerOutput()
     lblock=length(pbits)
     #@timeit to "pp/nn " begin
@@ -1511,21 +1584,21 @@ function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
         opPP = oPP[bi]
         opNN = oNN[bi]
         offset = idim-lNn
-        @inbounds for tmp in opPP
+        for tmp in opPP
             Npi =tmp.Mi; Npf=tmp.Mf; fac=tmp.fac .* beta_J
             tMi = offset + Npi*lNn
             tMf = offset + Npf*lNn
-            @inbounds for nidx = 1:lNn
+            for nidx = 1:lNn
                 Mi = tMi+nidx; Mf = tMf+nidx
                 Jv[Mf] += fac .* Rvec[Mi]
                 Jv[Mi] += fac .* Rvec[Mf]
             end
         end
-        @inbounds for tmp in opNN #nn
+        for tmp in opNN #nn
             Nni =tmp.Mi; Nnf=tmp.Mf; fac=tmp.fac .* beta_J
             tMi = offset + Nni
             tMf = offset + Nnf
-            @inbounds for pidx = 1:lNp
+            for pidx = 1:lNp
                 Mi = tMi+pidx*lNn; Mf = tMf+pidx*lNn
                 Jv[Mf] += fac .* Rvec[Mi]
                 Jv[Mi] += fac .* Rvec[Mf]
@@ -1541,15 +1614,15 @@ function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
         l_Nn_f = length(nbits[bf])
         off_i = tdims[bi] - l_Nn_i
         off_f = tdims[bf] - l_Nn_f
-        @inbounds for top in operator
+        for top in operator
             pj = top.pjump
             nj = top.njump
             fac =top.fac .* beta_J
-            @inbounds for tmp_p in pj
+            for tmp_p in pj
                 phase_p=tmp_p.phase
                 tMi = off_i + tmp_p.i * l_Nn_i
                 tMf = off_f + tmp_p.f * l_Nn_f
-                @inbounds for tmp_n in nj
+                for tmp_n in nj
                     phase_n=tmp_n.phase
                     Mi = tMi + tmp_n.i
                     Mf = tMf + tmp_n.f
@@ -1565,15 +1638,15 @@ function operate_J!(Rvec,Jv,pbits,nbits,tdims,Jidxs,
         l_Nn_f = length(nbits[bf])
         off_i = tdims[bi] - l_Nn_i
         off_f = tdims[bf] - l_Nn_f
-        @inbounds for top in operator
+        for top in operator
             pj  = top.pjump
             nj  = top.njump
             fac = top.fac .* beta_J
-            @inbounds for tmp_p in pj
+            for tmp_p in pj
                 phase_p=tmp_p.phase
                 tMi = off_i + tmp_p.i * l_Nn_i
                 tMf = off_f + tmp_p.f * l_Nn_f
-                @inbounds for tmp_n in nj
+                for tmp_n in nj
                     Nni = tmp_n.i; Nnf = tmp_n.f; phase_n=tmp_n.phase
                     Mi = tMi + tmp_n.i
                     Mf = tMf + tmp_n.f
@@ -1594,13 +1667,13 @@ mutable struct occ_object
     width::Int64
 end
 
-function make_occ_obj(mstates_p,mstates_n)
-    pbit = [false for i=1:length(mstates_p)]
-    nbit = [false for i=1:length(mstates_n)]
+function make_occ_obj(msps_p,msps_n)
+    pbit = [false for i=1:length(msps_p)]
+    nbit = [false for i=1:length(msps_n)]
     p_nljs=Vector{Int64}[]
     n_nljs=Vector{Int64}[]
     width = 0
-    for (pn,mstates) in enumerate([mstates_p,mstates_n])
+    for (pn,mstates) in enumerate([msps_p,msps_n])
         prev = jmax = 0 
         nljs = Vector{Int64}[ ]    
         for tmp in mstates
@@ -1621,6 +1694,10 @@ function make_occ_obj(mstates_p,mstates_n)
     return occ_object(pbit,nbit,p_nljs,n_nljs,width)
 end
 
+function get_bitarry_from_int(bit_int::Int64,numbit::Int64) 
+    return reverse(digits(bit_int, base=2, pad=numbit))
+end
+
 function update_occ_obj!(occ_obj,pbit_int,nbit_int)
     pbit_arr = reverse(digits(pbit_int, base=2, pad=length(occ_obj.pbit)))
     nbit_arr = reverse(digits(nbit_int, base=2, pad=length(occ_obj.nbit)))
@@ -1629,7 +1706,7 @@ function update_occ_obj!(occ_obj,pbit_int,nbit_int)
     return nothing
 end
 
-function get_occstring(occ_obj,mstates_p,mstates_n)
+function get_occstring(occ_obj,msps_p,msps_n)
     pbit_arr = occ_obj.pbit
     nbit_arr = occ_obj.nbit
     width = occ_obj.width
@@ -1637,7 +1714,7 @@ function get_occstring(occ_obj,mstates_p,mstates_n)
         pntext = ""
         jtxt = "-"
         bitarr = ifelse(pn==1,pbit_arr,nbit_arr)
-        mstates= ifelse(pn==1,mstates_p,mstates_n)
+        mstates= ifelse(pn==1,msps_p,msps_n)
         for (bitidx,bit) in enumerate(bitarr)
             n,l,j,tz,mz,oidx = mstates[bitidx]
             mark = ifelse(bit == 1,"x","o")
@@ -1660,7 +1737,7 @@ end
 """
 visualize all configurations in a given model-space
 """
-function visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim;mdim_max=100)
+function visualize_configurations(msps_p,msps_n,pbits,nbits,mdim;mdim_max=100)
     if mdim > mdim_max
         println("You are trying to execute `visualize_configurations`` for Dim.= $(mdim)!")
         println("Are you sure?(y/n, default:n)")
@@ -1673,7 +1750,7 @@ function visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim;mdim_max=
     println("")
     nth = 0
     nblock = length(pbits)
-    occ_obj = make_occ_obj(mstates_p,mstates_n)
+    occ_obj = make_occ_obj(msps_p,msps_n)
     for block = 1:nblock
         t_pbits = pbits[block]
         t_nbits = nbits[block]
@@ -1687,9 +1764,67 @@ function visualize_configurations(mstates_p,mstates_n,pbits,nbits,mdim;mdim_max=
                     println("config: ",@sprintf("%4i",nth))
                 end
                 update_occ_obj!(occ_obj,pbit,nbit)
-                get_occstring(occ_obj,mstates_p,mstates_n)
+                get_occstring(occ_obj,msps_p,msps_n)
             end
         end
+    end
+    return nothing
+end
+
+function entropy(Rvecs,pbits,nbits,tdims,to)
+    pdims = [0];for bi=1:length(pbits);push!(pdims,pdims[end]+length(pbits[bi]));end
+    ndims = [0];for bi=1:length(nbits);push!(ndims,ndims[end]+length(nbits[bi]));end
+    pdim = pdims[end]; ndim = ndims[end]
+    if ndim >= 1.e+6
+        @warn  "`entropy` is function is now very naive and slow. mdim >= 1.e+6 is not recommended and it will not be done..."
+    end
+    rho_p = zeros(Float64,pdim,pdim)
+    for (n,Rvec) in enumerate(Rvecs)
+        rho_p .= 0.0
+        for bi = 1:length(pbits)
+            idim = tdims[bi]
+            nbit = nbits[bi]
+            ln = length(nbit)
+            pofst = pdims[bi]
+            for (pid_i,pbit_i) in enumerate(pbits[bi])
+                tMi = idim + (pid_i-1)*ln
+                ri = pofst + pid_i
+                for (pid_j,pbit_j) in enumerate(pbits[bi])
+                    if pid_j <pid_i;continue;end
+                    tMj = idim + (pid_j-1)*ln
+                    rj = pofst + pid_j
+                    for nidx =1:ln
+                        Mi = tMi+nidx; Mj = tMj+nidx
+                        tmp = Rvec[Mi] .* Rvec[Mj]
+                        rho_p[ri,rj] += tmp
+                        if ri != rj;rho_p[rj,ri] = rho_p[ri,rj];end
+                    end
+                end
+            end
+        end
+        s = -tr( rho_p * log(rho_p) )
+        println("n= $n entropy $s")
+        if n == 1
+            for i = 1:pdim
+                print_vec("",rho_p[i,:])
+            end
+            #svd of rho_p
+            SVD = svd(rho_p)
+            U = SVD.U; Sig = Diagonal(SVD.S); Vt = SVD.Vt; V = Vt'
+            println("U")
+            for j = 1:pdim
+                print_vec("",U[j,:];long=false)
+            end 
+            println("Sig")
+            for j = 1:pdim
+                print_vec("",Sig[j,:];long=false)
+            end 
+            println("V")
+            for j = 1:pdim
+                print_vec("",V[j,:];long=false)
+            end 
+            println("")
+        end    
     end
     return nothing
 end

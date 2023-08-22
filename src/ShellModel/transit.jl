@@ -40,15 +40,19 @@ function tri_relation(ja,jb,jc)
     if abs(jc-ja) > jb ; TF=false;end
     return TF
 end
-    
-function init_ho_by_mass(A,ihwprm=1)
+
+"""
+Set HO parameter by an empirical formula.
+
+The default choice is 41A^(-1/3) MeV. For sd-shell nuclei (16<=A<=40), we use 45A^(-1/3)-25A^(-2/3) MeV by J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
+"""
+function init_ho_by_mass(A,hwprm=1)
     nmass = [938.27231, 939.56563]
     amass = (nmass[1]+nmass[2])/2
     hc = 197.32696
-    if ihwprm == 1 ## 41A^(-1/3) MeV
+    if hwprm == 1 ## 41A^(-1/3) MeV
         hw = 41.0 * (A^(-1.0/3.0))
-    elseif ihwprm == 2 ## 45A^(-1/3)-25A^(-2/3) MeV
-        #J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
+    elseif hwprm == 2 ## 
         hw = 45.0 * (A^(-1.0/3.0)) -25.0 * (A^(-2.0/3.0))
     end
     bpar = hc/sqrt(hw*amass)
@@ -75,11 +79,7 @@ function radius_power(k,n1,l1,n2,l2,bpar)
     return s 
 end
 
-function prep_obtr_diag(p_sps,n_sps,
-                        mstates_p,mstates_n,tdims,
-                        jocc_p,jocc_n,
-                        pbits,nbits,bpar,
-                        gfactors,eff_charge)
+function prep_obtr_diag(p_sps,n_sps, msps_p,msps_n,tdims,pbits,nbits,bpar,gfactors,eff_charge)
     ## Note that mu is in units of muN (= 0.105 efm)
     lp=length(p_sps); ln=length(n_sps); lblock = length(nbits)
     ec_p,ec_n = eff_charge
@@ -93,8 +93,8 @@ function prep_obtr_diag(p_sps,n_sps,
     pjumps_Q = op_E2[ ] 
     njumps_Q = op_E2[ ]
 
-    vec_p_ani = [ false for i=1:length(mstates_p)]
-    vec_p_cre = [ false for i=1:length(mstates_p)]
+    vec_p_ani = [ false for i=1:length(msps_p)]
+    vec_p_cre = [ false for i=1:length(msps_p)]
     ex_r2 = 0.0 ; coeff= 0.0
     for i=1:lp
         ni,li,ji,tzi = p_sps[i]
@@ -104,8 +104,8 @@ function prep_obtr_diag(p_sps,n_sps,
             l6j = wigner6j(Float64,lf,li,1, ji//2,jf//2,1//2)
             s6j = wigner6j(Float64,1//2,1//2,1,ji//2,jf//2,lf)
             Q3j = wigner3j(Float64,ji//2,2,jf//2,1//2,0,-1//2)
-            c,mc_s,mc_idxs = possible_mz(p_sps[i],mstates_p)
-            a,ma_s,ma_idxs = possible_mz(p_sps[f],mstates_p)
+            c,mc_s,mc_idxs = possible_mz(p_sps[i],msps_p)
+            a,ma_s,ma_idxs = possible_mz(p_sps[f],msps_p)
 
             for mode in ["M1", "E2"]
                 if mode == "M1" # selection rule
@@ -164,8 +164,8 @@ function prep_obtr_diag(p_sps,n_sps,
             end
         end
     end
-    vec_n_ani = [ false for i=1:length(mstates_n)]
-    vec_n_cre = [ false for i=1:length(mstates_n)]
+    vec_n_ani = [ false for i=1:length(msps_n)]
+    vec_n_cre = [ false for i=1:length(msps_n)]
     for i=1:ln
         ni,li,ji,tzi = n_sps[i]
         for f = i:ln
@@ -174,8 +174,8 @@ function prep_obtr_diag(p_sps,n_sps,
             l6j = wigner6j(Float64,lf,li,1,ji//2,jf//2,1//2)
             s6j = wigner6j(Float64,1//2,1//2,1,ji//2,jf//2,lf)
             Q3j = wigner3j(Float64,ji//2,2,jf//2,1//2,0,-1//2)
-            jc,mc_s,mc_idxs = possible_mz(n_sps[i],mstates_n)
-            ja,ma_s,ma_idxs = possible_mz(n_sps[f],mstates_n)
+            jc,mc_s,mc_idxs = possible_mz(n_sps[i],msps_n)
+            ja,ma_s,ma_idxs = possible_mz(n_sps[f],msps_n)
             for mode in ["M1", "E2"]
                 if mode == "M1"
                     if (ni !=nf || li != lf)
@@ -284,7 +284,7 @@ end
 
 
 function prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
-                           mstates_p,mstates_n,
+                           msps_p,msps_n,
                            jocc_p,jocc_n,                           
                            tdims_l,pbits_l,nbits_l,
                            tdims_r,pbits_r,nbits_r,
@@ -304,8 +304,8 @@ function prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
     pjumps_Q = op_E2_nd[ ]
     njumps_Q = op_E2_nd[ ]
 
-    vec_p_ani = [ false for i=1:length(mstates_p)]
-    vec_p_cre = [ false for i=1:length(mstates_p)]
+    vec_p_ani = [ false for i=1:length(msps_p)]
+    vec_p_cre = [ false for i=1:length(msps_p)]
     ex_r2 = 0.0 ; coeff= 0.0
     for i=1:lp
         ni,li,ji,tzi = p_sps[i]
@@ -315,8 +315,8 @@ function prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
             l6j = wigner6j(Float64,lf,li,1,ji//2,jf//2,1//2)
             s6j = wigner6j(Float64,1//2,1//2,1,ji//2,jf//2,lf)
             Q3j = wigner3j(Float64,ji//2,2,jf//2,1//2,0,-1//2)
-            c,mc_s,mc_idxs = possible_mz(p_sps[i],mstates_p)
-            a,ma_s,ma_idxs = possible_mz(p_sps[f],mstates_p)
+            c,mc_s,mc_idxs = possible_mz(p_sps[i],msps_p)
+            a,ma_s,ma_idxs = possible_mz(p_sps[f],msps_p)
             for mode in ["M1", "E2"]
                 if mode == "M1" # slection rule
                     if (ni !=nf || li != lf); continue;end
@@ -372,8 +372,8 @@ function prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
             end
         end
     end
-    vec_n_ani = [ false for i=1:length(mstates_n)]
-    vec_n_cre = [ false for i=1:length(mstates_n)]
+    vec_n_ani = [ false for i=1:length(msps_n)]
+    vec_n_cre = [ false for i=1:length(msps_n)]
     for i=1:ln
         ni,li,ji,tzi = n_sps[i]
         for f = 1:ln
@@ -382,8 +382,8 @@ function prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
             l6j = wigner6j(Float64,lf,li,1,ji//2,jf//2,1//2)
             s6j = wigner6j(Float64,1//2,1//2,1,ji//2,jf//2,lf)
             Q3j = wigner3j(Float64,ji//2,2,jf//2,1//2,0,-1//2)
-            jc,mc_s,mc_idxs = possible_mz(n_sps[i],mstates_n)
-            ja,ma_s,ma_idxs = possible_mz(n_sps[f],mstates_n)
+            jc,mc_s,mc_idxs = possible_mz(n_sps[i],msps_n)
+            ja,ma_s,ma_idxs = possible_mz(n_sps[f],msps_n)
             for mode in ["M1", "E2"]
                 if mode == "M1"
                     if (ni !=nf || li != lf);continue;end
@@ -535,11 +535,10 @@ function calc_bifs(Mps_l,Mns_l,Mtot_l,Mps_r,Mns_r,Mtot_r)
 end
 
 """
-    transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
-                 num_ev_l=100,num_ev_r=100,q=1,is_block=false,is_show=true,
-                 calc_EM=true,gfactors=[1.0,0.0,5.586,-3.826],eff_charge=[1.5,0.5])
+    transit_main(sntf,target_nuc,jl2,jr2,in_wfs;num_ev_l=100,num_ev_r=100,q=1,is_block=false,is_show=true,calc_EM=true,gfactors=[1.0,0.0,5.586,-3.826],eff_charge=[1.5,0.5])
 
-Calculate the M1&E2 transitions for two wavefunctions
+
+Function tocalculate the M1&E2 transitions from two given wavefunctions
 
 # Arguments
 - `sntf`:path to the interaction file
@@ -559,12 +558,7 @@ Calculate the M1&E2 transitions for two wavefunctions
 - `q=1`:block size
 - `is_block=false`:to use Block algorithm
 """
-function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
-                      num_ev_l=100,num_ev_r=100,
-                      q=1,is_block=false,is_show=true,
-                      calc_EM=true,
-                      gfactors=[1.0,0.0,5.586,-3.826],
-                      eff_charge=[1.5,0.5])
+function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;num_ev_l=100,num_ev_r=100,q=1,is_block=false,is_show=true,calc_EM=true,gfactors=[1.0,0.0,5.586,-3.826],eff_charge=[1.5,0.5])
     if length(in_wfs) == 0;println("input wfs must be specified");exit();end
     
     to = TimerOutput()
@@ -577,7 +571,7 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
 
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
-    mstates_p, mstates_n,mz_p,mz_n = def_mstates(p_sps,n_sps)
+    msps_p, msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
 
     widx = [1,2]
     if jl2 < jr2
@@ -585,12 +579,8 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
     end
     
     Mtot_l = jl2; Mtot_r = jr2
-    pbits_l,nbits_l,jocc_p,jocc_n,Mps_l,Mns_l,tdims_l = occ(p_sps,mstates_p,mz_p,vp,
-                                                            n_sps,mstates_n,mz_n,vn,
-                                                            Mtot_l)
-    pbits_r,nbits_r,jocc_p,jocc_n,Mps_r,Mns_r,tdims_r = occ(p_sps,mstates_p,mz_p,vp,
-                                                            n_sps,mstates_n,mz_n,vn,
-                                                            Mtot_r)
+    pbits_l,nbits_l,jocc_p,jocc_n,Mps_l,Mns_l,tdims_l = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot_l)
+    pbits_r,nbits_r,jocc_p,jocc_n,Mps_r,Mns_r,tdims_r = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot_r)
     mdim_l = tdims_l[end];   mdim_r = tdims_r[end]
     println("wfl: ",in_wfs[widx[1]])
     if in_wfs[widx[1]] != in_wfs[widx[2]]; println("wfr: ",in_wfs[widx[2]]);end
@@ -605,7 +595,7 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
     # operation of EM transition operators O|Phi>
     @timeit to "prep" begin
         op_p_mu,op_n_mu,op_p_Q,op_n_Q = prep_obtr_nondiag(jl2,jr2,p_sps,n_sps,
-                                                          mstates_p,mstates_n,
+                                                          msps_p,msps_n,
                                                           jocc_p,jocc_n,
                                                           tdims_l,pbits_l,nbits_l,
                                                           tdims_r,pbits_r,nbits_r,
@@ -706,23 +696,16 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;
     return nothing
 end
 
-function eval_moment(Mtot,Rvecs,totJs,
-                     p_sps,n_sps,
-                     mstates_p,mstates_n,tdims,
-                     jocc_p,jocc_n,pbits,nbits,bpar,
-                     gfactors,eff_charge)
+function eval_moment(Mtot,Rvecs,totJs,p_sps,n_sps,msps_p,msps_n,tdims,jocc_p,jocc_n,pbits,nbits,bpar,gfactors,eff_charge)
     mdim = tdims[end]
     c_mom_mu = sqrt(4.0*pi/3.0)
     c_mom_Q = sqrt(16.0*pi/5.0)        
-    op_p_mu,op_n_mu,op_p_Q,op_n_Q = prep_obtr_diag(p_sps,n_sps,
-                                                   mstates_p,mstates_n,
-                                                   tdims,jocc_p,jocc_n,
-                                                   pbits,nbits,bpar,
-                                                   gfactors,eff_charge)
+    op_p_mu,op_n_mu,op_p_Q,op_n_Q = prep_obtr_diag(p_sps,n_sps,msps_p,msps_n,tdims,pbits,nbits,bpar,gfactors,eff_charge)
     tx_mom = ""
     twf1 = zeros(Float64,mdim)
     twf2 = zeros(Float64,mdim)
     Mi = Mtot//2; Mf = Mtot//2
+    if -1 in totJs; println("");@warn "J=-1 states are to be skipped in eval_moment";end
     for (nth,wf) in enumerate(Rvecs)
         twf1 .= 0.0 ; twf2 .= 0.0
         # for M1
@@ -732,15 +715,17 @@ function eval_moment(Mtot,Rvecs,totJs,
         p_oprts = op_p_Q;  n_oprts = op_n_Q
         op_obtr_diag(p_oprts,n_oprts,pbits,nbits,tdims,wf,twf2)
         
-        Ji = Int(2*totJs[nth]) // 2; 
+        Ji = Int(2*totJs[nth]) // 2
+        if Ji < 0;continue;end
         for np = nth:length(Rvecs)
             tx = ""
             wf_l = Rvecs[np]
             Jf = Int(2*totJs[np])//2
+            if Jf < 0;continue;end
             lam = 1
             omu = div(Mf-Mi,2)
             sel = wigner3j(Float64,Jf,lam,Ji,-Mf,omu,Mi)
-            if sel != 0
+            if sel != 0.0
                 signmu = (-1)^(Jf-Mf)
                 cg = wigner3j(Float64,Ji,lam,Jf,-Ji,omu,Jf) / sel
                 if np ==nth

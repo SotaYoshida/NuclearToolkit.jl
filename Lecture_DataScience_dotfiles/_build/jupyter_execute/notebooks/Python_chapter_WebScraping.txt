@@ -1,0 +1,96 @@
+import requests
+import json
+import datetime
+import matplotlib.pyplot as plt
+!pip install japanize-matplotlib 
+import japanize_matplotlib 
+
+url = "https://raw.githubusercontent.com/tokyo-metropolitan-gov/covid19/development/data/data.json"
+response = requests.get(url)
+data = response.json()
+
+data.keys()
+
+type(data['patients_summary'])
+
+data['patients_summary'].keys()
+
+data['patients_summary']["data"][0]
+
+#　"2022-01-01"のような文字列をdatetimeに変換する関数
+def str_to_dt(tstr):
+    tdatetime = datetime.datetime.strptime(tstr, '%Y-%m-%d')
+    tdate = datetime.date(tdatetime.year, tdatetime.month, tdatetime.day)
+    return tdate
+    
+tdat = data['patients_summary']["data"]
+N = len(tdat)
+tdat = data['patients_summary']["data"]
+dates = [ str_to_dt(tdat[i]["日付"].split("T")[0]) for i in range(N)]
+num_patients = [ tdat[i]['小計'] for i in range(N)]
+print(dates)
+print(num_patients)
+
+fig = plt.figure(figsize=(15,4))
+plt.title("東京都")
+plt.xlabel("日付")
+plt.ylabel("陽性者数[人]")
+plt.plot(dates,num_patients, color="green")
+plt.show()
+plt.close()
+
+!pip install pandas-estat
+import pandas as pd
+## import pandas_estat 
+# 以降では、pandas_estat内の関数は個別にimportすることにする (そうすると短い名前で使える)
+#実行時の依存関係のエラーは当面問題ない(はず)
+
+from pandas_estat import set_appid
+appID = "honyahonya" # 引用符内を準備1で発行したappidに置き換える
+set_appid(appID) 
+
+from pandas_estat import read_statslist
+statslist = read_statslist("00200544")  # サービス産業動向調査
+statslist
+
+print(statslist.columns)
+
+statslist = statslist[statslist.CYCLE == "月次"] 
+
+statslist[["TABLE_INF", "TITLE"]]
+
+from pandas_estat import read_statsdata 
+df = read_statsdata("0003191203")  
+df
+
+df.columns
+
+set(df["事業活動の産業"])
+
+ndf = df[df["事業活動の産業"] == "42鉄道業"] #dfの中の、"事業活動の産業欄が"42鉄道業"のものを抽出し、ndfと名前をつける
+
+ndf = ndf[ndf["時間軸（月次）"].str.endswith("月")]
+ndf["時間軸（月次）"] = pd.to_datetime(ndf["時間軸（月次）"], format="%Y年%m月")
+ndf = ndf.sort_values("時間軸（月次）")
+
+#必要なところだけ抽出すると...
+ndf[["時間軸（月次）", "value", "unit"]]
+
+import matplotlib.pyplot as plt
+!pip install japanize-matplotlib 
+import japanize_matplotlib 
+import matplotlib.dates as mdates
+
+x = ndf["時間軸（月次）"].values
+y = ndf["value"].values.astype(float) * 1.e-2  # XX億円に換算
+
+fig = plt.figure(figsize=(30, 4))
+ax = fig.add_subplot(111)  
+ax.set_facecolor("#e0e0e0")
+ax.set_ylabel("鉄道業の収益 [億円]")
+ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=range(1, 13, 4)))
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y/%m"))
+ax.grid(True,axis="both",color="w", linestyle="dotted", linewidth=0.8)
+ax.plot(x,y,marker="o",color="green")
+plt.show()
+plt.close()

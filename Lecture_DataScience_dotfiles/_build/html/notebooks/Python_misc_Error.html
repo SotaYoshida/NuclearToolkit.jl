@@ -1,0 +1,837 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>よくあるエラー集 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pythonの環境構築" href="Python_misc_python_environment.html" />
+    <link rel="prev" title="8. ファイル・文字列操作" href="Python_chapter8_handling_files.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_misc_Error.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_misc_Error.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_Error.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id2">
+   構文エラー
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id3">
+   ランタイムエラー
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id4">
+   論理エラー
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_Error.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="id1">
+<h1>よくあるエラー集<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>このノートブックにはPythonを触っていてよく起こりがちなエラーの例をまとめます.<br />
+<strong>皆さんの手元で起こったエラーの例も共有したいので、ぜひ教えてください</strong></p>
+<p>エラーには、いろいろな分類の仕方がありますが代表的なものは以下のとおりです:</p>
+<ul class="simple">
+<li><p>構文エラー (syntax error)</p></li>
+<li><p>ランタイムエラー (runtime error) または 例外 (exception)</p></li>
+<li><p>論理エラー (logic error)</p></li>
+</ul>
+<p>これらの代表的な例を以下で紹介します。</p>
+<p>pythonのようなインタプリタ言語では、実行時にコードの有効性が検証されるため、構文エラーはランタイムエラーとも言えますが、エラーメッセージに従って分類することにします。</p>
+<div class="section" id="id2">
+<h2>構文エラー<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>構文エラーとは、プログラミング言語の文法・構文規則に違反していることによるエラーです。<br />
+代表的なものは</p>
+<ul class="simple">
+<li><p>括弧や引用符の閉じ忘れ</p></li>
+<li><p>コロンのつけ忘れ</p></li>
+<li><p>ピリオドとカンマの間違い</p></li>
+<li><p>全角記号の使用</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">=</span></code>(代入)と<code class="docutils literal notranslate"><span class="pre">==</span></code>(等号)の混同</p></li>
+<li><p>不適切なインデント</p></li>
+</ul>
+<p>などがあります。</p>
+<p><strong>引用符のつけ忘れ</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World)  </span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-3-69ef97eb7c7b&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World)</span>
+                       <span class="o">^</span>
+<span class="ne">SyntaxError</span>: EOL while scanning string literal
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>括弧の閉じ忘れ</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World&quot;</span> 
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-4-f5966400ee35&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World&quot;</span>
+                       <span class="o">^</span>
+<span class="ne">SyntaxError</span>: unexpected EOF while parsing
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>ピリオドとカンマの間違い</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.2</span><span class="o">.</span> <span class="mf">3.14</span><span class="p">]</span> <span class="c1"># ほんとはa = [2.2, 3.14]のつもり</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-10-523925042166&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.2</span><span class="o">.</span> <span class="mf">3.14</span><span class="p">]</span> <span class="c1"># ほんとはa = [2.2, 3.14]のつもり</span>
+                 <span class="o">^</span>
+<span class="ne">SyntaxError</span>: invalid syntax
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>コロンのつけ忘れ</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-31-47dfaf615d55&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+<span class="nn">    for i</span> in <span class="ni">range</span><span class="nt">(2)</span>
+                     <span class="o">^</span>
+<span class="ne">SyntaxError</span>: invalid syntax
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>全角記号の使用</strong></p>
+<p>これは見た目では気が付きづらいので、<strong>”invalid character”というSyntaxErrorが出たときは、全角を疑う</strong>というのもおすすめです。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span><span class="o">+</span><span class="mi">１</span>　<span class="c1">#後ろの1が全角になっている</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-14-0b97842722b1&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+<span class="g g-Whitespace">    </span><span class="mi">1</span><span class="o">+</span><span class="mi">１</span>　<span class="c1">#後ろの1が全角になっている</span>
+       <span class="o">^</span>
+<span class="ne">SyntaxError</span>: invalid character in identifier
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>1＋2 #　和記号+が全角になっている
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span>  File &quot;&lt;ipython-input-15-729b19eacfc2&gt;&quot;, line 1
+    1＋2
+      ^
+SyntaxError: invalid character in identifier
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">+</span> <span class="mi">1</span> <span class="c1">#これはOK</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">+</span>　<span class="mi">1</span> <span class="c1">#+と後ろの1の間に全角スペースが入っている</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-17-6a1d737d6e97&gt;&quot;</span><span class="gt">, line </span><span class="mi">1</span>
+<span class="g g-Whitespace">    </span><span class="mi">1</span> <span class="o">+</span>　<span class="mi">1</span>
+       　<span class="o">^</span>
+<span class="ne">SyntaxError</span>: invalid character in identifier
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>=(代入)と==(等号)の混同</strong></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">b</span> <span class="o">=</span> <span class="mf">3.0</span>
+<span class="k">if</span> <span class="n">a</span> <span class="o">=</span> <span class="n">b</span> <span class="p">:</span>  <span class="c1">#ほんとは==のつもり</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a equal b!!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-19-b667755dbee2&gt;&quot;</span><span class="gt">, line </span><span class="mi">3</span>
+    <span class="k">if</span> <span class="n">a</span> <span class="o">=</span> <span class="n">b</span> <span class="p">:</span>  <span class="c1">#ほんとは==のつもり</span>
+         <span class="o">^</span>
+<span class="ne">SyntaxError</span>: invalid syntax
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>不適切なインデント</strong></p>
+<p>下のコードは[予期しないインデント]というエラーがでる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> 
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span> <span class="c1">## この行と次の行のブロックが不要にインデントされている</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">  File</span><span class="nn"> &quot;&lt;ipython-input-39-47c8681c99ab&gt;&quot;</span><span class="gt">, line </span><span class="mi">3</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="o">^</span>
+<span class="ne">IndentationError</span>: unexpected indent
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>ランタイムエラー<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>ランタイムエラーとは、<br />
+書き方そのものはPythonの文法的に誤りではないものの、<br />
+実際にコードを実行するとエラーになってしまうものを指します。</p>
+<p>非常に多岐に渡りますが、代表的なものとしては、</p>
+<ul class="simple">
+<li><p>範囲外参照</p></li>
+<li><p>定義されていない変数の参照</p></li>
+<li><p>意図しない変数の型に対する演算</p></li>
+<li><p>0除算</p></li>
+</ul>
+<p>などがあります。</p>
+<p><strong>範囲外参照</strong></p>
+<p>要素が2つしかないリストの３番目の要素にアクセスしようとすると、
+当然エラーが出ます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;いちご&quot;</span><span class="p">,</span> <span class="s2">&quot;りんご&quot;</span><span class="p">]</span>
+<span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">IndexError</span><span class="g g-Whitespace">                                </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-27-322d2d1c6a18&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="g g-Whitespace">      </span><span class="mi">1</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;いちご&quot;</span><span class="p">,</span> <span class="s2">&quot;りんご&quot;</span><span class="p">]</span>
+<span class="ne">----&gt; </span><span class="mi">2</span> <span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="ne">IndexError</span>: list index out of range
+</pre></div>
+</div>
+</div>
+</div>
+<p>関数の定義域を超えて引数に入れるのもダメです</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">math</span> 
+<span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">ValueError</span><span class="g g-Whitespace">                                </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-34-f2bde18f41de&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="g g-Whitespace">      </span><span class="mi">1</span> <span class="kn">import</span> <span class="nn">math</span>
+<span class="ne">----&gt; </span><span class="mi">2</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+<span class="ne">ValueError</span>: math domain error
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>定義されていない変数の参照</strong></p>
+<p>当然、定義されていない変数を使うとエラーが起こります</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-35-55a60ae9504f&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="nb">print</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+
+<span class="ne">NameError</span>: name &#39;num&#39; is not defined
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>ノートブック特有の注意点</strong></p>
+<p>作業途中に定義していた変数がメモリに残っていて、そのおかげで動いているが、
+後日作業を再開した際(新しいセッションで実行したとき)にその変数が未定義となり動かなくなる。
+といったことも稀に起こります。
+とくに、セルを跨いで実行したりするノートブックの編集・実行においては、よく起こるミスです。
+こうしたエラーを避けるには、適宜ランタイムやカーネルなどを再起動して、
+新しいセッションで実行できるか確認するなどの対策が必要です。</p>
+<p>打ち間違いにも注意です</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;sample_file.txt&quot;</span>
+<span class="nb">print</span><span class="p">(</span> <span class="n">imput</span> <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-28-c91f1af649c8&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="g g-Whitespace">      </span><span class="mi">1</span> <span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;sample_file.txt&quot;</span>
+<span class="ne">----&gt; </span><span class="mi">2</span> <span class="nb">print</span><span class="p">(</span> <span class="n">imput</span> <span class="p">)</span>
+
+<span class="ne">NameError</span>: name &#39;imput&#39; is not defined
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>意図しない演算</strong></p>
+<p>数値と数値の足し算は出来ますが、
+数値と文字のように型が異なる変数を足すことはできません。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;私は&quot;</span><span class="o">+</span> <span class="mi">200</span> <span class="o">+</span> <span class="s2">&quot;歳です&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-29-bcf55d6c5ba0&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="s2">&quot;私は&quot;</span><span class="o">+</span> <span class="mi">200</span> <span class="o">+</span> <span class="s2">&quot;歳です&quot;</span>
+
+<span class="ne">TypeError</span>: must be str, not int
+</pre></div>
+</div>
+</div>
+</div>
+<p>和に限らず”演算”は一般に特定の型(同士)のみに定義されています。</p>
+<p>また、リスト等の要素にアクセスするのに、<br />
+角括弧と間違えて丸括弧を使うミスもよく見られます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c1">#これはOK</span>
+<span class="n">a</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#これはNG</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-2-c7fb72a99bc6&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="g g-Whitespace">      </span><span class="mi">1</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="g g-Whitespace">      </span><span class="mi">2</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c1">#これはOK</span>
+<span class="ne">----&gt; </span><span class="mi">3</span> <span class="n">a</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#これはNG</span>
+
+<span class="ne">TypeError</span>: &#39;list&#39; object is not callable
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>0除算</strong></p>
+<p>0で割ることはできません</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">300</span><span class="o">/</span> <span class="mi">0</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">ZeroDivisionError</span><span class="g g-Whitespace">                         </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-32-a287468d4b9b&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="mi">300</span><span class="o">/</span> <span class="mi">0</span>
+
+<span class="ne">ZeroDivisionError</span>: division by zero
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id4">
+<h2>論理エラー<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>論理エラーとは、文法的にもOK(syntax errorなし)で、ランタイムエラーも無く、最後までプログラムが実行されるが、「意図した通りに動かない」というものを指します。</p>
+<p>たとえば「aが負かつ正なら文字列を表示する」という以下のコードは、論理的にはおかしい命令ですが、構文エラーにもランタイムエラーにもなりません</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="k">if</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">and</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span> 
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;aは正かつ負です!!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>人間側のエラーとも言えそうですね。<br />
+第1章で説明したように、print文を使ったりしながらこうした論理エラーが無いか調べることもときに必要です。</p>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_chapter8_handling_files.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title"><span class="section-number">8. </span>ファイル・文字列操作</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_python_environment.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Pythonの環境構築</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

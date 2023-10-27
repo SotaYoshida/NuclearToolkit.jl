@@ -1,0 +1,676 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ベイズ線形回帰 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="StyleGAN3+CLIPによる写真生成" href="Python_misc_StyleGAN3.html" />
+    <link rel="prev" title="ベイズ最適化による実験計画法" href="Python_chapter_BayesianOptimization.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_chapter_Bayesian_linear_regression.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_chapter_Bayesian_linear_regression.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter_Bayesian_linear_regression.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id2">
+   線形回帰 (多項式回帰の例)
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#l2">
+     L2正則化項がある場合への拡張
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id3">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id4">
+   ブートストラップ法
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter_Bayesian_linear_regression.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="id1">
+<h1>ベイズ線形回帰<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id2">
+<h2>線形回帰 (多項式回帰の例)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>線形回帰モデル:<br />
+<span class="math notranslate nohighlight">\(y({\bf x},{\bf w})= \sum^{M-1}_{j=0} w_j \phi_j({\bf x}) = {\bf w}^T\boldsymbol{\phi}({\bf x})\)</span>を考える。</p>
+<p>ここで<span class="math notranslate nohighlight">\(\boldsymbol{\phi}\)</span>は基底関数のベクトルで、
+<span class="math notranslate nohighlight">\(p\)</span>次の多項式回帰の場合は<span class="math notranslate nohighlight">\(\boldsymbol{\phi}=(1, x, x^2, \ldots, x^p)\)</span>といった感じ。</p>
+<p>実際この場合にベクトルの内積を書き下すと
+<span class="math notranslate nohighlight">\({\bf w}^T\boldsymbol{\phi}=w_0 + w_1x+ w_2x^2+ \cdots + w_{p}x^p\)</span>となり、
+<span class="math notranslate nohighlight">\(p\)</span>次多項式になっている。</p>
+<p>さて目標変数<span class="math notranslate nohighlight">\(t\)</span>が、決定論的な関数<span class="math notranslate nohighlight">\(y({\bf x},{\bf w})\)</span>と平均0,精度<span class="math notranslate nohighlight">\(\beta\equiv 1/\sigma^2\)</span>の誤差<span class="math notranslate nohighlight">\(\epsilon\)</span>の和:  <span class="math notranslate nohighlight">\(t=y({\bf x},{\bf w})+\epsilon\)</span>で与えられていると仮定する。</p>
+<p>つまり、<span class="math notranslate nohighlight">\(t\)</span>の確率分布が
+<span class="math notranslate nohighlight">\(p(t|{\bf x},{\bf w},\beta) = \mathcal{N}(t|y({\bf x},{\bf w}),\beta^{-1})\)</span>で与えられるとする。</p>
+<p>入力<span class="math notranslate nohighlight">\(\boldsymbol{\mathrm{X}}=\{{\bf x_1},{\bf x_2},\ldots, {\bf x_N}\}\)</span>と、
+対応する目標値を<span class="math notranslate nohighlight">\(\boldsymbol{\mathrm{t}}=\{t_1,t_2,\ldots, t_N\}\)</span>と表すことにしておこう。</p>
+<p>これらのデータ点が上の分布<span class="math notranslate nohighlight">\(p(t|{\bf x},{\bf w},\beta)\)</span>から独立に生成されたと仮定すると、<br />
+データの目標変数についての確率分布は<span class="math notranslate nohighlight">\(p(\boldsymbol{\mathrm{t}}|\boldsymbol{\mathrm{X}},{\bf w},\beta) = \prod^N_{n=1} \mathcal{N}(t_n|{\bf w}^T \boldsymbol{\phi}({\bf x_n}) ,\beta^{-1})\)</span>で与えられる。<br />
+(以下では、確率分布の条件部分にある<span class="math notranslate nohighlight">\({\bf x}\)</span>などを適宜省略する)</p>
+<p>このとき、対数尤度は
+<span class="math notranslate nohighlight">\(\ln p(\boldsymbol{\mathrm{t}}|{\bf w},\beta) = \sum^N_{n=1} \ln \mathcal{N}(t_n|{\bf w}^T\boldsymbol{\phi}({\bf x_n}) ,\beta^{-1}) = \frac{N}{2}\ln\beta - \frac{N}{2}\ln(2\pi) -\beta E_D({\bf w})\)</span>となる。</p>
+<p>なお<span class="math notranslate nohighlight">\(E_D\)</span>は二乗和誤差関数:
+<span class="math notranslate nohighlight">\(E_D({\bf w}) \equiv \frac{1}{2}\sum^N_{n=1} \{ t_n- {\bf w}^T \boldsymbol{\phi}({\bf x_n})  \}\)</span>
+である。</p>
+<p>対数尤度の勾配を書き下して、最尤推定を考えるとすると<span class="math notranslate nohighlight">\(\nabla \ln p(\boldsymbol{\mathrm{t}}|{\bf w},\beta) = \beta \sum^N_{n=1} \{ t_n -{\bf w}^T \boldsymbol{\phi}({\bf x_n}) \} \boldsymbol{\phi}({\bf x_n})^T \)</span>の根が必要。</p>
+<p>つまり<span class="math notranslate nohighlight">\(0= \sum^N_{n=1} t_n \boldsymbol{\phi}({\bf x_n})^T - {\bf w}^T(\sum^N_{n=1}\boldsymbol{\phi}({\bf x_n})\boldsymbol{\phi}({\bf x_n})^T)\)</span>をときたい。</p>
+<p>上の式を変形すると<span class="math notranslate nohighlight">\({\bf w} = ( \boldsymbol{\Phi}^T\boldsymbol{\Phi}  )^{-1} \boldsymbol{\Phi}^T \boldsymbol{\mathrm{t}}\)</span>が根であることがわかる。<br />
+つまり、最尤推定を与えるパラメータ<span class="math notranslate nohighlight">\({\bf w}_{ML}\)</span>は、計画行列<span class="math notranslate nohighlight">\(\boldsymbol{\Phi}\)</span>を用いて閉じた形で与えられる。</p>
+<p>なお、計画行列の要素は
+<span class="math notranslate nohighlight">\(\boldsymbol{\Phi}_{nj} = \phi_j({\bf x_n})\)</span>で与えられる。</p>
+<hr class="docutils" />
+<p>次の１次元擬似データの回帰を考えてみる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1">## データ点の生成</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">6.0</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">beta</span> <span class="o">=</span> <span class="mf">1.e+2</span>
+<span class="n">xt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">yt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">xt</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">1.0</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">beta</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xt</span><span class="p">))])</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">axs</span> <span class="o">=</span> <span class="p">[</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)]</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span><span class="n">yt</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_chapter_Bayesian_linear_regression_4_0.png" src="../_images/Python_chapter_Bayesian_linear_regression_4_0.png" />
+</div>
+</div>
+<p>これを,numpyモジュールの多項式fit関数と、上の計画行列によって3次式で回帰してみると…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xt</span><span class="p">)</span>
+
+<span class="c1">##　多項式の次元を固定しておく</span>
+<span class="n">p</span><span class="o">=</span><span class="mi">3</span>
+
+<span class="c1">##numpyのfit</span>
+<span class="n">yp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">yt</span><span class="p">,</span> <span class="n">p</span><span class="p">))(</span><span class="n">x</span><span class="p">)</span> 
+
+<span class="c1">## 計画行列を用いる方法</span>
+<span class="k">def</span> <span class="nf">phi</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">p</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="n">x</span><span class="o">**</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span>
+<span class="n">Phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span><span class="n">p</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">xn</span> <span class="o">=</span> <span class="n">xt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">phi</span><span class="p">(</span><span class="n">xn</span><span class="p">,</span><span class="n">p</span><span class="p">)</span> 
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">Phi</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+<span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span><span class="n">Phi</span><span class="p">))</span>
+<span class="n">wML</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span><span class="n">yt</span><span class="p">))</span>
+<span class="n">yD</span> <span class="o">=</span> <span class="p">[</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">wML</span><span class="p">,</span><span class="n">phi</span><span class="p">(</span><span class="n">xn</span><span class="p">,</span><span class="n">p</span><span class="p">))</span> <span class="k">for</span> <span class="n">xn</span> <span class="ow">in</span> <span class="n">x</span> <span class="p">]</span>
+
+<span class="c1">#図のplot</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">axs</span> <span class="o">=</span> <span class="p">[</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">121</span><span class="p">),</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">122</span><span class="p">)]</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span><span class="n">yt</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">yp</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;np.polyfit&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">yD</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;DMat&quot;</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;dotted&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">yp</span><span class="o">-</span><span class="n">yD</span><span class="p">)))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.6/dist-packages/ipykernel_launcher.py:30: RuntimeWarning: divide by zero encountered in log10
+</pre></div>
+</div>
+<img alt="../_images/Python_chapter_Bayesian_linear_regression_6_1.png" src="../_images/Python_chapter_Bayesian_linear_regression_6_1.png" />
+</div>
+</div>
+<p>となり、ライブラリの出力と計画行列を用いた最尤推定の結果とが<br />
+ピッタリ(ざっくり14桁程度)一致していることがわかる。</p>
+<p>マニアックな注: np.polyfitもおそらく計画行列を用いて定義されているはず。<br />
+numpyの中身を見てないので不正確かもしれませんが、<br />
+僅かな答えの差は、逆行列計算に由来するものではないかと想像します。</p>
+<div class="section" id="l2">
+<h3>L2正則化項がある場合への拡張<a class="headerlink" href="#l2" title="Permalink to this headline">¶</a></h3>
+<p>二乗和誤差関数に、L2正則化項を入れた場合:
+<span class="math notranslate nohighlight">\(\frac{1}{2}\sum^N_{n=1} \{ t_n- {\bf w}^T \boldsymbol{\phi}({\bf x_n})  \} + \frac{\lambda}{2} {\bf w}^T{\bf w}\)</span>
+に拡張してみよう。</p>
+<p>上と同様に勾配を計算すると、最尤推定を与えるパラメータ<span class="math notranslate nohighlight">\({\bf w}\)</span>は
+<span class="math notranslate nohighlight">\({\bf w}_{ML,L2} = (\lambda I + \boldsymbol{\Phi}^T\boldsymbol{\Phi}  )^{-1} \boldsymbol{\Phi}^T \boldsymbol{\mathrm{t}}\)</span><br />
+(つまり計画行列に単位行列を足すだけ)となる。</p>
+<p>(対数尤度が<span class="math notranslate nohighlight">\(|w|^2\)</span>に比例することからほとんど自明だが)<br />
+あとで示すように「L2正則化を課すこと」は、パラメータのベイズ的取り扱いにおいて<br />
+「事前分布にガウス分布を仮定すること」と等価である。</p>
+</div>
+</div>
+<div class="section" id="id3">
+<h2>ベイズ線形回帰<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>次に、パラメータ<span class="math notranslate nohighlight">\({\bf w}\)</span>をベイズ的に取り扱う事を考える。</p>
+<p>このノートでいう[ベイズ的]とはせいぜい「パラメータを点推定する立場より有限の幅をもつ確率分布としてパラメータを考える」という程度の意味である。</p>
+<p>パラメータ<span class="math notranslate nohighlight">\({\bf w}\)</span>が、平均<span class="math notranslate nohighlight">\(\boldsymbol{\mu}\)</span>,共分散<span class="math notranslate nohighlight">\(\boldsymbol{\Sigma}\)</span>で指定される多次元の正規分布に従うと仮定する: <span class="math notranslate nohighlight">\({\bf w} \sim \mathcal{N}(\boldsymbol{\mu},\boldsymbol{\Sigma})\)</span></p>
+<p>このとき、パラメータの事後分布は<span class="math notranslate nohighlight">\(p({\bf w}|\boldsymbol{\mathcal{t}}) = \mathcal{N}(\tilde{\boldsymbol{\mu}},\tilde{\boldsymbol{\Sigma}})\)</span>で与えられる。</p>
+<p>ここで事後分布の平均および共分散は以下のとおりである:<br />
+<span class="math notranslate nohighlight">\(\tilde{\boldsymbol{\Sigma}}^{-1} =\boldsymbol{\Sigma}^{-1}+\beta\boldsymbol{\Phi}^T \boldsymbol{\Phi},
+\tilde{\boldsymbol{\mu}}= \tilde{\boldsymbol{\Sigma}} (\boldsymbol{\Sigma} \boldsymbol{\mu} + \beta \boldsymbol{\Phi}^T \boldsymbol{\mathcal{t}})\)</span></p>
+<p>…</p>
+<p>ここで簡単のため事前分布をさらに簡略化しよう。<br />
+事前分布の平均<span class="math notranslate nohighlight">\(\boldsymbol{\mu}\)</span>が<span class="math notranslate nohighlight">\(0\)</span>(ベクトル)かつ、<br />
+パラメータの事前分布の共分散が対角的(独立な分散をもつ)でなおかつ値が同じ,<br />
+つまり、上の<span class="math notranslate nohighlight">\(\boldsymbol{\Sigma}=\alpha^{-1}I\)</span>とかける場合を考える。</p>
+<p>このとき、事後分布の平均および共分散は以下のように簡略化される:<br />
+<span class="math notranslate nohighlight">\(\tilde{\boldsymbol{\Sigma}}^{-1} =\alpha I +\beta\boldsymbol{\Phi}^T \boldsymbol{\Phi}\)</span><br />
+<span class="math notranslate nohighlight">\(\tilde{\boldsymbol{\mu}}=  \beta \tilde{\boldsymbol{\Sigma}} \boldsymbol{\Phi}^T \boldsymbol{\mathcal{t}}\)</span></p>
+<p>この条件のもとで対数事後確率(log posterior)は<br />
+<span class="math notranslate nohighlight">\(\ln p({\bf w}|\boldsymbol{\mathrm{t}}) = -\frac{\beta}{2}\sum^N_{n=1} \{t_n - {\bf w}^T \phi(x_n) \}^2 -\frac{\alpha}{2} {\bf w}^T{\bf w} + \)</span> (正規分布の係数からくるオマケの定数)となる。</p>
+<p>したがって正規分布で与えられる事前分布のもとでパラメータ<span class="math notranslate nohighlight">\({\bf w}\)</span>の事後分布を最大化することは、<br />
+L2正則化項がある場合の誤差関数の最小化と(<span class="math notranslate nohighlight">\(\lambda=\beta/\alpha\)</span>とすれば)等価であることがわかる。</p>
+<p>実用上は<span class="math notranslate nohighlight">\({\bf w}\)</span>の分布を考えたあと、それを予測値の分布として伝播させる必要がある。</p>
+<p>一般に予測分布を評価する際は、サンプリング法などが必要になるが、”性質の良い”確率分布を用いる場合は、予測分布も閉じた形で書き下すことができる。<br />
+実際、今の場合は予測分布も正規分布になる.</p>
+<p>未知の点<span class="math notranslate nohighlight">\(x^*\)</span>での値を<span class="math notranslate nohighlight">\(t^*\)</span>と書くことにすると、</p>
+<p><span class="math notranslate nohighlight">\(p(t^*|\boldsymbol{\mathrm{t}},\alpha,\beta) =
+\int p(t|{\bf w},\beta) p({\bf w}|\boldsymbol{\mathrm{t}},\alpha,\beta) d{\bf w} \)</span></p>
+<p>今の場合、ガウス分布の性質から、
+予測分布は以下で与えられる:<br />
+<span class="math notranslate nohighlight">\(p(t^*|{\bf x},\boldsymbol{\mathrm{t}},\alpha,\beta) = \mathcal{N}(t^*|\tilde{\boldsymbol{\mu}}^T\boldsymbol{\phi}({\bf x}),\sigma^2_N({\bf x}))\)</span></p>
+<p>ここで、予測分布の分散は<span class="math notranslate nohighlight">\(\sigma^2_N({\bf x})= \frac{1}{\beta}+\boldsymbol{\phi}({\bf x})^T \tilde{\boldsymbol{\Sigma}}\boldsymbol{\phi}({\bf x}) \)</span></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## alpha(事前分布の精度=分散の逆数)は決め打ちとする</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">1.e-5</span> <span class="c1">#精度が小さい=分散が大きい=パラメータの事前知識が&quot;弱い&quot;</span>
+
+<span class="c1">## wの事後分布の計算</span>
+<span class="n">I</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="mf">1.0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span>
+<span class="n">Sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">I</span> <span class="o">+</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Phi</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">mu</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Sigma</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span><span class="n">yt</span><span class="p">))</span>
+
+<span class="c1">## 予測値(その分散)のリストを作成</span>
+<span class="n">y_BLR</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">x</span> <span class="p">:</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">phi</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+    <span class="n">mu_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">tmp</span><span class="p">)</span>    
+    <span class="n">term1</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="n">beta</span>
+    <span class="n">term2</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Sigma</span><span class="p">,</span><span class="n">tmp</span><span class="p">))</span>
+    <span class="n">sigma_p</span> <span class="o">=</span> <span class="n">term1</span> <span class="o">+</span> <span class="n">term2</span> 
+    <span class="c1">#print(&quot;term1&quot;, term1, &quot;term2&quot;, term2)</span>
+    <span class="n">y_BLR</span> <span class="o">+=</span> <span class="p">[</span> <span class="p">[</span><span class="n">mu_p</span><span class="p">,</span> <span class="n">sigma_p</span><span class="p">]</span> <span class="p">]</span>
+<span class="n">y_BLR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y_BLR</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1">## plot</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">axs</span> <span class="o">=</span> <span class="p">[</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)]</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span><span class="n">yt</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">yD</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Maximum Likelihood&quot;</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;dotted&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Mean&quot;</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;dashed&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;1sigma&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">3</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_BLR</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;3sigma&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_chapter_Bayesian_linear_regression_12_0.png" src="../_images/Python_chapter_Bayesian_linear_regression_12_0.png" />
+</div>
+</div>
+<p>パラメータの広がりが予測に伝搬され、<br />
+データが無いところで予測が不確かになっていることが見て取れる。</p>
+<p>注) 上では、データの精度<span class="math notranslate nohighlight">\(\beta\)</span>(分散の逆数)や、パラメータ<span class="math notranslate nohighlight">\({\bf w}\)</span>の精度<span class="math notranslate nohighlight">\(\alpha\)</span>を既知とした。<br />
+実際には、<span class="math notranslate nohighlight">\(\beta\)</span>そのものがわからなかったりする。</p>
+<p>(編集予定)</p>
+</div>
+<div class="section" id="id4">
+<h2>ブートストラップ法<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_chapter_BayesianOptimization.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">ベイズ最適化による実験計画法</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_StyleGAN3.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">StyleGAN3+CLIPによる写真生成</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

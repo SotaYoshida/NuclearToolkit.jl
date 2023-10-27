@@ -1,0 +1,956 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>6. 相関・回帰分析 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 最適化問題の基礎" href="Python_chapter7_Optimization.html" />
+    <link rel="prev" title="5. 確率と疑似乱数" href="Python_chapter5_Probability.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_chapter6_Regression.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_chapter6_Regression.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter6_Regression.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id2">
+   6.1. 相関分析 (復習)
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id3">
+     6.1.1. 相関分析と因果関係
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id4">
+   6.2. 回帰分析
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#polyfit-poly1d">
+     6.2.1. polyfit/poly1d関数
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#clubsuit">
+     6.2.2.
+     <span class="math notranslate nohighlight">
+      \(\clubsuit\)
+     </span>
+     モデルの複雑さとモデル選択
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id5">
+     6.2.3. (余談1) 100メートル走のタイム
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id6">
+     6.2.4. (余談2) 新型コロナウイルス感染症の陽性者数の推移に関して
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter6_Regression.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="id1">
+<h1><span class="section-number">6. </span>相関・回帰分析<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p><em>相関関係は因果関係を含意しない (Correlation does not imply causation)</em></p>
+<p>[この章の目的]
+初歩的な相関分析と回帰分析がPythonで出来るようになる。</p>
+<p>今回使用するライブラリをインポートしておきましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>from matplotlib import pyplot as plt 
+!pip install japanize-matplotlib 
+import japanize_matplotlib 
+import numpy as np 
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="id2">
+<h2><span class="section-number">6.1. </span>相関分析 (復習)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>1年次の必修科目、データサイエンス入門でも相関分析を学習したことかと思います。</p>
+<p>解析したいデータが2種類だけなら、プログラムを使うご利益はそれほど感じられないが
+「多くのデータ間の相関関係を系統的に調べたい」「複数年度に渡るデータを解析したい」<br />
+あるいは「その結果をベクタ画像として出力したい」となると<br />
+これまで学習してきた繰り返し操作や作図が役に立つ。</p>
+<p>まずは簡単な例から初めよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span><span class="o">=</span> <span class="p">[</span><span class="mf">3.1</span><span class="p">,</span> <span class="mf">4.3</span><span class="p">,</span> <span class="mf">6.6</span><span class="p">,</span> <span class="mf">13.2</span><span class="p">,</span> <span class="mf">19.1</span><span class="p">,</span> <span class="mf">20.9</span><span class="p">,</span> <span class="mf">26.4</span><span class="p">,</span> <span class="mf">25.1</span><span class="p">,</span> <span class="mf">21.9</span><span class="p">,</span> <span class="mf">15.7</span><span class="p">,</span> <span class="mf">9.6</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">]</span>
+<span class="n">y</span><span class="o">=</span> <span class="p">[</span><span class="mi">568</span><span class="p">,</span> <span class="mi">572</span><span class="p">,</span> <span class="mi">804</span><span class="p">,</span> <span class="mi">833</span><span class="p">,</span> <span class="mi">930</span><span class="p">,</span> <span class="mi">965</span><span class="p">,</span> <span class="mi">1213</span><span class="p">,</span> <span class="mi">1120</span><span class="p">,</span> <span class="mi">835</span><span class="p">,</span> <span class="mi">540</span><span class="p">,</span> <span class="mi">451</span><span class="p">,</span> <span class="mi">502</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>上に示したのは、2017年の宇都宮市における月別の平均気温<span class="math notranslate nohighlight">\(x\)</span>と<br />
+世帯ごとのアイスクリーム・シャーベットの平均消費金額<span class="math notranslate nohighlight">\(y\)</span>で、<br />
+散布図にすると↓こんな感じ</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span> 
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;宇都宮市&quot;</span><span class="p">)</span> 
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;平均気温 (℃)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;世帯あたりのアイスクリム・シャーベットの消費金額 (円)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>「平均気温とアイスの消費には相関がありそう」という直感の通り、正の相関があることが見て取れる。</p>
+<p>では”どれほどの”相関を持つかを表す量として相関係数を算出してみよう。<br />
+相関係数<span class="math notranslate nohighlight">\(r\)</span>は以下のように定義され
+<span class="math notranslate nohighlight">\(r = \frac{ \sum^n_i (x_i-\bar{x})(y_i-\bar{y})}{ \sqrt{\sum^n_i (x_i-\bar{x})^2 \sum^n_i (y_i-\bar{y})^2} }\)</span><br />
+<span class="math notranslate nohighlight">\(\bar{x},\bar{y}\)</span>はそれぞれ<span class="math notranslate nohighlight">\(x,y\)</span>の平均値で<span class="math notranslate nohighlight">\(\bar{x} = \frac{1}{n} \sum^n_i x_i \)</span>,　<span class="math notranslate nohighlight">\(\bar{y} = \frac{1}{n} \sum^n_i y_i \)</span><br />
+と書ける。</p>
+<p>下付き添字<span class="math notranslate nohighlight">\(i\)</span>は<span class="math notranslate nohighlight">\(x\)</span>の<span class="math notranslate nohighlight">\(i\)</span>番目の要素であることを表し(つまり<span class="math notranslate nohighlight">\(x\)</span>をn次元ベクトルとみなしたときの第<span class="math notranslate nohighlight">\(i\)</span>成分が<span class="math notranslate nohighlight">\(x_i\)</span>)<br />
+今考えているデータの場合、<span class="math notranslate nohighlight">\(\sum\)</span>の和記号は<span class="math notranslate nohighlight">\(i\)</span>は1から12までの値を取り、対応する値を足し上げることを意味する。<br />
+(“<span class="math notranslate nohighlight">\(i\)</span>の和が1から12までを走る”と言ったりもする)</p>
+<p><span class="math notranslate nohighlight">\(r\)</span>は必ず-1から1までの値を取り1.0(-1.0)に近づくにつれ強い正(負)の相関を示す。<br />
+(強いというのは曖昧な表現で絶対的な線引がある訳では無いことに注意)</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(|r|\leq1\)</span>は、コーシーシュワルツの不等式を用いるか<br />
+上の<span class="math notranslate nohighlight">\(r\)</span>の定義と<span class="math notranslate nohighlight">\(n\)</span>次元ベクトル同士の内積の定義とを見比べると示せる(暇があればやってみよう)。</p>
+</div></blockquote>
+<p>次に<code class="docutils literal notranslate"><span class="pre">x</span></code>と<code class="docutils literal notranslate"><span class="pre">y</span></code>、２つのリストを引数に持ち、相関係数<span class="math notranslate nohighlight">\(r\)</span>を返す関数を作成してみよう。</p>
+<p>にらめっこするために式を再掲:
+<span class="math notranslate nohighlight">\(r= \frac{ \sum^n_i (x_i-\bar{x})(y_i-\bar{y})}{ \sqrt{\sum^n_i (x_i-\bar{x})^2 \sum^n_i (y_i-\bar{y})^2} }\)</span></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">### ライブラリを一切使わない方法</span>
+<span class="k">def</span> <span class="nf">cor_coeff</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+    <span class="c1"># xとyの長さが違う場合や長さ0の場合はエラーを出す</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">==</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Error: x&amp;y must satisfy len(x) = len(y) != 0&quot;</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> 
+    <span class="c1">## 平均を計算</span>
+    <span class="n">xbar</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">/</span><span class="n">n</span><span class="p">;</span> <span class="n">ybar</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">/</span><span class="n">n</span> 
+
+    <span class="c1">##分子(numerator)の和を計算 (初期値を0に)</span>
+    <span class="n">s_n</span> <span class="o">=</span> <span class="mf">0.0</span> 
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">s_n</span> <span class="o">+=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">xbar</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">ybar</span><span class="p">)</span>
+
+    <span class="c1">##分母(denominator)の計算 (和を先に計算して積を取り、最後にsquare rootをとる)</span>
+    <span class="n">s_x</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="n">s_y</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">s_x</span> <span class="o">+=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">xbar</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> 
+        <span class="n">s_y</span> <span class="o">+=</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">ybar</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">s_d</span> <span class="o">=</span> <span class="p">(</span><span class="n">s_x</span> <span class="o">*</span> <span class="n">s_y</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+    <span class="c1"># 一行で書くなら</span>
+    <span class="c1">#s_d = ( sum([(x[i]-xbar)**2 for i in range(n)]) * sum([(y[i]-ybar)**2 for i in range(n)]) )**0.5</span>
+
+    <span class="k">return</span> <span class="n">s_n</span><span class="o">/</span><span class="n">s_d</span> <span class="c1"># 分子/分母の値を返す</span>
+
+<span class="n">cor_coeff</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>という風に、<span class="math notranslate nohighlight">\(r\)</span>が約0.83で、非常に強い正の相関を示すことが分かる。</p>
+<p>少しずつ自作関数に慣れてきたら、上のように意図しない引数を入れたときの挙動なども設定すると<br />
+より<strong>安全な</strong>コードを作る事ができる。</p>
+<p><code class="docutils literal notranslate"><span class="pre">x</span></code>と<code class="docutils literal notranslate"><span class="pre">y</span></code>の長さが違う場合(上の<code class="docutils literal notranslate"><span class="pre">raise</span></code>文でエラーが生じさせる場合)を試しておこう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cor_coeff</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>相関係数の計算は、numpyライブラリを使うと実はもう少しシンプルに書ける</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cor_coeff_np</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+    <span class="n">xbar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">);</span> <span class="n">ybar</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">xbar</span><span class="p">,</span><span class="n">y</span><span class="o">-</span><span class="n">ybar</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">xbar</span><span class="p">,</span><span class="n">x</span><span class="o">-</span><span class="n">xbar</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="n">ybar</span><span class="p">,</span><span class="n">y</span><span class="o">-</span><span class="n">ybar</span><span class="p">)</span> <span class="p">)</span> 
+
+<span class="n">cor_coeff_np</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>とすると、関数自体は3行で書けてしまう。
+さらに<span class="math notranslate nohighlight">\(\bar{x},\bar{y}\)</span>をいちいち定義しないように書き換えれば、関数の中身自体は一行でかけてしまいます。</p>
+<p>上のコードを少し補足しておくと…分子や分母に現れる<br />
+<span class="math notranslate nohighlight">\(\sum^n_i (x_i-\bar{x})(y_i-\bar{y})\)</span>や<span class="math notranslate nohighlight">\(\sum^n_i (x_i-\bar{x})^2 \)</span>といった項は、<br />
+<span class="math notranslate nohighlight">\(i\)</span>番目の成分に<span class="math notranslate nohighlight">\(x_i-\bar{x}\)</span>を持つベクトル<span class="math notranslate nohighlight">\(\tilde{x}\)</span>と<br />
+<span class="math notranslate nohighlight">\(i\)</span>番目の成分に<span class="math notranslate nohighlight">\(y_i-\bar{y}\)</span>を持つベクトル<span class="math notranslate nohighlight">\(\tilde{y}\)</span>を定義しておくと、<br />
+<span class="math notranslate nohighlight">\(\tilde{x}\cdot\tilde{y}\)</span>,　<span class="math notranslate nohighlight">\(\tilde{x}\cdot\tilde{x}\)</span>,　<span class="math notranslate nohighlight">\(\tilde{y}\cdot\tilde{y}\)</span>といったように
+ベクトルの内積の形でいずれも表すことができる。</p>
+<p><code class="docutils literal notranslate"><span class="pre">numpy</span></code>にはブロードキャスト機能(Numpyのノートを参照)やベクトル積を計算する関数<code class="docutils literal notranslate"><span class="pre">dot</span></code>が備わっているので、<br />
+それらを活用することで相関係数の計算を短く実装することができた。</p>
+<p>更に言うと実は<code class="docutils literal notranslate"><span class="pre">numpy</span></code>には相関係数を計算する関数<code class="docutils literal notranslate"><span class="pre">corrcoef()</span></code>が予め用意されていて</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;r(x,y)=&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>を使えば<br />
+[ xとxの相関(=1.0), xとyの相関;<br />
+yとxの相関, yとyの相関(=1.0)]<br />
+といった2行2列の相関行列を取得することが出来る。<br />
+確かに上の相関行列の[0,1]成分は、さっき計算した<span class="math notranslate nohighlight">\(r\)</span>の値と一致している。</p>
+<p>「初めからそれを教えろ！」と思うかもしれないが<br />
+<strong>考えたい量を数式として定義してそれをプログラムに変換し、値が正しいことを確認する作業</strong>は<br />
+<strong>式(考え方)とプログラミング双方の理解を深める上で非常に重要</strong>である</p>
+<div class="section" id="id3">
+<h3><span class="section-number">6.1.1. </span>相関分析と因果関係<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>以下では、ある一つのグラフの例を見ながら、冒頭の<br />
+<em>相関関係は因果関係を含意しない (Correlation does not imply causation)</em><br />
+に関して説明する。</p>
+<p>下の図は、2017年の家計調査・気候データから作成した散布図で、<br />
+千葉市での平均気温と、しめじの消費支出の間の相関を示している。</p>
+<img src="https://drive.google.com/uc?export=view&id=1P4bYyfUDHMXOtGRrDBBLszVNijDqGv6H" width = 40%><p>生産量と平均気温の間に、強い負の相関が見て取れますが、これはどうしてでしょう？<br />
+「寒い季節には鍋が食べたくなるから」と言われるとふむふむと感じる一方で<br />
+「そもそも生産量が冬に多く、市場に出回る量が多いから」と考えることもできる。<br />
+したがって、このデータを見ただけでは、しめじが冬によく売れる理由までははっきりとは分からない。</p>
+<p>事実、しめじの旬はGoogle検索によると9月下旬から11月初旬とのことで、<br />
+最も売れている時期(12月1月)とは少し時期にズレがあり、<br />
+購買意欲は必ずしも”旬”によって決まっている訳ではなさそうな印象を受ける。</p>
+<p>気温と特定の野菜の購買意欲の真の関係を知りたければ、<br />
+「その野菜はビニールハウスなどの生産設備の向上で年中、安定した味で生産ができる」<br />
+「比較的新しい品種で〇〇といえば秋、のような固定観念がない」<br />
+「季節ごとの生産量がほぼ同じ」<br />
+など、他の条件が揃った状況下で比較しなければ確度の高い議論は難しい。</p>
+<p>このように、因果関係を紐解くことは、我々が思うほど容易ではなく、それ自体が一つの学問分野になっている。<br />
+気になる方は、たとえば”因果推論”で調べてみよう。</p>
+<p><a class="reference external" href="https://www.tylervigen.com/spurious-correlations">疑似相関をまとめたおもしろいサイト</a><br />
+のように顕著な例ならば「あぁ疑似相関だな」と気がつくが<br />
+我々が普段見ている情報の中には、擬似相関であるとひろく認識されていない情報もあるはずだ。<br />
+物事の因果関係を断定するような言説に対しては一歩引いて見る姿勢も重要なように思う。</p>
+</div>
+</div>
+<div class="section" id="id4">
+<h2><span class="section-number">6.2. </span>回帰分析<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>以下では自分が立てたモデルを表現する関数のことを<em>モデル関数</em>、<br />
+モデル関数とデータとの齟齬を最小化するようにモデル関数の係数を決定することを<strong>回帰</strong>、<br />
+そして回帰に基づく分析を指して<strong>回帰分析</strong>と呼ぶことにする。</p>
+<p>データとモデル間の齟齬を表現する方法はいくつかあるが、<br />
+以下では最もポピュラーな誤差の二乗和を採用することとし、<br />
+その最小化を考える(<strong>最小二乗法</strong>とも呼ぶ)。
+データや関数、最小二乗法をもう少しきちんと定義しよう。</p>
+<p><span class="math notranslate nohighlight">\(D\)</span>個の点<span class="math notranslate nohighlight">\(\{x_1,x_2,...,x_D\}\)</span>でのyの値<span class="math notranslate nohighlight">\(\{y_1,y_2,...,y_D\}\)</span>が観測されているとき、<br />
+最小二乗法とは、ある決められたモデル関数<span class="math notranslate nohighlight">\(f(x)\)</span>との齟齬<span class="math notranslate nohighlight">\(\chi^2 = \sum^D_{i=1} (y_i - f(x_i))^2\)</span>を<br />
+最小化するように関数<span class="math notranslate nohighlight">\(f\)</span>の係数を調整すること。</p>
+<p><span class="math notranslate nohighlight">\(f\)</span>自体をどう決める/設計するかも重要な話題だが、この授業では深入りしない。<br />
+たとえば回帰を行う関数として、ニューラルネットワークを採用する立場を採ることも可能。<br />
+参照: <a class="reference external" href="https://sotayoshida.github.io/Lecture_DataScience/notebooks/Python_chapter_ArtificialNeuralNetwork.html">おまけのノートブック: ニューラルネットワークによる回帰</a></p>
+<p>以下では、<span class="math notranslate nohighlight">\(f(x)\)</span>として単純な多項式のみを考えることにする。<br />
+まず回帰を学ぶために、適当なデータを生成しておく。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">0,1で定義された区間でsample_size(int)個の点で</span>
+<span class="sd">sin関数に正規乱数に従う誤差を加えた値を返す関数。</span>
+<span class="sd">- sample_size: データの数</span>
+<span class="sd">- std: standard deviation (標準偏差σ)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">create_toy_data</span><span class="p">(</span><span class="n">sample_size</span><span class="p">,</span> <span class="n">std</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">std</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">t</span>
+
+<span class="c1">#私と皆さんで結果が変わらないよう乱数のseedを固定</span>
+<span class="c1">#randomモジュールの関数を使うときはrandom.seedを、</span>
+<span class="c1">#numpyのrandom関数を使うときはnp.random.seedを用いる</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span> 
+
+<span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">create_toy_data</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mf">1.e-1</span><span class="p">)</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>これをグラフにしてみると…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>こんな感じ。</p>
+<p>このデータを、<span class="math notranslate nohighlight">\(p\)</span>次元の多項式(p=0,1,2,…)を最適化することを考えてみよう。<br />
+<span class="math notranslate nohighlight">\(p\)</span>次式(<span class="math notranslate nohighlight">\(p\)</span>次元多項式)は、<span class="math notranslate nohighlight">\(p+1\)</span>個の係数, <span class="math notranslate nohighlight">\(a_0\)</span>から<span class="math notranslate nohighlight">\(a_p\)</span>を使って
+<span class="math notranslate nohighlight">\(a_0 + a_1x + a_2x^2\cdots +a_p x^p \)</span>と書くことが出来る。</p>
+<p>上で定義した最小二乗法は、この関数と各データ点の齟齬が二乗誤差を最小にする係数<span class="math notranslate nohighlight">\(a_0,a_1,...,a_p\)</span>を求めることに相当する。</p>
+<p><span class="math notranslate nohighlight">\(p\)</span>次元の多項式の最適化は、実はnumpyにある関数<code class="docutils literal notranslate"><span class="pre">polyfit()</span></code>を利用すれば簡単に実行できる。<br />
+他にもscikit-learnなどのライブラリもより高度な関数のフィッティングが可能。</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(\clubsuit\)</span>進んだ注:<br />
+多項式で回帰を行う場合には、実はパラメータの最適解は”閉じた形”で与えられる。<br />
+この辺りのことは、<a class="reference external" href="https://sotayoshida.github.io/Lecture_DataScience/notebooks/Python_chapter_Bayesian_linear_regression.html">おまけのノートブック:ベイズ線形回帰</a>で詳しく書いています。<br />
+なお”閉じた形”というのは、数学や物理をやっていると出てくる表現で、答えが具体的な形で書き下せる、程度の意味。<br />
+たとえば 行列<span class="math notranslate nohighlight">\(A\)</span>、ベクトル<span class="math notranslate nohighlight">\(\vec{x},\vec{y}\)</span>,スカラー<span class="math notranslate nohighlight">\(\lambda\)</span>について方程式<span class="math notranslate nohighlight">\(A\vec{x}=\lambda \vec{y}\)</span>が成り立つとき、<br />
+<span class="math notranslate nohighlight">\(A\)</span>の逆行列をどうやって求めるか(数値的にやるのか解析的に求めるのか)はさておき、<br />
+<span class="math notranslate nohighlight">\(\vec{x} = \lambda A^{-1}\vec{y}\)</span>と書き直せるので<br />
+「<span class="math notranslate nohighlight">\(\vec{x}\)</span>は閉じた形で与えられる」と言ったりもする。</p>
+</div></blockquote>
+<div class="section" id="polyfit-poly1d">
+<h3><span class="section-number">6.2.1. </span>polyfit/poly1d関数<a class="headerlink" href="#polyfit-poly1d" title="Permalink to this headline">¶</a></h3>
+<p>たとえば今のデータを３次式でフィットしたければ、以下のようにする。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">## 多項式をplotするためのxの値を準備(グラフをなめらかにするために、0から1までの間の500点を等間隔に取る)</span>
+<span class="n">xp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span> 
+
+<span class="c1">#多項式の次元pを決める. 今は3次式.</span>
+<span class="n">p</span><span class="o">=</span><span class="mi">3</span> 
+
+<span class="c1">#polyfit関数で最適化し、返り値(係数)を取得する</span>
+<span class="n">coeff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> 
+
+<span class="c1">#最適化された係数と、1次元入力xに対する多項式を計算してくれるpoly1d関数を用いて描画点xpでのモデル関数の値を計算する。</span>
+<span class="n">yp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span> <span class="n">coeff</span> <span class="p">)(</span><span class="n">xp</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;係数&quot;</span><span class="p">,</span><span class="n">coeff</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">np.polyfit(x,</span> <span class="pre">y,</span> <span class="pre">p)</span></code>では、データのx,yの値と多項式の次元pを引数として与え、<br />
+<span class="math notranslate nohighlight">\(p\)</span>次の多項式でデータ<span class="math notranslate nohighlight">\((x,y)\)</span>をfitしなさい(<span class="math notranslate nohighlight">\(p\)</span>次までの係数を関数がデータと整合するように”最適化”しなさい)<br />
+という指令を与えている.</p>
+<p><code class="docutils literal notranslate"><span class="pre">np.poly1d(</span> <span class="pre">np.polyfit(x,</span> <span class="pre">y,</span> <span class="pre">p)</span> <span class="pre">)(xp)</span></code>では、<br />
+fitしたp次元の係数をもつ多項式に<code class="docutils literal notranslate"><span class="pre">xp</span></code>(今は500点)を代入して、対応する<code class="docutils literal notranslate"><span class="pre">y</span></code>の値を返す。<br />
+上のコードはこの返り値を<code class="docutils literal notranslate"><span class="pre">yp</span></code>という変数に格納している。</p>
+<p>最後に、調整(最適化)された3次式の係数を表示してみた。<br />
+ちなみに、表示される係数は次数が高いところから<span class="math notranslate nohighlight">\(a_3,a_2,a_1,a_0\)</span>です(ややこしい…)。</p>
+<p>グラフを描いてみるとこんな感じ。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#お絵かき</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xp</span><span class="p">,</span> <span class="n">yp</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;p=3&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>さて、<span class="math notranslate nohighlight">\(p\)</span>次の多項式は<span class="math notranslate nohighlight">\(p-1\)</span>次の多項式を特別な場合として含むため、<br />
+一般に<span class="math notranslate nohighlight">\(p\)</span>(多項式の次元)を増やせば、より複雑な関数を表現することができる。<br />
+(2次式は3次式の<span class="math notranslate nohighlight">\(a_3=0\)</span>の場合ですよね？)</p>
+<p><span class="math notranslate nohighlight">\(p\)</span>を複数変えながら比較した図を作ってみよう。<br />
+その方法は、<span class="math notranslate nohighlight">\(p\)</span>に関するループを回すだけ。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">]</span>
+<span class="n">xp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span> 
+
+<span class="c1"># 各pでのfitの結果(xpでの対応する値のリスト)をysに入れ子のリストにしていく</span>
+<span class="n">ys</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">ps</span><span class="p">:</span>
+    <span class="n">ys</span> <span class="o">+=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p</span><span class="p">))(</span><span class="n">xp</span><span class="p">)]</span>
+
+<span class="c1"># データのは以後にある&quot;真の関数&quot;(本当は知り得ない)の値をxpの各点で計算</span>
+<span class="n">ytrue</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">xp</span><span class="p">)</span> 
+
+<span class="c1"># お絵かき</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ps</span><span class="p">)):</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xp</span><span class="p">,</span> <span class="n">ys</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;p=&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">ps</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xp</span><span class="p">,</span><span class="n">ytrue</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;dotted&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<blockquote>
+<div><p>注: 今の場合、データはsin関数に適当なノイズを足して作られている。<br />
+解析の手法を学ぶ際には、このように答えを知っている状態からはじめて、<br />
+手法がうまくデータを説明しているかどうかを検証したりする。<br />
+一見ズルっぽいが、理論を理解したりプログラムで確認するためには重要なプロセスとなる。</p>
+</div></blockquote>
+<p>現実のデータ解析の状況では、背後にある”真の関数”が分かっていることは非常に稀で、<br />
+「興味のあるデータが、人間がよく知っている単純な式(有限次元の多項式や指数関数)で<br />
+完全に表現できる道理はない」ということも抑えておくべき重要な点となる.<br />
+真の関数というのは一般に[神のみぞ知る]で、<br />
+人間ができることは、出来るだけ尤もらしい関数を見つけ、<br />
+その背後にあるメカニズム(の主要部分)を解明することと言える.</p>
+<p>一般に、関数をどんどん複雑なものにしていくにつれて、関数の表現力(表現できるデータの幅)は大きく拡がる。<br />
+その一方で、用意した関数がデータに過度に適合するあまり、<br />
+<strong>未知の点での値の予測精度(汎化性能)が著しく損なわれている危険性</strong>がある。<br />
+このことを予言能力がない(データに<strong>過適合</strong>している) と言う。<br />
+データの背後にあるメカニズムが何かを考えたり理論的な解析をして初めて、<br />
+回帰に用いる関数の妥当性が検証できるという点に注意しよう。</p>
+</div>
+<div class="section" id="clubsuit">
+<h3><span class="section-number">6.2.2. </span><span class="math notranslate nohighlight">\(\clubsuit\)</span> モデルの複雑さとモデル選択<a class="headerlink" href="#clubsuit" title="Permalink to this headline">¶</a></h3>
+<p>上の多項式回帰では、たとえば9次式はデータをピッタリと再現している一方で<br />
+真の関数(sin関数)の振る舞いよりもむしろ、測定誤差のようなものにまで過適合してしまっている。</p>
+<p>ここで過適合を防ぐためにデータとの整合性(二乗誤差)だけでなく<br />
+<strong>モデルの複雑さ</strong>も定量化し、なるべく複雑すぎない関数が選ばれるよう勘定することを考える。</p>
+<p>ここではこのモデルの複雑さ<span class="math notranslate nohighlight">\(C\)</span>として多項式の係数の絶対値の2乗和:<br />
+<span class="math notranslate nohighlight">\(C= \sum_i |a_i|^2\)</span>を採用することにしよう。</p>
+<p>さらに、”モデルを選択するための基準<span class="math notranslate nohighlight">\(L\)</span>”を<br />
+<span class="math notranslate nohighlight">\(L = \)</span>(二乗誤差) + <span class="math notranslate nohighlight">\(\lambda\)</span>  log10(モデルの複雑さ<span class="math notranslate nohighlight">\(C\)</span>)で定量化し<br />
+この<span class="math notranslate nohighlight">\(L\)</span>が最小になる多項式を採用することにしよう。<br />
+(この選択はあくまで例であることに注意)</p>
+<p>各次数での多項式のモデルの複雑さ<span class="math notranslate nohighlight">\(C\)</span>と二乗誤差、そしてモデル選択基準量<span class="math notranslate nohighlight">\(L\)</span>を表示してみると…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">complexity</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">r</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">my_criteria</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span><span class="n">err</span><span class="p">,</span><span class="n">lam</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span> <span class="c1">#lambda=1.0</span>
+    <span class="k">return</span> <span class="n">err</span> <span class="o">+</span> <span class="n">lam</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">comp</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">ps</span><span class="p">:</span>
+    <span class="n">coeff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p</span><span class="p">))(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span>
+    <span class="n">chi2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span><span class="n">diff</span><span class="p">)</span>
+    <span class="n">comp</span> <span class="o">=</span> <span class="n">complexity</span><span class="p">(</span><span class="n">coeff</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">,</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;モデルの複雑さ(log10)→&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">comp</span><span class="p">),</span>
+          <span class="s2">&quot;二乗誤差&quot;</span><span class="p">,</span> <span class="n">chi2</span><span class="p">,</span> <span class="s2">&quot;モデル選択基準量&quot;</span><span class="p">,</span> <span class="n">my_criteria</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span><span class="n">chi2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>9次式は、データをよく説明する一方で、非常に複雑なモデルになっている。</p>
+<p>上記のモデル選択基準量<span class="math notranslate nohighlight">\(L\)</span>は<span class="math notranslate nohighlight">\(p=3\)</span>で最小となるため<br />
+この<span class="math notranslate nohighlight">\(L\)</span>の定義のもとでは3次式が選ばれることになる。</p>
+<p>このように実際のデータ分析や機械学習などのモデル選択では、<br />
+既知のデータの記述能力(二乗誤差の最小化)とモデルの複雑さの低減(過適合を避ける)との<br />
+トレードオフでモデルを選択することが多い。</p>
+<p>上の<span class="math notranslate nohighlight">\(L\)</span>の定義中の<span class="math notranslate nohighlight">\(\lambda\)</span>の大きさを変えることは<br />
+データとの整合性を高める/モデルの複雑さを抑える<br />
+のどちらを重視するかの”度合い”を決めることに相当する。<br />
+(<span class="math notranslate nohighlight">\(\lambda\)</span>を適当に変えてみよう)</p>
+<p>参考→正則化でググってみよう.</p>
+</div>
+<div class="section" id="id5">
+<h3><span class="section-number">6.2.3. </span>(余談1) 100メートル走のタイム<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>予言能力がないモデルとして、以下の例を考えてみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">y</span> <span class="o">=</span> <span class="p">[</span> <span class="mf">10.06</span><span class="p">,</span> <span class="mf">10.03</span><span class="p">,</span><span class="mf">10.02</span><span class="p">,</span> <span class="mf">9.95</span><span class="p">,</span><span class="mf">9.93</span><span class="p">,</span> <span class="mf">9.92</span><span class="p">,</span><span class="mf">9.9</span><span class="p">,</span> <span class="mf">9.86</span><span class="p">,</span><span class="mf">9.85</span><span class="p">,</span> <span class="mf">9.84</span><span class="p">,</span> <span class="mf">9.79</span><span class="p">,</span> <span class="mf">9.78</span><span class="p">,</span> <span class="mf">9.77</span><span class="p">,</span> <span class="mf">9.74</span><span class="p">,</span><span class="mf">9.72</span><span class="p">,</span><span class="mf">9.69</span><span class="p">,</span><span class="mf">9.58</span> <span class="p">]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1964</span><span class="p">,</span> <span class="mi">1968</span><span class="p">,</span><span class="mi">1968</span><span class="p">,</span><span class="mi">1968</span><span class="p">,</span><span class="mi">1983</span><span class="p">,</span><span class="mi">1988</span><span class="p">,</span><span class="mi">1991</span><span class="p">,</span><span class="mi">1991</span><span class="p">,</span><span class="mi">1994</span><span class="p">,</span><span class="mi">1996</span><span class="p">,</span><span class="mi">1999</span><span class="p">,</span><span class="mi">2002</span><span class="p">,</span><span class="mi">2005</span><span class="p">,</span><span class="mi">2007</span><span class="p">,</span><span class="mi">2008</span><span class="p">,</span><span class="mi">2008</span><span class="p">,</span><span class="mi">2009</span> <span class="p">]</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;year&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Mens 100m&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>図にしたのは、男子100mの世界記録の推移.<br />
+このデータに対して「<span class="math notranslate nohighlight">\(p=3\)</span>の多項式でフィットして予測する」という立場をとってみる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">xp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span><span class="mi">2101</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;year&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Mens 100m&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">1960</span><span class="p">,</span><span class="mi">2100</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
+    <span class="n">yp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">p</span><span class="p">))(</span><span class="n">xp</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xp</span><span class="p">,</span><span class="n">yp</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;p=&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>    
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>2080年代には100m走のタイムがゼロになってしまうおかしな予測だと気がつく。</p>
+<p>今の場合、我々はこのデータが100走の世界記録のタイムの推移であること、つまり</p>
+<ul class="simple">
+<li><p>非増加関数であること</p></li>
+<li><p>必ず正の値であること</p></li>
+</ul>
+<p>など、データが持つべき性質を予め知っているので、<br />
+「このデータに対して単純な多項式回帰を当てはめるのはおかしい」<br />
+と気がつくことが出来る。</p>
+<p><strong>でも、他のデータではどうでしょう？</strong></p>
+<p>データを分析するためには、データの値だけをみて闇雲に分析するだけではダメで、<br />
+データの背景やドメイン知識が不可欠である、という好例。</p>
+</div>
+<div class="section" id="id6">
+<h3><span class="section-number">6.2.4. </span>(余談2) 新型コロナウイルス感染症の陽性者数の推移に関して<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>我々が現実世界で観測することのできる種々の”値”というのは、<br />
+何らかの関数<span class="math notranslate nohighlight">\(f(x)\)</span>の、ある<span class="math notranslate nohighlight">\(x\)</span>での(実現)値と言える。</p>
+<p>コロナウイルスの感染者数の推移は日付に対する関数として示される事が多い。<br />
+日付に対して陽性者数の推移をプロットして変動の予想を立てることは簡単だが、<br />
+コロナウイルスの感染者数の推移も単なる時間に対する１変数の関数であるはずなどがなく、<br />
+たとえば検査数や我々の外出自粛や”空気感”、国・都道府県ごとの取り組み・政策、<br />
+ウイルスの変異,その他様々な要素に左右される。</p>
+<p>我々人間がグラフにして理解できるのはたかだか３次元(３つの変数がある状況)まで。<br />
+言い換えれば、人間は物事を理解するときに本来D次元(D&gt;&gt;3, Dは３よりずっと大きい)の変数で定義される関数を<br />
+3次元以下に射影した「影」をみて理解しようとする生き物だということは意識しておくべきだろう。</p>
+<p>緊急事態宣言が出され報道が加熱していた頃には、安易な感染者数予測で危険を煽ったり、<br />
+あるいは逆に「心配する必要がない」などと極端な主張をする人が数多く現れた。<br />
+また事態が収束したあとに「私のモデルはこんなに正しかった」という人も現れることだろう。<br />
+だが、それは極めて高い蓋然性で偶然だろう。<br />
+無限の数の関数を考えれば、データに適合するものが存在してもおかしくはない。<br />
+何にでも言えることだが、モデルを立てて終わり、ではなく検証し続ける姿勢が重要。</p>
+</div>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_chapter5_Probability.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title"><span class="section-number">5. </span>確率と疑似乱数</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_chapter7_Optimization.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><span class="section-number">7. </span>最適化問題の基礎</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

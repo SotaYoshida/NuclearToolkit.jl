@@ -1,0 +1,267 @@
+#使うライブラリのインポート
+import numpy as np
+import matplotlib.pyplot as plt
+import copy
+from scipy import special
+
+## データの生成用関数
+def f(x):
+    return np.sin(x) + 0.2 * x
+
+## ガウス過程のカーネル(共分散行列)の設計
+def Mat52(Thetas,r):
+    tau,sigma = Thetas
+    thetar = r * np.sqrt(5.0)/sigma
+    return tau * (1.0 + thetar + (thetar**2) /3.0) * np.exp(-thetar)
+def KernelMat(Thetas,xt,xp):
+    lt = len(xt); lp=len(xp)
+    Ktt = np.zeros((lt,lt)); Kpt = np.zeros((lp,lt));  Kpp = np.zeros((lp,lp))
+    for j in range(lt):
+        for i in range(j,lt):
+            r = abs(xt[i]-xt[j])
+            tmp  = Mat52(Thetas,r) 
+            Ktt[i,j] = tmp; Ktt[j,i] = tmp 
+        for i in range(lp):
+            r= abs(xp[i]-xt[j])
+            Kpt[i,j] = Mat52(Thetas,r)
+    for j in range(lp):
+        for i in range(j,lp):
+            r= abs(xp[i]-xp[j])
+            tmp  = Mat52(Thetas,r)
+            Kpp[i,j] = tmp; Kpp[j,i] = tmp
+    return Ktt,Kpt,Kpp
+
+## 事後共分散行列の計算
+def calcSj(cLinv,Kpt,Kpp,yt,mu_yt,mu_yp):
+    tKtp= np.dot(cLinv,Kpt.T)
+    return mu_yp + np.dot(Kpt,np.dot(cLinv.T,np.dot(cLinv,yt-mu_yt))), Kpp - np.dot(tKtp.T,tKtp)
+
+## Cholesky分解
+def Mchole(tmpA,ln) :
+    cLL = np.linalg.cholesky(tmpA)
+    logLii=0.0
+    for i in range(ln):
+        logLii += np.log(cLL[i,i])
+    return np.linalg.inv(cLL), 2.0*logLii
+
+## 獲得関数を計算, 次点の計算点を決める
+def calcEI(xp,mujoint,sigmaj,xbest,ybest):
+    EIs = [ (mujoint[i]-ybest) * Phi((mujoint[i]-ybest)/sigmaj[i]) +
+            sigmaj[i]* np.exp(-0.5* ((mujoint[i]-ybest)/sigmaj[i])**2) for i in range(len(xp))]
+    xnew,ynew,ind=xybest(xp,EIs)
+    ynew= np.sin(xnew) + 0.2*xnew #+ 0.01 * (0.5-np.random.rand())
+    return xnew,ynew,EIs,ind
+def Phi(z):
+    return 0.5 * special.erfc(-(z/(2**0.5)) )
+
+def xybest(xt,yt):
+    ind = np.argmax(yt)
+    return xt[ind],yt[ind],ind
+
+## お絵かき
+def plotGP0(xt,yt,xp,ytrue):
+    fig = plt.figure(figsize=(8,4))
+    axT = fig.add_subplot(1,1,1)
+    axT.set_xlabel("x"); axT.set_ylabel("y")
+    axT.set_xlim(-2.0,12); axT.set_ylim(-2.0,5.0)
+    axT.scatter(xt,yt,marker="o",color="black",label="Data")
+    axT.plot(xp,ytrue,color="red",label="True",linestyle="dotted")
+    axT.legend(loc="upper right")
+    plt.show()
+    #plt.savefig("BayesOpt_initial.pdf",bbox_inches="tight", pad_inches=0.1)
+    plt.close()
+
+def plotGP(nxt,nyt,nxp,xp,ytrue,mujoint,sigmaj,ysamples,EIs):
+    fig = plt.figure(figsize=(16,4))
+    axT = fig.add_subplot(121)
+    axB = fig.add_subplot(122)
+    axT.set_xlabel("x"); axT.set_ylabel("y")
+    axB.set_xlabel("x"); axB.set_ylabel("Acquisition function")
+    axT.set_xlim(-2.0,12); axT.set_ylim(-2.0,5.0)
+    axB.set_xlim(-2.0,12)
+    axT.scatter(nxt,nyt,marker="o",color="black",label="Data")
+    for i in range(len(ysamples)):
+        axT.plot(nxp,ysamples[i],alpha=0.1)
+    axT.plot(nxp,mujoint,label="GP mean",linestyle="dashed",color="blue")
+    axB.plot(nxp,EIs,color="green")
+    axB.set_yticklabels([]) 
+    axT.fill_between(nxp,mujoint-sigmaj,mujoint+sigmaj,color="blue", alpha=0.3)
+    axT.plot(xp,ytrue,color="red",label="True",linestyle="dotted")
+    axT.legend(loc="upper right")
+    plt.show()
+    plt.close()
+
+
+Thetas=[2.0,2.0]
+oxt = np.array([ 0.0 + 1.02*i for i in range(11)])
+xp = []
+for tmp in np.arange(-2.0,12.0, 5.e-2):
+    if (tmp in oxt)==False:
+        xp += [ tmp ]
+xp = np.array(xp)
+oyt = f(oxt)
+ytrue = f(xp)
+
+SVs=[]
+xt =[oxt[2],oxt[6]]; yt =[oyt[2],oyt[6]]
+plotGP0(xt,yt,xp,ytrue)
+
+Thetas=[2.0,2.0]
+nxp = list(copy.copy(xp))
+nxt = copy.copy(xt)
+nyt = copy.copy(yt)
+
+n_iter = 10 ## 探索回数の上限
+xopt = 6; yopt = -1.e+30
+SVs=[]
+plot = True
+#plot = False
+
+for iter in range(n_iter):
+    lt=len(nxt); lp=len(nxp)
+    Ktt,Kpt,Kpp = KernelMat(Thetas,nxt,nxp)
+    mu_yt= np.zeros(lt)
+    mu_yp= np.zeros(lp)
+    cLinv,logdetK = Mchole(Ktt,lt) 
+    mujoint,Sjoint = calcSj(cLinv,Kpt,Kpp,nyt,mu_yt,mu_yp)
+    sigmaj=[ Sjoint[j][j] for j in range(lp)]
+    ysamples = [np.random.multivariate_normal(mujoint,Sjoint) for i in range(10)]
+    SVs += [ [ mujoint, sigmaj] ]
+    xbest,ybest,ind= xybest(nxt,nyt)
+    xnew,ynew,EIs,ind = calcEI(nxp,mujoint,sigmaj,xbest,ybest)
+    if plot :
+        plotGP(nxt,nyt,nxp,xp,ytrue,mujoint,sigmaj,ysamples,EIs)
+    nxt += [ xnew ]; nyt += [ ynew ]
+    nxp.pop(ind)    
+    if ynew > yopt:
+        xopt= xnew; yopt = ynew 
+    print(iter, xopt, yopt)
+
+
+import numpy as np 
+
+def f(x):
+    return np.sin(x) + 0.2 * x 
+def derf(x):
+    return np.cos(x) + 0.2  
+
+xexact = 8.055339554764814
+
+x = 6 
+xopt = x; yopt=f(x)
+tol = 1.e-2
+eta = 1.e-1
+
+itnum = 10**4
+for i in range(itnum):
+    x += eta * derf(x)
+    y = f(x)
+    if y > yopt:
+        xopt = x
+        yopt = y 
+    if abs(xexact-xopt) < tol :
+        break
+print("探索回数",i, "最適解(x,y)=",xopt,yopt)
+
+Thetas=[1.0,1.0]
+nxp = np.linspace(-2,12,10)
+nxt = copy.copy(xt);nyt = copy.copy(yt)
+
+n_iter = 10 ## 探索回数の上限
+xopt = 6; yopt = -1.e+30
+SVs=[]
+plot = False
+
+lt=len(nxt); lp=len(nxp)
+Ktt,Kpt,Kpp = KernelMat(Thetas,nxt,nxp)
+mu_yt= np.zeros(lt)
+mu_yp= np.zeros(lp)
+cLinv,logdetK = Mchole(Ktt,lt) 
+mujoint,Sjoint = calcSj(cLinv,Kpt,Kpp,nyt,mu_yt,mu_yp)
+sigmaj=[ np.sqrt(Sjoint[j][j]) for j in range(lp)]
+print("train", nxt,nyt)
+print("xp", nxp)
+print("My muj ", mujoint)
+print("sigmaj", sigmaj)
+
+from sklearn.gaussian_process import kernels as sk_kern
+import sklearn.gaussian_process as skGP 
+# sklearn GP
+
+nxp = np.linspace(-2,12,10)
+nxt = np.array(copy.copy(xt))
+nyt = np.array(copy.copy(yt))
+
+kern = sk_kern.Matern(length_scale=1.0, length_scale_bounds=(1.0,1.0), nu=2.5)
+sGP = skGP.GaussianProcessRegressor(
+        kernel=kern,
+        alpha=1e-15, 
+        optimizer="fmin_l_bfgs_b", 
+        n_restarts_optimizer=0)
+
+sGP.fit(nxt.reshape(-1, 1), nyt)
+print("sGP.kernel_", sGP.kernel_)
+pred_mean, pred_std= sGP.predict(nxp.reshape(-1,1), return_std=True)
+
+print(pred_mean.reshape(-1,))
+print(pred_std)
+
+!pip install GPy
+
+import GPy
+
+nxp = np.linspace(-2,12,10).reshape(-1,1)
+nxt = np.array(copy.copy(xt)).reshape(-1,1)
+nyt = np.array(copy.copy(yt)).reshape(-1,1)
+
+kern = GPy.kern.Matern52(input_dim=1,variance=1.0,lengthscale=1.0)
+model = GPy.models.GPRegression(X=nxt, Y=nyt, kernel=kern,normalizer=None)
+print(model)
+pred_mean, pred_var = model.predict(nxp)
+print("results(default) ", pred_mean.reshape(-1,), "\n",pred_var.reshape(-1,))
+
+model = GPy.models.GPRegression(X=nxt, Y=nyt, kernel=kern,noise_var=1.e-15, normalizer=None)
+pred_mean, pred_var = model.predict(nxp)
+print(model)
+print("results(noise_var~0)", pred_mean.reshape(-1,), "\n",pred_var.reshape(-1,))
+
+#使うライブラリのインポート
+!pip install GPy
+!pip install GPyOpt
+import GPy
+import GPyOpt
+import numpy as np 
+import matplotlib.pyplot as plt
+
+def f(x): #GPyOptは最小値を探索するのでマイナスをかけておく
+    return - (np.sin(x) + 0.2 * x)
+
+
+oxt = np.array([ 0.0 + 1.02*i for i in range(11)])
+xt = np.array([ oxt[2], oxt[6]])
+yt = f(xt)
+xt = np.array( [ [ x ] for x in xt])
+yt = np.array( [ [ y ] for y in yt])
+
+## BayesOptの準備・実行
+bounds = [{'name': 'x', 'type': 'continuous', 'domain': (-2,12)}]
+res = GPyOpt.methods.BayesianOptimization(f=f,X=xt,Y=yt, 
+                                            kernel=GPy.kern.Matern52(input_dim=len(bounds)),                                           
+                                            domain=bounds,acquisition_type='EI')
+#print("bounds", bounds,len(bounds))
+res.run_optimization(max_iter=10)
+
+## 結果の描画等
+xs = res.X; ys = res.Y
+print("Estimated Opt. x", res.x_opt[0], "y", -res.fx_opt)
+xr = np.arange(-2.0,12.0,0.1)
+yr = - f(xr)
+
+fig = plt.figure(figsize=(12,4))
+ax = fig.add_subplot(111)
+ax.set_xlabel("x"); ax.set_ylabel("y")
+ax.set_xlim(-2.0,12); ax.set_ylim(-2.0,5.0)
+ax.plot(xr,yr,linestyle="dotted",color="red")
+ax.scatter(xs,-ys,marker="o",color="black")
+plt.show()
+plt.close()

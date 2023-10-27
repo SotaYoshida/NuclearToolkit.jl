@@ -1,0 +1,638 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pythonの環境構築 (Windows11版) &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="コードの編集環境とGitHub Copilot" href="Python_misc_VScode.html" />
+    <link rel="prev" title="Pythonの環境構築" href="Python_misc_python_environment.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_misc_python_env_forWin11.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_misc_python_env_forWin11.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_python_env_forWin11.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#windows">
+   Windowsターミナルの導入
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#wsl2">
+   WSL2の導入
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#wslpython">
+   WSL下でのPython環境の構築
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <div class="tex2jax_ignore mathjax_ignore section" id="python-windows11">
+<h1>Pythonの環境構築 (Windows11版)<a class="headerlink" href="#python-windows11" title="Permalink to this headline">¶</a></h1>
+<p>いくつかの方針が考えられるが、下記の導入を推奨とする。</p>
+<ul class="simple">
+<li><p>Windowsターミナル</p></li>
+<li><p>Windows Subsystem for Linux2(WSL2)</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>授業の受講者で環境構築を希望される方は、事前に相談することを強く推奨します。
+とくにWindowsの場合、作成者(吉田)はWindowsユーザーではないので幾つかの情報が古い恐れがあります。</p>
+</div>
+<div class="section" id="windows">
+<h2>Windowsターミナルの導入<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h2>
+<p>ターミナルとは、CUI(Character User Interface)、つまり<br />
+コマンドなどの文字列のみを用いてコンピュータを操作する環境を指す言葉です。</p>
+<p>CUIに対して、普段我々が使っているポインタやウィンドウなどは<br />
+GUI(Graphical User Interface)に相当します。</p>
+<p>何故現代においてもCUIが必要なのか、<br />
+つまりマウスでポインタを動かしたりクリックするのではなく<br />
+一見不便そうな文字列だらけのインターフェースが用いられるのか、<br />
+そこには<em>単に映画やドラマでハッカーの邪悪さを演出する</em>以上の理由があります。</p>
+<p>計算機(コンピュータ)の発展の歴史的側面、パフォーマンス的側面から<br />
+その理由をすべて説明することはしませんが例えば授業で用いた<br />
+<code class="docutils literal notranslate"><span class="pre">ls</span></code>コマンドなどはCUIの利便性を表す一例になっていて、<br />
+こうしたいわゆる”機械的”な操作についてはCUIに軍配が挙がります。</p>
+<p>Windows Terminalは、2019年にマイクロソフトがリリースしたターミナルで<br />
+コマンドプロンプトやPowerShellといったWindows独自のCUIに加えて<br />
+後述のWSLを統合的に扱うことができる環境となっています。</p>
+<ul>
+<li><p>Windows10の場合</p>
+<p>後々のことも考えてこれを導入しておこう。<br />
+MS storeでWindows terminalと検索し、 入手を押す</p>
+</li>
+<li><p>Windows11の場合</p>
+<p>標準で入っているのでWindowsボタンで開くメニューから<br />
+「terminal」などと検索すると出てくる</p>
+</li>
+</ul>
+</div>
+<div class="section" id="wsl2">
+<h2>WSL2の導入<a class="headerlink" href="#wsl2" title="Permalink to this headline">¶</a></h2>
+<p>オペレーティングシステム(OS)の源流を遡ると、大まかには2つに大別される。<br />
+1つがUnix系で歴史が古い。そしてもう１つはお使いのWindowsである。</p>
+<p>Unixはあるところで枝分かれし、LinuxやMac OSなどもUnix系に含まれる。<br />
+サーバー用途のマシンや、スパコンなどの計算機環境では基本的にLinuxがOSとして採用されている。<br />
+コンピュータの”計算機”としての側面や歴史的経緯から<br />
+プログラミング言語・開発環境などもUnix/Linuxとともに発展してきた部分が大きい。</p>
+<p>一方でWindowsは、一般家庭でのコンピュータの需要拡大とともに独自の進化を遂げてきた。</p>
+<p>Windowsユーザーが、プログラミング環境の構築やLinux-likeな作業をしたい場合<br />
+方法は幾つかあるが最近だとWindows Subsystem for Linux (通称WSL)を使うのが<br />
+最も簡単かつ安全な方法の１つとされている。</p>
+<p>この授業ではLinuxの中のUbuntuというディストリビューションを用意して使うことにしよう。<br />
+Ubuntu自体はLinux OSの中ではGUI環境も良く出来ているディストリビューションで人気が高い。<br />
+~日本語のシステムフォントがひどいWなんとかというOSよりはフォント・レンダリングも美しい~</p>
+<ul>
+<li><p><strong>手順1. WSLと仮想マシンプラットフォームの有効化</strong></p>
+<p>スタートメニューから「コントロールパネル」を検索して開く<br />
+<img src="https://drive.google.com/uc?export=view&id=1OcM-XPNm33NOtQ5n8BJclhWlzrm8_K6X" width=60%></p>
+<p>コントロールパネルの[プログラム]&gt;[Windowsの機能の有効化または無効化] を選択し</p>
+<ul class="simple">
+<li><p>「Linux用Windowsサブシステム」</p></li>
+<li><p>「仮想マシン プラットフォーム」</p></li>
+</ul>
+<p>の２つにチェックを入れて有効化する(再起動が必要)</p>
+</li>
+<li><p><strong>手順2. Windows TerminalからWSLのインストール</strong></p>
+<p>スタートメニューからterminalなどと打ち込んで<br />
+Windows Terminalで右クリックして[管理者として実行]する<br />
+このアプリがデバイスに変更を加えることを許可しますか→[はい]</p>
+<p>ターミナルに</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wsl</span> <span class="o">--</span><span class="n">install</span>
+</pre></div>
+</div>
+<p>と打ち込んで実行(Enter)する</p>
+  <img src="https://drive.google.com/uc?export=view&id=15stSBQnBN_3aqVuXxkhTrDSKgNdXaLqt" width=60%>
+<p>大量にヘルプが表示される場合は、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wsl</span> <span class="o">--</span><span class="n">install</span> <span class="o">-</span><span class="n">d</span> <span class="n">Ubuntu</span>
+</pre></div>
+</div>
+<p>と明示的にUbuntuを指定してインストールする</p>
+</li>
+<li><p><strong>手順3. Ubuntuの起動</strong></p>
+<p>Ubuntuのウィンドウが開く※ので<br />
+指示(Press any key to continue…)に従って適当なキーを押す。</p>
+<p>※RyzenのCPUが搭載されたマシンを使っていて<br />
+ウィンドウが開いたときにerror: 0x800701bcが発生している場合は
+<a class="reference external" href="https://docs.microsoft.com/ja-jp/windows/wsl/install-manual#step-4---download-the-linux-kernel-update-package">このページ</a>を参考に<br />
+「Linux カーネル更新プログラム パッケージ」をダウンロードして実行した後、手順1→2を再度行う。</p>
+</li>
+<li><p><strong>手順4. Ubuntuの初期設定</strong></p>
+<p>しばらくすると<code class="docutils literal notranslate"><span class="pre">Enter</span> <span class="pre">new</span> <span class="pre">UNIX</span> <span class="pre">username:</span> </code><br />
+とLinuxシステム用のusernameを求められるので<br />
+適当なものを入力してEnterを押す<br />
+usernameは半角英数字にしよう。あとは…短い方があとあと便利。</p>
+<p>その後
+<code class="docutils literal notranslate"><span class="pre">NewPassword</span></code>
+とパスワードの設定を求められるので打ち込んでEnter</p>
+<p><code class="docutils literal notranslate"><span class="pre">Retype</span> <span class="pre">new</span> <span class="pre">password</span></code>(もっかい打て)と言われるのでもう一度</p>
+<p>ユーザー名が緑色で表示されていて、エラーメッセージ等がなければOK</p>
+  <img src="https://drive.google.com/uc?export=view&id=1WZ1TbZM4LsGl72mgaWTmZ-_A4dqVQihj" width=60%>
+</li>
+</ul>
+<p>上記の手順以降は、スタートメニューからUbuntuと検索してUbuntuを開いても良いし<br />
+Windows terminalのタブの”+”のさらに右にある∨マークから<br />
+Ubuntuを選択すると(あるいはショートカットで)、Windows terminalの上でUbuntuが開く。</p>
+<p>なお、デフォルトの設定だとUbuntuを開くとUbuntuのホームディレクトリで開くし<br />
+Windows terminalから開くと、Windows側のホームディレクトリにいる状態で開く</p>
+<img src="https://drive.google.com/uc?export=view&id=1PZlzK_cuWwYz07Msb8ymtfb5EF6RTiRb" width=60%> </div>
+<div class="section" id="wslpython">
+<h2>WSL下でのPython環境の構築<a class="headerlink" href="#wslpython" title="Permalink to this headline">¶</a></h2>
+<p>※以下では、直接/Windows TerminalのどちらでUbuntu環境を開いている場合も<br />
+便宜上”Ubuntuターミナル”と呼ぶことにしよう。</p>
+<p>WSL下にPython環境構築をする方法は以下の通り</p>
+<ul>
+<li><p><strong>手順1. aptのupdate/upgrade</strong></p>
+<p>Ubuntuターミナルで以下を入力し実行する</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt update
+$sudo apt upgrade
+</pre></div>
+</div>
+<p>注:上の<code class="docutils literal notranslate"><span class="pre">$</span></code>は打ち込むのではなく、 Ubuntuターミナルの末尾にある<code class="docutils literal notranslate"><span class="pre">$</span></code>を指し<br />
+Pythonの対話モードなどで打ち込む場合と区別するための表記。</p>
+<p>sudoはコマンドの頭につけることで管理者権限で実行する、という命令を意味します。<br />
+実行時に、Ubuntu用に設定したパスワードが要求されます<br />
+入力しても画面には表示されないので注意しながら打ち込んでEnterを押す。<br />
+(間違っても再度入力を求めてくれますし、やめたければCtrl+C)</p>
+<p>aptはLinux(Debian系)のパッケージ管理システムです。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt install xxxx
+</pre></div>
+</div>
+<p>などとして、様々なものを簡単にインストールすることが出来ます。</p>
+<p>※PCの時刻設定がきちんと行われていないと、aptのupdateやupgradeに失敗します。</p>
+</li>
+<li><p><strong>手順2. Pythonのインストール</strong></p>
+<p>Ubuntuには初めからPython3系が含まれていますが、</p>
+<p>pythonの最新バージョンをpip込みでインストールしましょう。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt install python3-pip -y
+</pre></div>
+</div>
+<p>これでpython3.xとpython用のパッケージマネージャpipがインストールされます。</p>
+</li>
+<li><p><strong>手順3. Pythonの対話モードに入ってみよう</strong></p>
+<p>インストールが終わったら<code class="docutils literal notranslate"><span class="pre">python3</span></code>と打ち込んでEnterを押すと<br />
+Pythonの対話モードに入ります。対話モードの中で</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;</span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>などと打ち込んで実行してみましょう。</p>
+<p>打ちかけの作業を消したり、処理を中断する際はCtrl+Cを、<br />
+対話モードから抜けたければCtrl+Dを入力します<br />
+(書きかけのコードがあったり処理が実行されているときは先にCtrl+Cで中断してからCtrl+d)</p>
+</li>
+<li><p><strong>手順4. ライブラリのインストール</strong></p>
+<p>ライブラリ・モジュールをインストールしたければUbuntuターミナルから</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$pip3 install matplotlib
+$pip3 install pandas
+$pip3 install Selenium
+</pre></div>
+</div>
+<p>などを実行します。</p>
+<p>Google Colab環境では毎度</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>!pip install japanize-matplotlib
+</pre></div>
+</div>
+<p>などとしましたが、一度インストールしておけば<br />
+コードの実行のたびにpipでインストール作業を行う必要はありません。<br />
+(ライブラリのimportはセッションごとに必要です)</p>
+</li>
+</ul>
+<p>その他、Linuxコマンドの使い方等については<a class="reference external" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_python_environment.ipynb">元のノートブック</a>を参照</p>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_misc_python_environment.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Pythonの環境構築</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_VScode.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">コードの編集環境とGitHub Copilot</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

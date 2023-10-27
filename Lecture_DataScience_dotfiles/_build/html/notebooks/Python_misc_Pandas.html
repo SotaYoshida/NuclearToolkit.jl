@@ -1,0 +1,1043 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pandasの使い方 (基礎) &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Numpyについて" href="Python_misc_numpy.html" />
+    <link rel="prev" title="コードの編集環境とGitHub Copilot" href="Python_misc_VScode.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_misc_Pandas.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_misc_Pandas.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_Pandas.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#dataframe">
+   DataFrame型
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id1">
+   DataFrameの要素を確認・指定する方法
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id2">
+     特定の列を取得したい場合
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id3">
+     列の追加
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id4">
+     特定の行を取得したい場合
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id5">
+     より複雑な行・列の抽出
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#webdataframe">
+   Webページにある表をDataFrameとして取得する
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id6">
+   Pandasで複雑なエクセルファイルを操作する
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id7">
+     データの整形
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#dataframecsv-excel">
+   DataFrameのcsv/Excelファイルへの書き出し
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_Pandas.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="pandas">
+<h1>Pandasの使い方 (基礎)<a class="headerlink" href="#pandas" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Pandas</span></code>は、データ分析のためのライブラリで<br />
+統計量を計算・表示したり、それらをグラフとして可視化出来たり<br />
+前処理などの地道だが重要な作業を比較的簡単に行うことができます。</p>
+<p>まずはインポートしましょう。<code class="docutils literal notranslate"><span class="pre">pd</span></code>という名前で使うのが慣例です。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>pandasでは主に<code class="docutils literal notranslate"><span class="pre">Series</span></code>と<code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>の２つのオブジェクトを扱います。<br />
+SeriesはDataFrameの特殊な場合とみなせるので、以下ではDataFrameのみ説明することにします。</p>
+<div class="section" id="dataframe">
+<h2>DataFrame型<a class="headerlink" href="#dataframe" title="Permalink to this headline">¶</a></h2>
+<p>DataFrameはExcelシートのような二次元のデータを表現するのに利用され<br />
+各種データ分析などで非常に役にたちます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>以下の辞書型をDataFrame型のオブジェクトに変換してみましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;名前&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Aさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Bさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Cさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Dさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Eさん&quot;</span><span class="p">],</span>
+        <span class="s1">&#39;出身都道府県&#39;</span><span class="p">:[</span><span class="s1">&#39;Tokyo&#39;</span><span class="p">,</span> <span class="s1">&#39;Tochigi&#39;</span><span class="p">,</span> <span class="s1">&#39;Hokkaido&#39;</span><span class="p">,</span><span class="s1">&#39;Kyoto&#39;</span><span class="p">,</span><span class="s1">&#39;Tochigi&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;生年&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="mi">1998</span><span class="p">,</span> <span class="mi">1993</span><span class="p">,</span><span class="mi">2000</span><span class="p">,</span><span class="mi">1989</span><span class="p">,</span><span class="mi">2002</span><span class="p">],</span>
+        <span class="s1">&#39;身長&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">172</span><span class="p">,</span> <span class="mi">156</span><span class="p">,</span> <span class="mi">162</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span><span class="mi">158</span><span class="p">]}</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;dataの型&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;dfの型&quot;</span><span class="p">,</span><span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>jupyter環境でDataFrameを読むと、”いい感じ”に表示してくれる</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>printだとちょっと無機質な感じに。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">info()</span></code>関数を作用させると、詳細な情報が得られる。<br />
+列ごとにどんな種類のデータが格納されているのかや、
+メモリ使用量など表示することができる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>DataFrameの要素を確認・指定する方法<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>index: 行方向のデータ項目(おもに整数値(行番号),ID,名前など)<br />
+columns: 列方向のデータの項目(おもにデータの種類)<br />
+をそれぞれ表示してみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">index</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>行方向を、整数値(行数)ではなく名前にしたければ</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data1</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;出身都道府県&#39;</span><span class="p">:[</span><span class="s1">&#39;Tokyo&#39;</span><span class="p">,</span> <span class="s1">&#39;Tochigi&#39;</span><span class="p">,</span> <span class="s1">&#39;Hokkaido&#39;</span><span class="p">,</span><span class="s1">&#39;Kyoto&#39;</span><span class="p">,</span><span class="s1">&#39;Tochigi&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;生年&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="mi">1998</span><span class="p">,</span> <span class="mi">1993</span><span class="p">,</span><span class="mi">2000</span><span class="p">,</span><span class="mi">1989</span><span class="p">,</span><span class="mi">2002</span><span class="p">],</span>
+        <span class="s1">&#39;身長&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">172</span><span class="p">,</span> <span class="mi">156</span><span class="p">,</span> <span class="mi">162</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span><span class="mi">158</span><span class="p">]}</span>
+<span class="n">df1</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
+<span class="n">df1</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span><span class="p">[</span><span class="s2">&quot;Aさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Bさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Cさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Dさん&quot;</span><span class="p">,</span> <span class="s2">&quot;Eさん&quot;</span><span class="p">]</span>
+<span class="n">df1</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などとしてもよい。</p>
+<div class="section" id="id2">
+<h3>特定の列を取得したい場合<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;身長&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>とする。<br />
+以下の方法は非推奨とする。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">身長</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>値のリスト(正確にはnumpy.ndarray型)として取得したければ</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;身長&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;出身都道府県&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などとすればよい。</p>
+<p>慣れ親しんだ形に変換したければ、リストに変換すればよい</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;出身都道府県&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>ある列が特定のものに一致するもののみを抽出するのも簡単にできる</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;出身都道府県&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;Tochigi&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>これは</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;出身都道府県&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;Tochigi&quot;</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>が条件に合致するかどうかTrue/Falseの配列になっていて、<br />
+df[ [True/Falseの配列] ]とすると、Trueに対応する要素のみを返す<br />
+フィルターのような役割になっている。</p>
+</div>
+<div class="section" id="id3">
+<h3>列の追加<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#スカラー値の場合&quot;初期化&quot;のような振る舞いをする</span>
+<span class="n">df</span><span class="p">[</span><span class="s2">&quot;血液型&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;A&quot;</span>
+<span class="n">df</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#リストで追加</span>
+<span class="n">df</span><span class="p">[</span><span class="s2">&quot;血液型&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">,</span><span class="s2">&quot;AB&quot;</span><span class="p">,</span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="s2">&quot;A&quot;</span><span class="p">]</span>
+<span class="n">df</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>特定の行を取得したい場合<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>たとえば、行番号がわかっているなら、<code class="docutils literal notranslate"><span class="pre">iloc</span></code>関数を使えば良い</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>値のみ取得したければ先程と同様</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>また、以下のような使い方もできるが</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="c1">#1から3行目まで</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">df[1]</span></code>といった使い方は出来ない。</p>
+</div>
+<div class="section" id="id5">
+<h3>より複雑な行・列の抽出<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>上にならって、2000年より前に生まれた人だけを抽出し</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;生年&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2000</span> <span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>さらにこのうち身長が170cm以上の人だけがほしければ</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;生年&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2000</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;身長&quot;</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">170</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などとすればよい。<br />
+他にも<code class="docutils literal notranslate"><span class="pre">iloc</span></code>,<code class="docutils literal notranslate"><span class="pre">loc</span></code>などを用いれば<br />
+特定の行・列を抽出することができる</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">iloc</span></code>は番号の指定のみに対応</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">loc</span></code>は名前のみ</p></li>
+</ul>
+<p><strong>欲しい要素の数値もしくは項目名のリスト</strong>を<br />
+行・列の２つついて指定してやればよい。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="c1">#0行目,0列目</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#スライスで指定することもできる</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="c1">#1-3行目かつ0-2列目 (スライスの終点は含まれないことに注意)</span>
+
+<span class="c1">#スライスの場合は、 1:4が[1,2,3]と同じ働きをするので、括弧[]はいらない</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">loc</span></code>を使う場合は、indexの代わりに項目名で指定する。</p>
+<p>※今の場合、行を指定する項目名が既に整数値なので<br />
+インデックスと見分けが付きづらいことに注意</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">,[</span><span class="s2">&quot;名前&quot;</span><span class="p">,</span><span class="s2">&quot;身長&quot;</span><span class="p">]]</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span><span class="s2">&quot;名前&quot;</span><span class="p">:</span><span class="s2">&quot;生年&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>といった具合。</p>
+<p><code class="docutils literal notranslate"><span class="pre">loc</span></code>を使う場合、1:4や[1,2,3,4]は<br />
+indexのスライスではなく、項目名を意味し<br />
+Eさんのデータも含まれている事がわかる。</p>
+</div>
+</div>
+<div class="section" id="webdataframe">
+<h2>Webページにある表をDataFrameとして取得する<a class="headerlink" href="#webdataframe" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pandas</span></code>内の<code class="docutils literal notranslate"><span class="pre">read_html</span></code>関数を用いれば、<br />
+Webページの中にある表をDataFrame形式で取得することもできます。</p>
+<p>以下では例としてWikipediaの<a class="reference external" href="https://ja.wikipedia.org/wiki/%e3%83%8e%e3%83%bc%e3%83%99%e3%83%ab%e7%89%a9%e7%90%86%e5%ad%a6%e8%b3%9e">ノーベル物理学賞</a>のページにある、受賞者一覧を取得してみましょう</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://ja.wikipedia.org/wiki/</span><span class="si">%e</span><span class="s2">3</span><span class="si">%83%</span><span class="s2">8e</span><span class="si">%e</span><span class="s2">3</span><span class="si">%83%</span><span class="s2">bc</span><span class="si">%e</span><span class="s2">3</span><span class="si">%83%</span><span class="s2">99</span><span class="si">%e</span><span class="s2">3</span><span class="si">%83%</span><span class="s2">ab</span><span class="si">%e</span><span class="s2">7</span><span class="si">%89%</span><span class="s2">a9</span><span class="si">%e</span><span class="s2">7</span><span class="si">%90%</span><span class="s2">86</span><span class="si">%e</span><span class="s2">5</span><span class="si">%a</span><span class="s2">d</span><span class="si">%a</span><span class="s2">6</span><span class="si">%e</span><span class="s2">8%b3</span><span class="si">%9e</span><span class="s2">&quot;</span>
+<span class="n">tables</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>ページ内に、21個もの表があることがわかります。<br />
+(ほとんどはwikipediaのテンプレート等)</p>
+<p>たとえば、2010年代の受賞者のみに興味がある場合は</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">12</span><span class="p">]</span>
+<span class="n">df</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id6">
+<h2>Pandasで複雑なエクセルファイルを操作する<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>Pandasにはread_excel()という関数が用意されていて、<br />
+多数のシートを含むようなエクセルファイルを開くことも出来る。</p>
+<p>まずは必要なモジュールをインポートしよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>今まではGoogle Driveにいれたファイルを読み出していたが、<br />
+Webから直接xlsxファイルを読み込んでみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://www.mext.go.jp/content/20201225-mxt_kagsei-mext_01110_012.xlsx&quot;</span>
+<span class="n">input_file</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">ExcelFile</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>ブック内のシートの一覧は以下のように取得できる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sheet_names</span> <span class="o">=</span> <span class="n">input_file</span><span class="o">.</span><span class="n">sheet_names</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;pandas: シート名&quot;</span><span class="p">,</span><span class="n">sheet_names</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>シートを指定するのは、インデックスかシート名の文字列で行う。</p>
+<p>“1 穀類”を使うことにして、<br />
+pandasにあるread_excel関数を使ってみよう。<br />
+read_excel関数の最初の引数にはパスの他に、urlも取れる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;1穀類&quot;</span><span class="p">)</span>
+<span class="n">df</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>同じものが得られている。</p>
+<div class="section" id="id7">
+<h3>データの整形<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>次に、今取得したデータフレームのままでは少々扱い辛いので”整形”を考える。<br />
+というのも前から4行ほど表示してみると…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>最初の4行ほどに栄養素等の情報が入っているのだが、<br />
+セルが結合されたりしているため、所々にNaNが入っていたりして見辛い。</p>
+<p>(碁盤目の構造を破壊してしまうため「セルの結合」は機械的な処理と<br />
+やや相性が悪く、プログラミングを用いたデータ分析では嫌われる)</p>
+<p>各省庁の公開データのフォーマットの統一化は今後に期待することにして…<br />
+まず以下の項目に該当する列だけを抽出する事を考える。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">,</span> <span class="s2">&quot;エネルギー&quot;</span><span class="p">,</span><span class="s2">&quot;たんぱく質&quot;</span><span class="p">,</span> <span class="s2">&quot;脂質&quot;</span><span class="p">,</span> <span class="s2">&quot;炭水化物&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>該当するデータがどの行・列に格納されているかをコードで指定するのは、<br />
+前述のファイル構造の事情からやや面倒くさい。</p>
+<p>以下では、その場しのぎ的ではあるが、<br />
+興味のある量が何番目かを指定してまとめてみることにしよう。</p>
+<p>そのために、1-2行目の要素を表示してみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#1-2行目(エクセルだと2行目)の要素から</span>
+    <span class="c1">#半角空白, 全角空白(\u3000)や改行コード\nを取り除いたリストを作って表示してみる</span>
+
+<span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">tlist</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\u3000</span><span class="s2">&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">),</span><span class="n">tmp</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">tlist</span><span class="p">)</span>
+<span class="c1">#    for target in targets:</span>
+<span class="c1">#        tlist.index(target)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>セルの結合により、興味のあるデータがどの列に記述されているかは注意が必要。</p>
+<p>実際、[エネルギー]という文字列は1行目の6列目(それぞれインデックスでいうと0,5)で取得できるが、<br />
+kJ単位になっていて、kcal単位でほしければ、7列目に格納された値が必要になる。</p>
+<p>また、エクセルファイルを見るとわかるように、たんぱく質・脂質・炭水化物はさらに細分化されており、<br />
+O列R列など、細かい列の分割が挿入されている. ~~これは大変困る~~</p>
+<p>単純にたんぱく質・脂質・炭水化物と表記されている列のインデックスはそれぞれ9,12,20となる。<br />
+食品名が格納されている列(3)、エネルギー[kJ単位] (6)と合わせて確認してみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">20</span><span class="p">]</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="n">targets</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>もう少し整形したいので、新しいデータフレームのコラムを書き換える。</p>
+<p>食品名等が記載されているのは10行目以降なので、それを使い<br />
+columnを指定する。</p>
+<p>さらに、食品名に含まれる余分な文字コードも削除しておこう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ndf</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="n">targets</span><span class="p">]</span> 
+<span class="n">ndf</span> <span class="o">=</span> <span class="n">ndf</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">10</span><span class="p">:,:]</span>
+<span class="n">ndf</span><span class="o">.</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">,</span><span class="s2">&quot;エネルギー(kcal)&quot;</span><span class="p">,</span><span class="s2">&quot;たんぱく質(g)&quot;</span><span class="p">,</span><span class="s2">&quot;脂質(g)&quot;</span><span class="p">,</span><span class="s2">&quot;炭水化物(g)&quot;</span><span class="p">]</span>
+<span class="n">ndf</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ndf</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\u3000</span><span class="s2">&quot;</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">)</span> <span class="c1"># 食品名の中にある余分な全角空白(\u3000)を半角スペースに置き換える</span>
+<span class="n">ndf</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>次に、食品名の一覧を取得した後、興味のあるもの(日常的に馴染みのあるもの)だけを<br />
+ピックアップしてみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ndf</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>この中から…</p>
+<ul class="simple">
+<li><p>こむぎ［パン類］食パンリッチタイプ</p></li>
+<li><p>こむぎ［パン類］フランスパン</p></li>
+<li><p>こめ［水稲軟めし］精白米</p></li>
+<li><p>そばそばゆで</p></li>
+<li><p>こむぎ［うどん・そうめん類］うどんゆで</p></li>
+</ul>
+<p>のみに興味があれば</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tshokuhin</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;こむぎ ［パン類］ 食パン リッチタイプ&quot;</span><span class="p">,</span><span class="s2">&quot;こむぎ ［パン類］ フランスパン&quot;</span><span class="p">,</span><span class="s2">&quot;こめ ［水稲軟めし］ 精白米&quot;</span><span class="p">,</span> <span class="s2">&quot;そば そば ゆで&quot;</span><span class="p">,</span> <span class="s2">&quot;こむぎ ［うどん・そうめん類］ うどん ゆで&quot;</span><span class="p">]</span>
+<span class="n">ndf</span><span class="p">[</span> <span class="n">ndf</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">tshokuhin</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などとする。</p>
+<p>‘6野菜類’でも同様に…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df6</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;6野菜類&quot;</span><span class="p">)</span>
+<span class="n">df6</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">20</span><span class="p">]]</span>
+<span class="n">ndf6</span> <span class="o">=</span> <span class="n">df6</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">20</span><span class="p">]]</span> 
+<span class="n">ndf6</span> <span class="o">=</span> <span class="n">ndf6</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">10</span><span class="p">:,:]</span>
+<span class="n">ndf6</span><span class="o">.</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">,</span><span class="s2">&quot;エネルギー(kcal)&quot;</span><span class="p">,</span><span class="s2">&quot;たんぱく質(g)&quot;</span><span class="p">,</span><span class="s2">&quot;脂質(g)&quot;</span><span class="p">,</span><span class="s2">&quot;炭水化物(g)&quot;</span><span class="p">]</span>
+<span class="n">ndf6</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ndf6</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\u3000</span><span class="s2">&quot;</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">)</span> 
+<span class="n">ndf6</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>特定のキーワードを含むものを全て取得して、<br />
+食品名を細かく指定したり、対応する行番号のインデックスを取得できたりする</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">kyabetu</span> <span class="o">=</span> <span class="n">ndf6</span><span class="p">[</span><span class="n">ndf6</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="s1">&#39;キャベツ&#39;</span><span class="p">)]</span>
+<span class="n">kyabetu</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tomato</span> <span class="o">=</span> <span class="n">ndf6</span><span class="p">[</span><span class="n">ndf6</span><span class="p">[</span><span class="s2">&quot;食品名&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="s1">&#39;トマト&#39;</span><span class="p">)]</span>
+<span class="n">tomato</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>DataFrame同士を結合してまとめるなどして<br />
+扱いやすいデータに整形していく.</p>
+<p>縦方向の結合はpandasのconcat(concatenateの略)を使う。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tdf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">kyabetu</span><span class="p">,</span> <span class="n">tomato</span><span class="p">])</span>
+<span class="n">tdf</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="dataframecsv-excel">
+<h2>DataFrameのcsv/Excelファイルへの書き出し<a class="headerlink" href="#dataframecsv-excel" title="Permalink to this headline">¶</a></h2>
+<p>DataFrameオブジェクトは、<code class="docutils literal notranslate"><span class="pre">pandas</span></code>内の関数を用いれば、<br />
+簡単にcsvやExcelファイルとして書き出すことができます。</p>
+<p>先程の、２０１０年代のノーベル物理学賞受賞者のデータを、<br />
+Google Driveにファイルとして書き出してみましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">google.colab</span> <span class="kn">import</span> <span class="n">drive</span>
+<span class="n">drive</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s1">&#39;/content/drive&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>csvとして書き出す場合</strong></p>
+<p>適当にパスを指定して、DataFrameオブジェクトに<br />
+<code class="docutils literal notranslate"><span class="pre">to_csv</span></code>関数を作用させます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;/content/drive/My Drive/AdDS2021/pd_write_test.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>Excelファイルとして書き出す場合</strong></p>
+<p>この場合も同様で、<code class="docutils literal notranslate"><span class="pre">to_excel</span></code>関数を用います。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="s2">&quot;/content/drive/My Drive/AdDS2021/pd_write_test.xlsx&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>上記の関数内で文字コードを指定することもできます。<br />
+例: <code class="docutils literal notranslate"><span class="pre">encoding=&quot;utf-8_sig&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">encoding=&quot;shift_jis&quot;</span></code></p>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_misc_VScode.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">コードの編集環境とGitHub Copilot</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_numpy.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Numpyについて</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

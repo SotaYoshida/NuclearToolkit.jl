@@ -1,0 +1,1092 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pythonの環境構築 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pythonの環境構築 (Windows11版)" href="Python_misc_python_env_forWin11.html" />
+    <link rel="prev" title="よくあるエラー集" href="Python_misc_Error.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_misc_python_environment.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_misc_python_environment.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_python_environment.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#">
+   Pythonの環境構築
+  </a>
+  <ul class="visible nav section-nav flex-column">
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#windows">
+     Windowsの場合
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id1">
+       1.の方法
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id2">
+       2-1. の方法
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#windowslinux">
+       Windows環境のどこにLinuxのファイルが保存されるか
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#linuxwindows">
+       Linux側からWindows側のファイルにアクセスする
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#wsl">
+       WSLのバージョン確認と更新
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#wslmatplotlibshow">
+       WSL環境でMatplotlibのshow()などを使う
+      </a>
+     </li>
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#id3">
+       2-2.の方法
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#mac">
+     Macの場合
+    </a>
+   </li>
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#linux">
+     Linuxの場合
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#linux-unix">
+   Linux/Unix ターミナルの操作
+  </a>
+  <ul class="visible nav section-nav flex-column">
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id4">
+     Linuxのホームディレクトリの変更
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h3 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#dot-files">
+       隠しファイル/隠しフォルダ(dot files)について
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <div class="tex2jax_ignore mathjax_ignore section" id="python">
+<h1>Pythonの環境構築<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h1>
+<p><strong>Windows11をお使いの方は<a class="reference external" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_python_env_forWin11.ipynb">こちらのノートブック</a>を参照してください</strong></p>
+<p>手元で作業がしたい、という方に向けて<br />
+ローカル環境にPythonを導入する方法をOSごとに紹介する。</p>
+<p>難易度としてはLinux &lt; Mac &lt;&lt; (壁)&lt;&lt;  Windowsといった感じ(私見).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>授業の受講者で環境構築を希望される方は、事前に相談することを強く推奨します。
+とくにWindowsの場合、作成者(吉田)はWindowsユーザーではないので幾つかの情報が古い恐れがあります。</p>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#動画貼り付け用</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="kn">from</span> <span class="nn">base64</span> <span class="kn">import</span> <span class="n">b64encode</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="windows">
+<h2>Windowsの場合<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h2>
+<p>いくつかの方針が考えられる。</p>
+<ol class="simple">
+<li><p>Pythonのインストーラを用いてインストールする</p>
+<ul class="simple">
+<li><p>メリット: Windows環境を汚さない, インストールが楽</p></li>
+<li><p>デメリット: 他のプログラミング言語などへの拡張性が低い</p></li>
+</ul>
+</li>
+<li><p>Linux環境を構築する（<strong>推奨</strong>)</p>
+<ul class="simple">
+<li><p>2-1.   Windows Subsystem for Linux(WSL)（<strong>推奨</strong>)</p>
+<ul>
+<li><p>メリット: Windows環境を汚さない, Linuxシェル環境・パッケージマネージャ(Pythonに限らず各種インストールが楽)</p></li>
+<li><p>デメリット: WSL特有の情報を調べる必要がある</p></li>
+</ul>
+</li>
+<li><p>2-2.  デュアルブート</p>
+<ul>
+<li><p>メリット: Windowsとは別に好きなLinuxディストリビューションを共存させられる</p></li>
+<li><p>デメリット: ディスク領域の分割などが必要
+慣れないとデータを吹っ飛ばす危険あり<br />
+(外部ストレージ等でのバックアップ必須です)</p></li>
+</ul>
+</li>
+<li><p>2-3. その他 (Docker環境など)</p>
+<ul>
+<li><p>このノートブックでは説明しない</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<div class="section" id="id1">
+<h3>1.の方法<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">HTML</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/z2_nNvpgonY&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;/iframe&gt;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><iframe width="560" height="315" src="https://www.youtube.com/embed/z2_nNvpgonY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>
+</div>
+<p>以下のA)B)いずれかの方法でストアを開き<br />
+Python3.8かPython3.9を選び[入手]する。</p>
+<p>A) Microsoft Storeを開き、pythonと検索する。</p>
+<p>B)コマンドプロンプト※を開き、pythonと入力してEnter→Storeが開く。<br />
+(※Win１０の左下にある検索バーにcmdと打つと出てくる)<br />
+B)の方法だとstore上で古いpythonが開くかもしれないので<br />
+検索バーから再度pythonと検索しよう。</p>
+<p><strong>インストールしたpythonの使い方</strong></p>
+<p>コマンドプロンプト上で</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span>
+</pre></div>
+</div>
+<p>と実行すると対話モードでpythonが開く。<br />
+スタートメニューからpythonを起動しても同じ。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>や、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>などを実行してみよう。</p>
+<p>Python(対話モード)を終了する際はCtrl+Z(もしくはCtrl+Cを実行後にCtrl+Z)→Enterを押すか、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">exit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>と入力しEnterを押せば良い。</p>
+<p><strong>Python用のライブラリをインストールする方法</strong></p>
+<p>コマンドプロンプト上で</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">matplotlib</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">pandas</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">Selenium</span>
+</pre></div>
+</div>
+<p>などとする。</p>
+<p><strong>ソースファイルの編集と実行</strong></p>
+<p>対話モードだと、長い処理を実現するのには向いていないので、<br />
+作業をソースコードとしてファイルに書き出し、それを実行したくなる。<br />
+実行したい場合は、コマンドプロンプト上で</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">hogehoge</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>などとすると<code class="docutils literal notranslate"><span class="pre">hogehoge.py</span></code>というファイルに書いた処理が実行される。</p>
+<p>例: デスクトップにあるソースコードを実行する場合</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">chdir</span> <span class="n">Desktop</span>　
+</pre></div>
+</div>
+<p>などして、適宜カレント(現在いる)ディレクトリの変更をするか</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">Desktop</span><span class="o">/</span><span class="n">hogehoge</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>など実行するソースの(相対 or 絶対)パスの指定が必要になる。</p>
+</div>
+<div class="section" id="id2">
+<h3>2-1. の方法<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Windowsの中にLinux(とくにUbuntu)を入れる方法</p>
+<p><a class="reference external" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/2021/notebooks/Python_misc_python_env_forWin11.ipynb">Windows11用の資料</a>も参考になります。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">HTML</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/deZTrWYk9vU&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;/iframe&gt;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><iframe width="560" height="315" src="https://www.youtube.com/embed/deZTrWYk9vU" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>
+</div>
+<ul>
+<li><p><strong>手順1.WSLの有効化</strong></p>
+<p>コントロールパネルから[プログラム]-&gt;[Windowsの機能の有効化または無効化] を選択し<br />
+「Windows Subsystem for Linux」にチェックを入れて有効化する(再起動が必要)</p>
+</li>
+<li><p><strong>手順2. Ubuntuのインストール</strong></p>
+<p>Microsoft storeでUbuntuと検索し、1番目(単にUbuntuという名前のもの)か、<br />
+あるいは20.04LTSをインストールする</p>
+<p>※Windows OSのアップデートをしばらく行っていない場合、入手ボタンが押せない。<br />
+一般論として、OSのマイナーアップデートは都度行うようにしましょう。<br />
+(メジャーアップデートは場合による…)</p>
+</li>
+<li><p><strong>手順3.Ubuntuの起動・初期設定</strong></p>
+<p>スタートメニューからUbuntuを起動する</p>
+<ul class="simple">
+<li><p>Enter new UNIX username: Linuxで使うユーザー名を入力する</p></li>
+<li><p>new password: パスワードを設定する</p></li>
+<li><p>Retype new password: 確認のため再入力する</p></li>
+</ul>
+<p>これで、windows内にlinux環境が構築されます。</p>
+</li>
+<li><p><strong>手順4. aptのupdate/upgrade</strong></p>
+<p>Ubuntuターミナルに以下を入力し実行</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt update
+$sudo apt upgrade
+</pre></div>
+</div>
+<p>注:上の<code class="docutils literal notranslate"><span class="pre">$</span></code>は皆さんが入力すべきものではなく、<br />
+Ubuntuターミナルにある$を指し<br />
+Pythonの対話モードなどで打ち込む場合と区別するための表記。</p>
+<p>sudoはコマンドの頭につけることで管理者権限で実行する、という命令を意味します。<br />
+実行時に、Ubuntu用に設定したパスワードが要求されます<br />
+入力しても画面には表示されないので注意しながら打ち込んでEnterを押す。<br />
+(間違っても再度入力を求めてくれますし、やめたければCtrl+C)</p>
+<p>aptはLinux(Debian系)のパッケージ管理システム<br />
+※PCの時刻設定がきちんと行われていないと、aptのupdate/upgradeに失敗します。</p>
+</li>
+<li><p><strong>手順5. Pythonのインストール</strong></p>
+<p>Ubuntuには初めからPython3系が含まれていますが、<br />
+pythonの最新バージョンをpip込みでインストールしましょう。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt install python3-pip -y
+</pre></div>
+</div>
+<p>これでpython3.xの最新バージョンと、python用のパッケージマネージャpipがインストールされる</p>
+</li>
+<li><p><strong>手順6. ライブラリのインストール</strong></p>
+<p>ライブラリ・モジュールをインストールしたければ</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$pip3 install matplotlib
+$pip3 install pandas
+$pip3 install Selenium
+</pre></div>
+</div>
+<p>などを実行する。</p>
+</li>
+</ul>
+</div>
+<div class="section" id="windowslinux">
+<h3>Windows環境のどこにLinuxのファイルが保存されるか<a class="headerlink" href="#windowslinux" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">C:\Users\XXX\AppData\Local\Packages\CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc\LocalState\rootfs</span></code></p>
+<p>のXXX部分(や場合によってはドライブ部分C:)を皆さんの環境に置き換えたものが、<br />
+Windows内に構築されたLinuxのルートディレクトリ(最上位のディレクトリ)となります。<br />
+Ubuntuを開くと、rootfs以下のhomeディレクトリにログインした状態でターミナルが開きます。</p>
+<p>パスが上記と微妙に異なる場合は、<br />
+WindowsのユーザーフォルダからAppDataを開いて、<br />
+検索バーでUbuntuと検索すれば、<br />
+該当するディレクトリが見つけられるはずです。<br />
+(隠しフォルダを非表示にしていると見えないかも)</p>
+<p>Windows11の場合は適当なフォルダ(エクスプローラー)を開くと<br />
+左側にLinuxのペンギンマークがあるので、そこから参照できます。</p>
+</div>
+<div class="section" id="linuxwindows">
+<h3>Linux側からWindows側のファイルにアクセスする<a class="headerlink" href="#linuxwindows" title="Permalink to this headline">¶</a></h3>
+<p>WindowsのディスクはLinuxからみた<code class="docutils literal notranslate"><span class="pre">/mnt/</span></code>以下にマウントされている。<br />
+たとえば、<code class="docutils literal notranslate"><span class="pre">/mnt/c/Users/[ユーザー名]/Downloads</span></code>
+で、Windows側のダウンロードフォルダのパスを指定できる。</p>
+<p>OneDriveによるバックアップに含まれているフォルダは、<br />
+デフォルトパスから、OneDriveの下に変更されていることがあるので注意。</p>
+<p>(例: デスクトップはLinuxから見ると<code class="docutils literal notranslate"><span class="pre">/mnt/c/Users/[ユーザー名]/Desktop</span></code>のはずだが、<br />
+デスクトップフォルダがOneDriveのバックアップ対象になっていると、<br />
+<code class="docutils literal notranslate"><span class="pre">/mnt/c/Users/[ユーザー名]/OneDrive/Desktop</span></code>などと変更されてしまうので注意。)</p>
+</div>
+<div class="section" id="wsl">
+<h3>WSLのバージョン確認と更新<a class="headerlink" href="#wsl" title="Permalink to this headline">¶</a></h3>
+<p>Windows10を使っていてMS Storeから導入した方で<br />
+GUIを伴う処理を行いたい場合、WSLのバージョンを2にする必要がある。</p>
+<p>以下の手順でバージョンを確認し、必要なら更新しよう</p>
+<ol>
+<li><p>スタートメニューからWindows PowerShellを開く</p></li>
+<li><p>PowerShell上で下記のコマンドを入力し、バージョンを確認する</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">wsl</span> <span class="o">--</span><span class="nb">list</span> <span class="o">--</span><span class="n">verbose</span>
+</pre></div>
+</div>
+<p>出力結果をみてUbuntuのVERSIONが1になっている場合<br />
+更新を行おう
+<img src="https://drive.google.com/uc?export=view&id=15oq0ajSHdUgGQli6aN4fX6sOoZ-qsjuC" width=30%></p>
+</li>
+<li><p>更新のための前準備として、<a class="reference external" href="https://aka.ms/wsl2kernel">https://aka.ms/wsl2kernel</a>
+にアクセスし<br />
+x64 マシン用 WSL2 Linux カーネル更新プログラム パッケージをダウンロードする。<br />
+ダウンロードが終わったらパッケージを起動して、案内にしたがって実行する</p></li>
+<li><p>PowerShellに戻り、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wsl</span> <span class="o">--</span><span class="nb">set</span><span class="o">-</span><span class="n">version</span> <span class="n">Ubuntu</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>を実行しwslのバージョンを2に変更する(そこそこ時間がかかる)</p>
+<img src="https://drive.google.com/uc?export=view&id=1c0IgD0x2-m8eG7ZRUiceyJC1IfOqc-7m" width=30%>
+</li>
+</ol>
+</div>
+<div class="section" id="wslmatplotlibshow">
+<h3>WSL環境でMatplotlibのshow()などを使う<a class="headerlink" href="#wslmatplotlibshow" title="Permalink to this headline">¶</a></h3>
+<p>WSL(今はUbuntu)では、そのままでplt.show()などの<br />
+ウィンドウを開くような操作が使えない。</p>
+<p>その場合はx11とtkinterを含むpython3をインストールしよう</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo apt update
+$ sudo apt upgrde
+$ sudo apt install language-pack-ja
+$ sudo apt install x11-apps
+$ sudo apt install python3-tk
+</pre></div>
+</div>
+<p>さらにXサーバ(以下ではVcXsrvを選びます)をインストールする:</p>
+<ol>
+<li><p><a class="reference external" href="https://sourceforge.net/projects/vcxsrv/">https://sourceforge.net/projects/vcxsrv/</a>
+からDownload</p></li>
+<li><p>ダウンロードしたものを実行</p>
+<p>(デスクトップショートカットは無くても良い)
+<img src="https://drive.google.com/uc?export=view&id=1HOx0QNZLmRGERt9ZZLFUGa65d0MwPeNe" width=20%></p>
+</li>
+<li><p>スタートメニューからXLaunchを実行</p>
+  <img src="https://drive.google.com/uc?export=view&id=1dw6VgF0mqkFOXuN3yZtxXC2Gya8qK4zb" width=20%>
+<p>道なりに進んでAdditional parameters for VcXsrvの欄に-acを入力し進む</p>
+</li>
+<li><p>“Save Configuration”を選択してショートカットを作成することで、次回以降同様の作業をしなくても良いようにできる</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$xlogo
+</pre></div>
+</div>
+<p>を実行するか、Pythonの対話環境の中で</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>などとやってウィンドウが表示されればOK.</p>
+<img src="https://drive.google.com/uc?export=view&id=1HZJ9Pgu6AX-fJpWgZRqMt4reTZ7HDoKq" width=20%>
+<img src="https://drive.google.com/uc?export=view&id=15oq0ajSHdUgGQli6aN4fX6sOoZ-qsjuC" width=30%>
+</div>
+<div class="section" id="id3">
+<h3>2-2.の方法<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>バックアップや起動ディスク等の知識なくデュアルブート環境を構築しようとすると<br />
+最悪の場合すべてのデータを失いますので、こちらを選ぶ場合は予め相談してください。</p>
+<p>Linux環境を構築をすれば、あとはLinuxを起動し、以下のLinuxの場合の手順に従うだけ。</p>
+</div>
+</div>
+<div class="section" id="mac">
+<h2>Macの場合<a class="headerlink" href="#mac" title="Permalink to this headline">¶</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">HTML</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/X2FMQYpXtGY&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;/iframe&gt;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><iframe width="560" height="315" src="https://www.youtube.com/embed/X2FMQYpXtGY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>
+</div>
+<p>python2.xやpython3.x (xは購入機種・時期によって違う)が元々入っている。</p>
+<p>Launchpadにある[その他]から<strong>ターミナル</strong>を開き、<br />
+<code class="docutils literal notranslate"><span class="pre">python</span></code>と入力し、タブキーを2回押すと該当するものが表示される。<br />
+以下は一例:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span>             <span class="n">python2</span>            <span class="n">python2</span><span class="mf">.7</span><span class="o">-</span><span class="n">config</span>   <span class="n">python3</span><span class="o">-</span><span class="n">config</span>     <span class="n">python3</span><span class="mf">.7</span><span class="o">-</span><span class="n">config</span>   <span class="n">python3</span><span class="mf">.7</span><span class="n">m</span><span class="o">-</span><span class="n">config</span>  <span class="n">pythonw</span>            
+<span class="n">python</span><span class="o">-</span><span class="n">config</span>      <span class="n">python2</span><span class="mf">.7</span>          <span class="n">python3</span>            <span class="n">python3</span><span class="mf">.7</span>          <span class="n">python3</span><span class="mf">.7</span><span class="n">m</span>         <span class="n">pythontex</span>          <span class="n">pythonw2</span><span class="mf">.7</span> 
+</pre></div>
+</div>
+<p>python3がある場合は、
+<code class="docutils literal notranslate"><span class="pre">$python3</span></code>
+と入力しエンターを押すと、pythonの対話モード(インタラクティブモードとも)が開く※。</p>
+<p>※初回起動時はXcodeの導入が必要かもしれない<br />
+その場合は、ターミナルに</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xcode</span><span class="o">-</span><span class="n">select</span> <span class="o">--</span><span class="n">install</span>
+</pre></div>
+</div>
+<p>を打ち込みインストール作業を行う。<br />
+Xcodeのサイズがでかいので安定したネットワーク下で実行すること.</p>
+<p>Python(対話モード)が起動できたら</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello World&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>などと打って、エンターを押すと、文字列<code class="docutils literal notranslate"><span class="pre">&quot;Hello</span> <span class="pre">World&quot;</span></code>が表示されるので試してみよう。</p>
+<p>pythonの最新のバージョンやその他色々なものを導入したければ<br />
+今後のことも考えてMacにHomebrewと呼ばれるパッケージマネージャを導入しよう。
+<a class="reference external" href="https://qiita.com/zaburo/items/29fe23c1ceb6056109fd">参考</a></p>
+<p>Homebrewが導入できたら、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brew</span> <span class="n">update</span>
+<span class="n">brew</span> <span class="n">upgrade</span>
+<span class="n">brew</span> <span class="n">upgrade</span> <span class="n">python3</span>
+</pre></div>
+</div>
+<p>と順にターミナルで実行する(暫く掛かるかも).</p>
+<p>※python3がもともとない場合は、3つめのものを</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brew</span> <span class="n">install</span> <span class="n">python3</span>
+</pre></div>
+</div>
+<p>などと置き換える。</p>
+<p>インストールに成功すれば、python用のパッケージマネージャ(pip)も使えるようになるはず。<br />
+以後は</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">matplotlib</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">pandas</span>
+</pre></div>
+</div>
+<p>などとすると、python用のモジュールがインストールされ、<br />
+pythonからいつでもインポートして使うことができる。</p>
+<p>MacにDocker環境を入れておけば、<code class="docutils literal notranslate"><span class="pre">apt</span></code>で色々揃うので、レガシーコードの動作確認等にも役に立つ。</p>
+<p>M1以降のApple制のCPUを搭載している場合、Pythonのパッケージ管理やDockerの導入などはやや難易度が上がる。
+(※英語で調べれば必要な情報は出てくる)</p>
+</div>
+<div class="section" id="linux">
+<h2>Linuxの場合<a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h2>
+<p>Linuxを使っている人が、pythonのインストールができないとは思いにくいが…</p>
+<p>ターミナルから</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt update -y
+$sudo apt upgrade -y
+$sudo apt dist-upgrade -y
+$sudo apt autoremove -y
+</pre></div>
+</div>
+<p>などを実行しパッケージマネージャのアップデート等を行った後<br />
+python3系がない場合は</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt install python3
+</pre></div>
+</div>
+<p>ある場合は</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt upgrade python3
+</pre></div>
+</div>
+<p>などを実行すればよい。</p>
+<p>pipがない場合、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo apt install python3-pip
+</pre></div>
+</div>
+<p>を実行する。</p>
+</div>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="linux-unix">
+<h1>Linux/Unix ターミナルの操作<a class="headerlink" href="#linux-unix" title="Permalink to this headline">¶</a></h1>
+<p>Linux(WSL)やUnix(Mac)のCUI環境で必要な基本的な操作をまとめる</p>
+<ul class="simple">
+<li><p>Ctrl+C: 入力内容の消去・実行中の作業の中断</p></li>
+<li><p>Ctrl+D: ターミナル(タブ)を閉じる (Pythonの対話モードから出るときにも使う)</p></li>
+<li><p>Tab: 入力を補完してくれる</p></li>
+<li><p>*(半角アスタリスク): ワイルドカード記号</p></li>
+</ul>
+<p>基本的なコマンド</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cd</span></code> “現在地”を変更する</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$cd ./Desktop 
+$cd ../ 
+$cd ~
+$cd -
+</pre></div>
+</div>
+<p>1つめはhomeディレクトリからデスクトップ(があれば)移動<br />
+2つめは1つ上の階層に移動する<br />
+3つめはホームディレクトリに移動<br />
+4つめは直前にいたディレクトリに移動</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ls</span></code> ファイルやディレクトリなどを表示する.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ls 
+$ls ../*.txt
+$ls Picutures/pic_*.png
+</pre></div>
+</div>
+<p>1つめは現在いるディレクトリ以下のファイル等を表示<br />
+2つめは現在いるディレクトリの１つ上の階層にある.txt拡張子の全ファイルを表示<br />
+3つめは現在ホームディレクトリにいると仮定して、その直下にあるPictures以下にあるpngファイルのうち、冒頭が<code class="docutils literal notranslate"><span class="pre">pic_</span></code>のものを全て表示</p>
+<ul>
+<li><p>mv　ファイル・ディレクトリの移動・リネーム</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$mv aa.txt ~/Desktop
+$mv bb.txt ../AdDS/cc.txt
+</pre></div>
+</div>
+<p>1つめ: カレントディレクトリにあるaa.txtというファイルをデスクトップに移動<br />
+2つめ: bb.txtを一つ上の階層にあるAdDSというディレクトリに移動し、cc.txtとリネームする。</p>
+<p>ワイルドカード*で複数ファイルを一気に移動させることもできる。ディレクトリの場合も同様。</p>
+</li>
+<li><p>mkdir ディレクトリを作る</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$mkdir Desktop/AdDS2021
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>rm ファイルやディレクトリを削除する</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$rm ./Desktop/report1.txt
+</pre></div>
+</div>
+<p>ディレクトリを消すときは-rオプションが必要</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$rm -r ./Desktop/AdDS2021
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>**rmコマンドで削除したものはゴミ箱に入れられずに削除されるので注意** 
+特にワイルドカードを使って全て削除してしまうとバックアップを取っていないと復元は困難だし、誰も責任をとってくれない。
+(rmコマンドにエイリアスを貼って、ゴミ箱を経由する命令に置き換えたりrmtrash(や類似のもの)を使用するのがオススメ)
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>grep 検索</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$grep &quot;Hello World&quot; Desktop/AdDS2021/*py
+</pre></div>
+</div>
+<p><strong>タブ補完</strong></p>
+<p>Linux/Unixターミナルでは、タブによる入力補完が使えますので<br />
+ぜひ多用してください。</p>
+<p>ちなみに今Desktopにいて、そこに<br />
+<code class="docutils literal notranslate"><span class="pre">AdDS2019,</span> <span class="pre">AdDS2020,</span> <span class="pre">AdDS2021</span></code>
+というディレクトリがあり、<br />
+最初のものに移動したいとします。
+こんなとき、いちいち</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$cd AdDS2019
+</pre></div>
+</div>
+<p>と打つのは面倒だし、打ち間違えたりします。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$cd Ad
+</pre></div>
+</div>
+<p>と打った時点でタブをポンポンと叩くと、<br />
+Desktopに上記のフォルダ以外の”Ad”を含むディレクトリがなければ<br />
+<code class="docutils literal notranslate"><span class="pre">AdDS20</span></code>まで入力が補完され、<br />
+該当する候補(上の全てのディレクトリ)がターミナル上で表示されます。<br />
+その後1を打って再びタブを叩くと、該当するものは一つですので<br />
+(ambiguityがなくなった時点で)最後まで入力が補完されます。</p>
+<p>ちなみにPython側からLinuxのコマンドを実行したければ</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;ls *.txt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>などとすれば良い。</p>
+<div class="section" id="id4">
+<h2>Linuxのホームディレクトリの変更<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>WSLを使用する際、Windows側から見るとLinux(Ubuntu)は<code class="docutils literal notranslate"><span class="pre">C:\Users\username\AppData\Local\Packages\CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc\LocalState\rootfs</span></code><br />
+といった階層に入っている。</p>
+<p>Ubuntuを起動した際に開くターミナルの”位置”(これをホームディレクトリと呼ぶ)は、<br />
+上記のルートディレクトリ(rootfs)直下にあるhomeである。</p>
+<p>たとえばWindows側のホームディレクトリ <code class="docutils literal notranslate"><span class="pre">C:\Users\[username]</span></code>以下に<br />
+適当なディレクトリを作って、それをUbuntuのログイン(ホーム)ディレクトリとして設定することも出来る。</p>
+<p>※ 以下の操作では、emacsやvi(m)などのエディタに慣れていないうちは<br />
+システムファイルに余計な文字を書き込んでしまう危険性があるので<br />
+エディタの使い方を調べてから実行するなど、注意が必要です。<br />
+(不安な場合はZoomで画面を共有しながら一緒にやりましょう)</p>
+<p>ホームディレクトリの変更方法は、</p>
+<ol class="simple">
+<li><p>Ubuntuターミナルから、管理者権限で<code class="docutils literal notranslate"><span class="pre">/etc/passwd</span></code>を開く<br />
+たとえば、emacsが入っていれば</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo emacs /etc/passwd
+</pre></div>
+</div>
+<p>なければ</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$sudo vim /etc/passwd
+</pre></div>
+</div>
+<p>でファイルを開きます。</p>
+<ol class="simple">
+<li><p>どこかに</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Ubuntuユーザ名</span><span class="p">:</span><span class="n">x</span><span class="p">:</span><span class="mi">1000</span><span class="p">:</span><span class="mi">1000</span><span class="p">:</span><span class="s2">&quot;&quot;</span><span class="p">,,,:</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">ユーザ名</span><span class="p">:</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+<p>といった欄があるので<code class="docutils literal notranslate"><span class="pre">/home/ユーザー名</span></code>部分を、<br />
+Windows側に作成しておいた新しくLinuxのホームディレクトリとしたいディレクトリの<br />
+パスに置き換えて、passwdを上書き保存し、閉じる。</p>
+<ul class="simple">
+<li><p>Emacsの場合 編集は簡単. Ctrl+X -&gt; Ctrl +Sを押して上書き保存. Ctrl+X-&gt;Ctrl+Cで閉じる.</p></li>
+<li><p>vimの場合 iを押すとインサートモードに入り編集可能に. 編集モードから抜けるのはEsc. <code class="docutils literal notranslate"><span class="pre">:wq</span></code>で保存して終了</p></li>
+</ul>
+<ol class="simple">
+<li><p>Ubuntuを再起動し、エラー等が表示されず、<br />
+<code class="docutils literal notranslate"><span class="pre">pwd</span></code>コマンドで現在地を確認して設定したディレクトリになっているか確認しましょう。</p></li>
+<li><p>もともとのホームディレクトリにあった<code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>(エイリアスなどの情報を書くファイル)を
+新しいホームディレクトリに移動させれば完了です。</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$cp -r /home/[user name]/.*  ~/
+</pre></div>
+</div>
+<div class="section" id="dot-files">
+<h3>隠しファイル/隠しフォルダ(dot files)について<a class="headerlink" href="#dot-files" title="Permalink to this headline">¶</a></h3>
+<p>Linuxでは、ファイル名の先頭に<code class="docutils literal notranslate"><span class="pre">.</span></code>がついているものは隠しファイルと呼ばれ、通常の<code class="docutils literal notranslate"><span class="pre">ls</span></code>コマンドなどの表示対象外となる。
+隠しファイルを表示するには、<code class="docutils literal notranslate"><span class="pre">ls</span></code>コマンドに<code class="docutils literal notranslate"><span class="pre">-a</span></code>オプションをつければよい。</p>
+<p>とくに、ホームディレクトリには、特定のアプリケーションの設定ファイルなどが隠しファイルとして保存されていることが多く、
+数値計算ライブラリの開発や使用、ソースコードの編集・実行などの際には、隠しファイルを扱うこともある。</p>
+<p>これら隠しファイルや隠しフォルダは、dot filesと呼ばれることもあり、
+新しい端末を購入したときの設定ファイルの移行などにも使われる。</p>
+<p>特に複数台の端末を使用している人などは、GitHubなどのリポジトリに自身のdot filesをアップロードしておき、
+新しい端末を購入した際には、そのリポジトリからdot filesをダウンロードして使用することで、
+移行をスムーズにしているようである(私は割とイチから設定するのが好きだったりします)。</p>
+<p>以下では、代表的なものを少し紹介しておく:</p>
+<p><strong>.bashrc</strong> : bashの設定ファイル</p>
+<p>エイリアスの設定などを書くことができる. エイリアスとは、例えばコマンドでpythonを使う際、いちいち<code class="docutils literal notranslate"><span class="pre">python</span></code>とか<code class="docutils literal notranslate"><span class="pre">python3.9</span></code>などを
+指定しなくてもお目当てのpython環境を使用できるようにするためのもの. 例えば、.bashrcに</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">alias</span> <span class="n">py</span><span class="o">=</span><span class="n">python3</span><span class="mf">.9</span>
+</pre></div>
+</div>
+<p>などと書いておけば、<code class="docutils literal notranslate"><span class="pre">py</span></code>と打つだけでpython3.9が起動/使用できるようになる.</p>
+<p>注意としては</p>
+<ol class="simple">
+<li><p>使用しているシェルによって、設定ファイルの名前が異なることがある. 例えば、bashの場合は<code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>だが、zshの場合は<code class="docutils literal notranslate"><span class="pre">.zshrc</span></code>となる.</p></li>
+<li><p>設定ファイルを変更した場合は、<code class="docutils literal notranslate"><span class="pre">source</span></code>コマンドを実行することで、変更を反映させる必要がある. 例えば、<code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>を変更した場合は、</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$source ~/.bashrc
+</pre></div>
+</div>
+<p>とするか、ターミナルを再起動する必要がある.</p>
+<p><strong>エディタの設定ファイル</strong></p>
+<p>CUI/GUIを問わず、エディタの設定ファイルもホームディレクトリ直下の隠しディレクトリとして保存されることが多い.</p>
+<p>例えば私の環境だと、<code class="docutils literal notranslate"><span class="pre">~/.emacs</span></code>,<code class="docutils literal notranslate"><span class="pre">~/.vim</span></code>,<code class="docutils literal notranslate"><span class="pre">~/.vscode</span></code>,<code class="docutils literal notranslate"><span class="pre">~/.atom</span></code>など、今は使っていないものも含めて、
+エディタの設定ファイルが保存されている。</p>
+<p><strong>sshの設定ファイル</strong></p>
+<p>SSHとは、スーパーサイエンスハイスクール…ではなく、Secure Shellの略で、ネットワーク上で安全にリモートコンピュータにログインしたり、
+ファイルを転送したりするためのプロトコルである。</p>
+<p>例えば研究室内に置かれたワークステーションやスパコンなど別の環境にログインして重い計算を回す、といったときには基本的にはssh公開鍵認証を用いてローカル環境からリモート環境にログインすることになるが、
+その際に使用する鍵や、リモート環境へのログインに必要な情報などが、ホームディレクトリ直下の隠しディレクトリ<code class="docutils literal notranslate"><span class="pre">~/.ssh</span></code>に保存される。</p>
+<p>例えば、(sshを使ったことがある場合は)<code class="docutils literal notranslate"><span class="pre">~/.ssh/config</span></code>に、接続先のホスト名やポート番号などが記載されたり、
+逆にリモート側では、<code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code>に、接続を許可する公開鍵が記載されていたりする。</p>
+<p>なお、公開鍵認証とは、リモート環境にログインする際に、公開鍵と秘密鍵のペアを用いて認証を行う方式で、
+秘密鍵はローカル環境に、公開鍵はリモート環境に置いておくことで、安全にログインを行うことができるものである。
+秘密鍵の取り扱いに注意が必要であることは言うまでもない。</p>
+</div>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_misc_Error.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">よくあるエラー集</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_python_env_forWin11.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Pythonの環境構築 (Windows11版)</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

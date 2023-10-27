@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3. 関数 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)" href="Python_chapter4_Matplotlib.html" />
+    <link rel="prev" title="2. Pythonの基本 その２:" href="Python_chapter2_ListLoop.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_PCA.html">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_chapter3_Function.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_chapter3_Function.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter3_Function.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id2">
+   3.1. 関数の定義
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id3">
+   3.2. 変数のスコープについて
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#clubsuit">
+     3.2.1.
+     <span class="math notranslate nohighlight">
+      \(\clubsuit\)
+     </span>
+     関数内でのリスト更新
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id4">
+   3.3. 関数とメソッド
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_chapter3_Function.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="id1">
+<h1><span class="section-number">3. </span>関数<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>[この章の目的]プログラム内での関数と戻り値,スコープの概念を獲得する。</p>
+<p>ここでは、Pythonにおける関数の定義と関数が返す値[戻り値(返り値とも呼ぶ)]、ややテクニカルですが重要な点である変数のスコープについて説明します。</p>
+<div class="section" id="id2">
+<h2><span class="section-number">3.1. </span>関数の定義<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>既に現れた<code class="docutils literal notranslate"><span class="pre">print</span></code>や<code class="docutils literal notranslate"><span class="pre">len</span></code>などはPythonに備え付けられた”組み込み関数”と呼ばれるものの一種です。以下に示すように、組み込み関数とは別にユーザーが独自の関数を定義することができます。</p>
+<p>たとえば</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">p1</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">5.0</span><span class="p">]</span>
+<span class="n">p2</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">4.0</span><span class="p">]</span>
+<span class="c1">#...中略</span>
+<span class="n">p100</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.5</span><span class="p">,</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>といったようなリスト(ある点の<span class="math notranslate nohighlight">\(x,y,z\)</span>座標だと思ってください)がたくさん(たとえば100個)あったときに、任意の２つの点の距離を求める操作が必要だったとします。
+そんなとき<span class="math notranslate nohighlight">\({}_{100}C_2=4950\)</span>通りに対して毎回</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">d_1_2</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+<span class="n">d_1_100</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p100</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p100</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">p100</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などと書くのは面倒です。このように、何回も必要になる処理は、<strong>関数</strong>として定義しておけば呼び出して簡単に使うことができます。</p>
+<p>例として「任意の長さが3の数値リストに対して3次元空間での距離を計算する関数」を自作してみましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">calc_d</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span><span class="n">l2</span><span class="p">):</span>           
+    <span class="k">return</span> <span class="p">(</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+<span class="n">t</span> <span class="o">=</span> <span class="n">calc_d</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span> 
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;点1&quot;</span><span class="p">,</span><span class="n">p1</span><span class="p">,</span> <span class="s2">&quot;と点2&quot;</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="s2">&quot;の距離は&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="s2">&quot;です&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">calc_d</span></code>は自作した関数の名前で、関数名の後ろのカッコには<strong>引数</strong>(ひきすう)を指定します。</p>
+<p>リスト(<code class="docutils literal notranslate"><span class="pre">l1</span></code>)とリスト(<code class="docutils literal notranslate"><span class="pre">l2</span></code>)を突っ込んだときに距離を計算して<code class="docutils literal notranslate"><span class="pre">return</span></code>する(返す)という一連の操作を<code class="docutils literal notranslate"><span class="pre">def</span></code>(defineの略)した、というのが上のコードで行っていることです。
+コロン<code class="docutils literal notranslate"><span class="pre">:</span></code>は「以下で関数の中身を記述するブロックが開始する」ことを意味していて、インデントによってどこまでが関数のブロックかわかるようになっています。(ブロックについては<code class="docutils literal notranslate"><span class="pre">if</span></code>や<code class="docutils literal notranslate"><span class="pre">for</span></code>を思い出してください)</p>
+<p>定義した関数を使用する際には、この関数<code class="docutils literal notranslate"><span class="pre">calc_d()</span></code>に必要な引数(変数,今の場合リスト)<code class="docutils literal notranslate"><span class="pre">l1,l2</span></code>を代入して使います。
+関数に入れる引数は代名詞のようなもので、関数に入れるものを<code class="docutils literal notranslate"><span class="pre">l1</span></code>,<code class="docutils literal notranslate"><span class="pre">l2</span></code>という名前にあわせて定義しておく必要はありません。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">calc_d</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p100</span><span class="p">))</span> <span class="c1">#←これでも使えるし</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">calc_d</span><span class="p">([</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span><span class="o">-</span><span class="mf">5.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span><span class="mf">5.5</span><span class="p">]))</span> <span class="c1">#←などとして名前をつけなくても使える</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>上の例のように100個の点の3次元座標に対応するリストがある場合,</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">random</span> 
+<span class="n">lists</span> <span class="o">=</span> <span class="p">[</span> <span class="p">[</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">)]</span> <span class="c1">#3次元の座標点をランダムに100個作っている n,iはダミー変数(特に使ってない)</span>
+<span class="n">hit</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">):</span> <span class="c1"># i&gt;j</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">calc_d</span><span class="p">(</span> <span class="n">lists</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">lists</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="c1">#print(j,i, distance) # 4950回文の計算結果をprintすると邪魔なのでコメントアウトした</span>
+        <span class="n">hit</span> <span class="o">+=</span> <span class="mi">1</span> 
+<span class="nb">print</span><span class="p">(</span><span class="n">hit</span><span class="p">)</span> <span class="c1">#回数だけ表示しよう</span>
+<span class="c1">#上のjのループ内で、iはj+1から99までを回る。 j+1= 100つまり j=99のとき range(j+1,100)はちゃんと空になる</span>
+<span class="c1">#つまり、長さ100のリストにindex=100でアクセス(範囲外参照)したりすることはない。</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>などとすれば、全組み合わせ(<span class="math notranslate nohighlight">\({}_{100}C_2\)</span>)に対して距離を計算することが出来る。<br />
+上で使われているインデックス(<span class="math notranslate nohighlight">\(j,i\)</span>)の模式図:<br />
+<img src="https://drive.google.com/uc?export=view&id=1d_MB8x20a2OE-WwLWqJCM1LRM-to6AoO" width = 15%></p>
+<p>引数は通常関数の中で行う操作に必要な変数を指定します。上の例では２つのリストを引数としました。</p>
+<p>関数内の操作に関数外からの情報(インプット)が必要ない場合は引数なしの関数でも構いませんし、関数の外に値を渡す(アウトプット)必要がなければreturn文を明示的に書かなくても大丈夫です。<code class="docutils literal notranslate"><span class="pre">return</span></code>文がない場合は<code class="docutils literal notranslate"><span class="pre">None</span></code>(値なし)が返されます。</p>
+<p>幾つか例を作って、挙動を理解してみましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">name</span><span class="p">():</span> <span class="c1">#引数なしで、ただ以下の文字列を表示する関数</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;私は田中です&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">myname</span><span class="p">(</span><span class="n">namae</span><span class="p">):</span> <span class="c1">#引数namaeを使って、以下の文字列を表示する関数</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;私は&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">namae</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;です&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">myname_return</span><span class="p">(</span><span class="n">namae</span><span class="p">):</span> <span class="c1">#　myname()で表示させた文字列自体を返す関数</span>
+    <span class="k">return</span> <span class="s2">&quot;私は&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">namae</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;です&quot;</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;name()の実行→&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">())</span> <span class="c1">## name()が実行されたあとにココのprint文が実行される。</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;myname()の返り値→&quot;</span><span class="p">,</span> <span class="n">myname</span><span class="p">(</span><span class="s2">&quot;吉田&quot;</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;myname_return()の返り値→&quot;</span><span class="p">,</span> <span class="n">myname_return</span><span class="p">(</span><span class="s2">&quot;吉田&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>戻り値<code class="docutils literal notranslate"><span class="pre">return</span></code>は単一の値や文字列に限らず、複数の値でも可能ですし、リストを返すことも出来ます。</p>
+<p>先程の自作関数<code class="docutils literal notranslate"><span class="pre">calc_d</span></code>の場合、戻り値は<code class="docutils literal notranslate"><span class="pre">float</span></code>(実数値)ですが</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">calc_d_print</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span><span class="n">l2</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;距離は&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span> <span class="p">(</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">l1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">l2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>  <span class="p">)</span><span class="o">+</span><span class="s2">&quot;です&quot;</span>
+
+<span class="k">def</span> <span class="nf">zahyo_and_d</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span><span class="n">l2</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">calc_d</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span><span class="n">l2</span><span class="p">)</span> <span class="c1">#関数の中で、先程の自作関数を呼んでいる</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">l1</span><span class="p">,</span><span class="n">l2</span><span class="p">],</span><span class="n">d</span>  <span class="c1">#座標を結合したリストと距離を返す</span>
+
+<span class="n">ret</span> <span class="o">=</span> <span class="n">calc_d_print</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;関数calc_d_print→&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span><span class="nb">type</span><span class="p">(</span><span class="n">ret</span><span class="p">))</span>
+
+
+<span class="n">ret</span> <span class="o">=</span> <span class="n">zahyo_and_d</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;関数zahyo→ &quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span><span class="nb">type</span><span class="p">(</span><span class="n">ret</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;座標の結合リスト&quot;</span><span class="p">,</span><span class="n">ret</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="s2">&quot;距離&quot;</span><span class="p">,</span><span class="n">ret</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>といったように、様々な返り値を持つ関数を定義できます。</p>
+<p>関数を定義するときに、引数にデフォルト値(とくに値を指定しなければこの値が選ばれる)を設定することも出来ます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#数値リストの要素のp乗和を計算する関数</span>
+<span class="k">def</span> <span class="nf">sump</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span><span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span> 
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="n">tmp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="n">p</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tmp</span><span class="p">))])</span>
+
+<span class="n">list1</span> <span class="o">=</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span><span class="mf">20.0</span><span class="p">,</span><span class="mf">30.0</span><span class="p">,</span><span class="mf">40.0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">sump</span><span class="p">(</span><span class="n">list1</span><span class="p">))</span> <span class="c1">#pを指定しなければp=2が選ばれる</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;p=1&quot;</span><span class="p">,</span> <span class="n">sump</span><span class="p">(</span><span class="n">list1</span><span class="p">,</span><span class="n">p</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;p=2&quot;</span><span class="p">,</span> <span class="n">sump</span><span class="p">(</span><span class="n">list1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;p=3&quot;</span><span class="p">,</span> <span class="n">sump</span><span class="p">(</span><span class="n">list1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>上の場合、引数を指定する際に<code class="docutils literal notranslate"><span class="pre">p=</span></code>などは書いても書かなくてもなくてもOKですが、デフォルト値が複数設定されている関数を作った場合には、どの変数を指定しているのかを明示的にするため、<code class="docutils literal notranslate"><span class="pre">p=3</span></code>などと引数に入力します。
+関数を定義することで作業を<em>パッケージ化</em>し、コードを簡略化することができます。「繰り返しの操作は関数にする」ことを心がけましょう。</p>
+</div>
+<div class="section" id="id3">
+<h2><span class="section-number">3.2. </span>変数のスコープについて<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>以下の内容は、これまで学習したfor文や関数のインデントとも関連した話題です。非常に重要な反面、初学者がつまづきやすい点でもあります。</p>
+<p>一般に、プログラミングでは[グローバル変数]と[ローカル変数]と呼ばれるものがあります。その名(global/local)が示すとおりグローバル変数とはどこからでも参照できる変数で、ローカル変数とは、ある有効範囲(たとえば関数内)のみで参照できる変数です。
+例を見ながら理解していきましょう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">list1</span> <span class="o">=</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span><span class="mf">20.0</span><span class="p">,</span><span class="mf">30.0</span><span class="p">,</span><span class="mf">40.0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>のように、関数内での代入などではない場合、変数はグローバル変数として定義されます。<br />
+そのため、一度定義されれば関数に引数として渡さなくても参照することができます</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">testfunc</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">testfunc</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>一方、関数の中で定義(代入)されるローカル変数は、関数の外で参照することはできません。<br />
+(注: あとで説明するように関数内でglobal変数であることを宣言すれば関数の外でも参照できます)</p>
+<p>以下のコードを実行して,関数の中で定義された変数<code class="docutils literal notranslate"><span class="pre">abcd</span></code>を<code class="docutils literal notranslate"><span class="pre">print</span></code>しようとしてもエラーが起こってしまいます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">testfunc</span><span class="p">():</span>
+    <span class="n">abcd</span> <span class="o">=</span> <span class="mf">1.000</span>
+<span class="n">testfunc</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">abcd</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>では、次のコードを実行すると、最後に表示される<code class="docutils literal notranslate"><span class="pre">a</span></code>の値はどうなるでしょうか？<br />
+2でしょうか？それとも5でしょうか？</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">testfunc</span><span class="p">():</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">a</span><span class="o">=</span> <span class="mi">2</span>
+<span class="n">testfunc</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>となり<code class="docutils literal notranslate"><span class="pre">a</span></code>の値は更新されません。これは<code class="docutils literal notranslate"><span class="pre">testfunc</span></code>の中で定義されている<code class="docutils literal notranslate"><span class="pre">a</span></code>は、関数の内部で定義(代入)される変数であるため、ローカル変数とみなされて処理が行われるためです。
+実際<code class="docutils literal notranslate"><span class="pre">id</span></code>を<code class="docutils literal notranslate"><span class="pre">print</span></code>させてみると、関数の内と外とで<code class="docutils literal notranslate"><span class="pre">id</span></code>が異なることも分かります。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">testfunc</span><span class="p">():</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;関数の内部&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+    
+<span class="n">a</span><span class="o">=</span> <span class="mi">2</span> 
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;関数の実行前&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="n">testfunc</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;関数の実行後&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">))</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>一方で、</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">testfunc</span><span class="p">():</span>
+    <span class="k">global</span> <span class="n">abc</span><span class="p">,</span> <span class="n">a</span> <span class="c1">#global変数の宣言</span>
+    <span class="n">abc</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mi">2</span>
+
+<span class="n">a</span><span class="o">=</span><span class="mi">2</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行前&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="n">a</span> <span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="n">testfunc</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行後&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>  <span class="c1">#別の変数として再定義されていることが分かる</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;abc&quot;</span><span class="p">,</span> <span class="n">abc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="margin sidebar">
+<p class="sidebar-title">プログラミング言語とスコープ</p>
+<p>Pythonでは、インデントでブロックを定義したりすることで短いコードを書くことができますが、一方で変数のスコープが分かりづらいことがしばしばあります。たとえば関数内で、定義されていない変数を用いたコードがあればPythonでは「global変数で定義されているのでは？」と解釈され実行が試行されますが、このことを「気が利いている」と感じる人もいれば「意図しない参照が起きて余計なバグの温床になる」と、見る人によって違う捉え方になったりします。</p>
+</div>
+<p>といったように、関数の中で使う変数をグローバル変数として宣言すれば、関数の外でもその変数を使うことができます。
+<code class="docutils literal notranslate"><span class="pre">global</span></code>変数の宣言を使うべき場合としては…コードの中で一度計算して、二度と変更する必要が無いような値にのみ使うようにしましょう。</p>
+<p>ただし、このようなコードの書き方は、処理が複雑化してくるとどこでその変数が定義されたり更新されたりしているかがわかりづらく、予期しない挙動の原因にもなりますのであまりオススメしません。
+[関数には引数として変数を渡して、必要な戻り値を取得する]というコードを書くのがあくまで基本です。</p>
+<p>また、関数を用いる際に、変数のスコープに関して混乱を避ける手助けとなる方法は…メインプログラムと関数内とで変数の命名規則を区別しておく:<br />
+たとえば…メインコード(global変数)で使うリストの名前の区別には数字を使う、関数の引数にはアルファベットを使うなどの工夫(ルール作り)がオススメです。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">func_join</span><span class="p">(</span><span class="n">listA</span><span class="p">,</span><span class="n">listB</span><span class="p">):</span> <span class="c1">#特殊なリストの結合をして返す関数</span>
+    <span class="k">return</span> <span class="n">listA</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">listB</span> 
+
+<span class="n">list1</span> <span class="o">=</span> <span class="p">[</span> <span class="mf">2.0</span><span class="p">,</span><span class="mf">30.0</span><span class="p">,</span><span class="mf">18.0</span><span class="p">]</span>
+<span class="n">list2</span> <span class="o">=</span> <span class="p">[</span> <span class="mf">9.0</span><span class="p">,</span><span class="mf">4.0</span><span class="p">,</span><span class="mf">8.0</span><span class="p">]</span>
+<span class="n">nlist</span> <span class="o">=</span> <span class="n">func_join</span><span class="p">(</span><span class="n">list1</span><span class="p">,</span><span class="n">list2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="clubsuit">
+<h3><span class="section-number">3.2.1. </span><span class="math notranslate nohighlight">\(\clubsuit\)</span> 関数内でのリスト更新<a class="headerlink" href="#clubsuit" title="Permalink to this headline">¶</a></h3>
+<p>上では、数値(float)と関数を例に説明しましたが、リストの場合はもう少し挙動が複雑です。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">func_update_list</span><span class="p">(</span><span class="n">in_list</span><span class="p">):</span>
+    <span class="n">in_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;AAA&quot;</span>
+
+<span class="n">tmp</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;SS&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行前&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">func_update_list</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行後&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">,</span><span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">),</span><span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>リストオブジェクト自体のidは引き継がれていて、リスト内要素(0番目)の更新が反映されていることがわかります。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">func_update_list</span><span class="p">(</span><span class="n">in_list</span><span class="p">):</span>
+    <span class="n">in_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;AAA&quot;</span> 
+    <span class="n">in_list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;BBB&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>  <span class="c1">##ココはローカル変数扱い</span>
+    <span class="k">return</span> <span class="n">in_list</span>
+
+<span class="n">tmp</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;SS&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行前&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">ret</span> <span class="o">=</span> <span class="n">func_update_list</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;実行後&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="p">,</span><span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">),</span><span class="nb">id</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> 
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ret&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span><span class="nb">id</span><span class="p">(</span><span class="n">ret</span><span class="p">),</span><span class="nb">id</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> 
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="id4">
+<h2><span class="section-number">3.3. </span>関数とメソッド<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>これまで登場してきた<code class="docutils literal notranslate"><span class="pre">print</span></code>や<code class="docutils literal notranslate"><span class="pre">len</span></code>などの関数は、Pythonに組み込まれている関数で、<code class="docutils literal notranslate"><span class="pre">関数()</span></code>という自作関数と同じ方法で呼び出せた。</p>
+<p>一方で、リストや文字列などのオブジェクトに対して、<code class="docutils literal notranslate"><span class="pre">オブジェクト.関数()</span></code>という形で呼び出せる関数がある。
+これらは<strong>メソッド</strong>と呼ばれ、オブジェクト(正確にはクラス)に対して定義された関数になっている。</p>
+<p>たとえば、リストに対して<code class="docutils literal notranslate"><span class="pre">append</span></code>というメソッドを呼び出すと、リストの末尾に要素を追加することができた</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>関数もメソッドも、引数を取り何らかの操作をするという点では同じだが、両者はその設計思想が異なるため、混乱しないように注意する必要がある。
+大雑把に言えば、<strong>関数は引数を取り、何らかの操作を行い、戻り値を返す</strong>という設計思想であるのに対し、<strong>メソッドはオブジェクトに対して何らかの操作を行う</strong>という設計思想である。</p>
+<p>この授業では、クラスについての説明を行わないため、自分でクラスないしメソッドを定義することはないとは思うが、
+ライブラリ等で用意されているクラス・メソッドを用いることも多いため、混乱した場合はこの違いを意識するようにすると良い。</p>
+</div>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_chapter2_ListLoop.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title"><span class="section-number">2. </span>Pythonの基本 その２:</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_chapter4_Matplotlib.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><span class="section-number">4. </span>ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

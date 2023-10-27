@@ -1,0 +1,292 @@
+#ライブラリをインポートしておきましょう
+import random
+import numpy as np
+from matplotlib import pyplot as plt
+
+random.randint(1,6)
+
+a = [random.randint(1,6) for i in range(100)]
+print(a)
+
+# サンプルの数を指定し、それぞれのサイコロの出目を用意して入れ子のリストにする
+ps = [1,2,3,4,5,6]
+Ns = [10**p for p in ps ]
+results =[ [random.randint(1,6) for i in range(N) ] for N in Ns ]
+
+# ヒストグラムのビンの始点,終点,ステップを定義
+tbin = np.arange(0.5,7.5,1) 
+
+# 作図 (axを用いて、一つのグラフに6つの領域を用意して作画する)
+# add_subplit(n,m,i)で、縦n個, 横m個の領域を用意した場合の　i番目(列方向,行方向の順番にカウントする. a行b列の小領域は i = (a-1)*m + b)
+fig = plt.figure(figsize=(20,5))
+axs = [ fig.add_subplot(2,3,i) for i in range(1,len(results)+1 ) ] #データの個数に応じて小領域の数を自動で変えたい場合は"(2,3"部分の工夫が必要。
+for i in range(len(axs)):
+    axs[i].set_xlabel("Roll")
+    axs[i].set_ylabel("Count")
+    axs[i].set_title("$n=10^"+str(ps[i])+"$") #$$で囲むとlatex表記を用いることができる
+    axs[i].hist(results[i],bins=tbin,rwidth=0.5)  #ヒストグラムを描画
+#グラフ間の縦の間隔hspaceをdefault値(0.3)から少し大きく調整
+plt.subplots_adjust(hspace=0.45) 
+plt.show()
+plt.close()
+
+ps = [1,2,3,4,5,6]
+Ns = [10**p for p in ps ]
+results =[ [random.randint(1,6) for i in range(N) ] for N in Ns ]
+tbin = np.arange(0.5,7.5,1) 
+fig = plt.figure(figsize=(20,5))
+axs = [ fig.add_subplot(2,3,i) for i in range(1,len(results)+1) ]
+for i in range(len(axs)):
+    axs[i].set_xlabel("Roll")
+    axs[i].set_ylabel("Count")
+    axs[i].set_title("$n=10^"+str(ps[i])+"$") 
+    axs[i].hist(results[i],bins=tbin,rwidth=0.5,density=True) #density=Trueオプションを指定
+    axs[i].plot([1,6],[1/6,1/6],color="gray",linestyle="dashed") #ココを追加した
+plt.subplots_adjust(hspace=0.45) 
+plt.show()
+plt.close()
+
+
+
+for i in range(5):
+    ## 引数(リスト)からランダムに要素を抽出する
+    a = random.choice([1,3,5,6]) 
+
+    ## 引数(range,0から99)からランダムに要素を抽出する
+    b = random.choice(range(100)) 
+
+    ## 引数(リスト)からランダムに要素を抽出する
+    c = random.choice(["日本","アメリカ","中国"])     
+    
+    print("a=>", a, "\tb=>", b, "\tc=>", c)
+
+import numpy as np
+np.random.choice(range(100),10,replace=False) # replace = True/Falseで重複を認めるかどうかを指定できる 
+
+import numpy as np
+sorted_array = sorted( np.random.choice(range(100),10,replace=False)  )
+
+print(sorted_array)
+
+random.uniform(1,10) #[1,10)または[1,10]からの一様乱数 (randomモジュールでは半開区間/閉区間どちらになるかはroundingに依存するらしい)
+
+num = 10000
+xs = [ random.uniform(-1,1) for i in range(num)]
+ys = [ random.uniform(-1,1) for i in range(num)]
+
+# 3つの領域に、散布図・ｘのヒストグラム・yのヒストグラムを描く
+fig = plt.figure(figsize=(20,5))
+axs = [fig.add_subplot(131),fig.add_subplot(132),fig.add_subplot(133)]
+axs[0].scatter(xs,ys,color="green",s=0.5,alpha=0.4) 
+axs[0].set_xlabel("x");axs[0].set_ylabel("y")
+axs[1].set_xlabel("x");axs[1].set_ylabel("count")
+axs[2].set_xlabel("y");axs[2].set_ylabel("count")
+axs[1].hist(xs,bins=50,ec="w") #xのヒストグラム (binの数50はいい加減に選んだ)
+axs[2].hist(ys,bins=50,ec="w") #yのヒストグラム 同じく
+plt.show()
+plt.close()
+
+import seaborn as sns
+sns.jointplot(xs,ys,color="green",s=2,alpha=0.5)
+plt.show()
+
+def Janken( ):    
+    r = ["グー","チョキ","パー"]
+    return r[random.randint(0,2)] 
+
+Janken()
+
+#あるいは、手を0,1,2として計算する関数とじゃんけんの手に反映させる部分を分けても良い
+
+def Janken():
+    return random.randint(0,2)
+RPS = ["グー","チョキ", "パー"]  #integer to Rock-Paper-Scissors
+
+#5回手を表示させてみる
+for i in range(5): 
+    print(RPS[Janken()])
+
+def pi_approx(p):
+    num = 10**p
+    x = np.random.rand(num)
+    y = np.random.rand(num)
+    return  4*np.sum(x*x+y*y < 1.0) / num
+
+pi_approx(5) 
+
+np.random.seed(1234)
+sum = []
+for p in range(1,9): #サンプル数を一桁ずつ増やす
+    tmp = pi_approx(p)
+    sum += [[10**p, np.log10(abs(tmp-np.pi))]]
+    print("p=",p, "\t", "pi_approx", tmp, "log10(abs(diff))", np.log10(abs(tmp-np.pi)))
+sum = np.array(sum).T
+
+fig= plt.figure(figsize=(10,3))
+ax = fig.add_subplot(111)
+ax.set_xlabel("Sample number")
+ax.set_ylabel("Diff. in log10")
+ax.set_xscale("log")
+ax.plot(sum[0], sum[1],marker="o")
+plt.show()
+plt.close()
+
+import numpy as np
+def pi_approx_mem(p):
+    num = 10**p
+    x = np.random.rand(num)
+    y = np.random.rand(num)
+    print("p="+str(p)+"のとき => ndarrayのサイズは~", (x.nbytes+y.nbytes) / 1000**3 , " GB程度")
+    return  4*np.sum(x*x+y*y < 1.0) / num
+
+pi_approx_mem(7)
+pi_approx_mem(8) 
+
+a = random.gauss(0.0, 1.0) #平均0.0,標準偏差1.0の正規分布からの乱数生成
+
+Na = 100; Nb = 1000; Nc = 100000
+a = [ random.gauss(0.0, 1.0) for i in range(Na)] 
+b = [ random.gauss(0.0, 1.0) for i in range(Nb)] 
+c = [ random.gauss(0.0, 1.0) for i in range(Nc)] 
+c2 = [ random.normalvariate(0.0, 1.0) for i in range(Nc)]  #一応normalvariateも使ってみる
+
+fig = plt.figure(figsize=(30,5))
+axs = [ fig.add_subplot(141),fig.add_subplot(142),fig.add_subplot(143),fig.add_subplot(144)]
+axs[0].hist(a,bins=50,density=True,rwidth=0.8)
+axs[1].hist(b,bins=50,density=True,rwidth=0.8)
+axs[2].hist(c,bins=50,density=True,rwidth=0.8)
+axs[3].hist(c2,bins=50,density=True,rwidth=0.8)
+plt.show()
+plt.close()
+
+#平均と分散も計算してみる
+print("mu,sigma a:",np.mean(a), np.std(a))
+print("mu,sigma b:",np.mean(b), np.std(b))
+print("mu,sigma c:",np.mean(c), np.std(c))
+print("mu,sigma c:",np.mean(c2), np.std(c2))
+
+[ random.randint(1,6) for i in range(10)]
+
+random.seed(1234) 
+[ random.randint(1,6) for i in range(10)]
+
+def gaussian(mu,sigma,xr):
+    return np.exp(- (xr-mu)**2 / (2.0 * sigma**2) ) / np.sqrt(2.0*np.pi * sigma**2)
+
+xr = np.arange(-6.0,6.0,0.01)
+yr1 = gaussian(0.0,1.0,xr); yr2 = gaussian(1.0,2.0,xr); yr3=gaussian(-2.0,0.5,xr)
+
+fig= plt.figure(figsize=(12,4))
+plt.plot(xr,yr1,label="mu=0.0, sigma=1.0")
+plt.plot(xr,yr2,label="mu=1.0, sigma=2.0")
+plt.plot(xr,yr3,label="mu=-2.0, sigma=0.5")
+plt.plot([-7,7],[0,0],color="gray", linestyle="dotted")
+plt.legend()
+plt.show()
+plt.close()
+
+def gaussian(mu,sigma,xr):
+    return np.exp(- (xr-mu)**2 / (2.0 * sigma**2) ) / np.sqrt(2.0*np.pi * sigma**2)
+
+fig= plt.figure(figsize=(14,4))
+axs = [ fig.add_subplot(131),fig.add_subplot(132),fig.add_subplot(133)]
+xr = np.arange(-5.0,5.0,0.01)
+yr = gaussian(0.0,1.0,xr)
+for i in range(3):
+    axs[i].plot(xr,yr,label="mu=0.0, sigma=1.0")
+    axs[i].plot([-4,4],[0,0],color="gray", linestyle="dotted")
+x_sig1 = np.arange(-1.0,1.0,0.01)
+x_sig2 = np.arange(-2.0,2.0,0.01)
+x_sig3 = np.arange(-3.0,3.0,0.01)
+axs[2].fill_between(x_sig3, 0.0*x_sig3, gaussian(0.0,1.0,x_sig3),color="green",alpha=0.9)
+axs[1].fill_between(x_sig2, 0.0*x_sig2, gaussian(0.0,1.0,x_sig2),color="blue",alpha=0.9)
+axs[0].fill_between(x_sig1, 0.0*x_sig1, gaussian(0.0,1.0,x_sig1),color="red",alpha=0.9)
+plt.show()
+plt.close()
+
+mu1 = [ 3.0, 2.0]
+cov1 = [ [1.0, 0.7],[0.7,1.0]]
+mu2 = [ -2.0, -0.5 ]
+cov2 = [ [0.6, -0.3],[-0.3,1.0]]
+numS = 50000
+
+sample1 = np.random.multivariate_normal(mu1,cov1,numS)
+sample2 = np.random.multivariate_normal(mu2,cov2,numS)
+
+x1, y1 = sample1.T
+x2, y2 = sample2.T
+
+fig= plt.figure(figsize=(10,5))
+ax = fig.add_subplot(111)
+ax.set_xlabel("x");ax.set_ylabel("y")
+ax.scatter(x1,y1, s=5,color="green", alpha=0.2,label="sample 1")
+ax.scatter(x2,y2, s=5,color="orange", alpha=0.2,label="sample 2")
+ax.scatter(mu1[0], mu1[1], marker="x", color="blue", alpha=0.9,label="mean 1")
+ax.scatter(mu2[0], mu2[1], marker="x", color="red", alpha=0.9,label="mean 2")
+ax.legend()
+plt.show()
+plt.close()
+
+import matplotlib.cm as cm
+
+fig = plt.figure(figsize=(12,4))
+ax1 = fig.add_subplot(121)
+H1 = ax1.hist2d(x1,y1, bins=40, cmap=cm.jet)
+ax1.scatter(mu1[0],mu1[1],s=80,color="w",marker="x")
+ax1.set_title('sample1')
+ax1.set_xlabel('x'); ax1.set_ylabel('y')
+plt.colorbar(H1[3],ax=ax1)
+
+ax2 = fig.add_subplot(122)
+H2 = ax2.hist2d(x2,y2, bins=40, cmap=cm.jet)
+ax2.scatter(mu2[0],mu2[1],s=80,color="w",marker="x")
+ax2.set_title('sample2')
+ax2.set_xlabel('x'); ax2.set_ylabel('y')
+plt.colorbar(H2[3],ax=ax2)
+plt.show()
+
+print("Sample1")
+print("var(x)", np.var(x1), "var(y)", np.var(y1), "cov(x,y)", np.cov(x1,y1)[0,1])
+
+print("Sample2")
+print("var(x)", np.var(x2), "var(y)", np.var(y2), "cov(x,y)", np.cov(x2,y2)[0,1])
+
+nmesh= 1024 
+x = np.linspace(-6, 6, nmesh)
+y = np.linspace(-6, 6, nmesh)
+X, Y = np.meshgrid(x, y)
+
+Z = np.exp( -0.5 * ( (X-mu1[0])* cov1[0][0] * (X-mu1[0]) + (Y-mu1[1])*cov1[1][1]* (Y-mu1[1])  - 2 * (X-mu1[0])*cov1[0][1]* (Y-mu1[1])  ))  / ( 2*np.pi * np.sqrt(np.linalg.det(cov1)) )
+Z2 = np.exp( -0.5 * ( (X-mu2[0])* cov2[0][0] * (X-mu2[0]) + (Y-mu2[1])*cov2[1][1]* (Y-mu2[1]) - 2 * (X-mu2[0])*cov2[0][1]* (Y-mu2[1]) )) / ( 2*np.pi * np.sqrt(np.linalg.det(cov2) ))
+
+from mpl_toolkits.mplot3d import axes3d
+fig = plt.figure(figsize = (20, 6))
+axL = fig.add_subplot(121, projection="3d")
+axR = fig.add_subplot(122, projection="3d")
+
+axL.set_xlabel("x"); axL.set_ylabel("y"); axL.set_zlabel("f(x,y)");axL.view_init(azim=-110,elev=60)
+axR.set_xlabel("x"); axR.set_ylabel("y"); axR.set_zlabel("f(x,y)");axR.view_init(azim=-110,elev=60)
+
+axL.plot_surface(X,Y, Z, cmap = cm.jet) 
+axR.plot_surface(X,Y, Z2, cmap = cm.jet)
+
+plt.show()
+
+import numpy as np
+xy = np.array([0.0,0.0]) #開始地点
+T = 1000 #stepの数
+
+random.seed(1234) ## 同じ答えにしたければ乱数を固定しておきましょう
+trajectory = []
+for step in range(T):
+    xy += np.array([ random.uniform(-1,1), random.uniform(-1,1)])
+    trajectory += [ [ xy[0],xy[1]] ]
+trajectory= np.array(trajectory).T 
+
+fig = plt.figure(figsize=(5,5))
+plt.scatter(0,0,marker="x",color="black",label="t=0")
+plt.scatter(xy[0],xy[1],marker="x",color="red",label="t="+str(T))
+plt.plot(trajectory[0],trajectory[1],color="blue",linewidth=1,alpha=0.3)
+plt.legend()
+plt.show()
+plt.close()

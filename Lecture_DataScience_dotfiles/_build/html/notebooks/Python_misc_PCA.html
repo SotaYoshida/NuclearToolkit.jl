@@ -1,0 +1,1313 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>主成分分析 &#8212; 実践データサイエンス</title>
+    
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-main.c949a650a448cc0ae9fd3441c0e17fb0.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/panels-variables.06eb56fa6e07937060861dad626602ad.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script async="async" src="https://unpkg.com/thebe@0.5.1/lib/index.js"></script>
+    <script>
+        const thebe_selector = ".thebe"
+        const thebe_selector_input = "pre"
+        const thebe_selector_output = ".output"
+    </script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="特異値分解と情報削減" href="Python_misc_SingularValueDecomposition.html" />
+    <link rel="prev" title="常微分方程式の数値解法" href="Python_misc_ODE.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
+      
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
+      <img src="../_static/logo.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">実践データサイエンス</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="この本を検索..." aria-label="この本を検索..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item active">
+        <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../index.html">
+   資料:実践データサイエンス
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  プログラムの実行方法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter0_HowToUse.html">
+   Google Colaboratoryの使い方
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  練習帳
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_practice.html">
+   練習帳
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Pythonの基本文法
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter1_Introduction.html">
+   1. Pythonの基本 その１:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter2_ListLoop.html">
+   2. Pythonの基本 その２:
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter3_Function.html">
+   3. 関数
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  ライブラリと可視化
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter4_Matplotlib.html">
+   4. ライブラリ/パッケージ/モジュールとデータの可視化(Matplotlib)
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  データ分析の基礎
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter5_Probability.html">
+   5. 確率と疑似乱数
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter6_Regression.html">
+   6. 相関・回帰分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter7_Optimization.html">
+   7. 最適化問題の基礎
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter8_handling_files.html">
+   8. ファイル・文字列操作
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Tips&amp;環境構築
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Error.html">
+   よくあるエラー集
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_environment.html">
+   Pythonの環境構築
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_python_env_forWin11.html">
+   Pythonの環境構築 (Windows11版)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_VScode.html">
+   コードの編集環境とGitHub Copilot
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  おまけ
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_Pandas.html">
+   Pandasの使い方 (基礎)
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_numpy.html">
+   Numpyについて
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_ArtificialNeuralNetwork.html">
+   機械学習: ニューラルネットワークによる回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_BayesianOptimization.html">
+   ベイズ最適化による実験計画法
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_Bayesian_linear_regression.html">
+   ベイズ線形回帰
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_StyleGAN3.html">
+   StyleGAN3+CLIPによる写真生成
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_chapter_WebScraping.html">
+   Web操作・スクレイピング
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_ODE.html">
+   常微分方程式の数値解法
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   主成分分析
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_SingularValueDecomposition.html">
+   特異値分解と情報削減
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="Python_misc_NewtonsMethod.html">
+   ニュートン法によるN次元多項式の求根
+  </a>
+ </li>
+</ul>
+
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Powered by <a href="https://jupyterbook.org">Jupyter Book</a>
+</div>
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
+            
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="ナビゲーションを切り替え" aria-controls="site-navigation"
+                title="ナビゲーションを切り替え" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="このページをダウンロード"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/notebooks/Python_misc_PCA.ipynb"><button type="button"
+                class="btn btn-secondary topbarbtn" title="ソースファイルをダウンロード" data-toggle="tooltip"
+                data-placement="left">.ipynb</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="PDFに印刷"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        <a class="repository-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience"><button type="button" class="btn btn-secondary topbarbtn"
+                data-toggle="tooltip" data-placement="left" title="ソースリポジトリ"><i
+                    class="fab fa-github"></i>リポジトリ</button></a>
+        <a class="issues-button"
+            href="https://github.com/SotaYoshida/Lecture_DataScience/issues/new?title=Issue%20on%20page%20%2Fnotebooks/Python_misc_PCA.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="問題を開く"><i class="fas fa-lightbulb"></i>未解決の問題</button></a>
+        
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="全画面モード"
+        title="全画面モード"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Launch interactive content"><i class="fas fa-rocket"></i></button>
+    <div class="dropdown-buttons">
+        
+        
+        
+        <a class="colab-button" href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_PCA.ipynb"><button type="button" class="btn btn-secondary topbarbtn"
+                title="発売 Colab" data-toggle="tooltip" data-placement="left"><img class="colab-button-logo"
+                    src="../_static/images/logo_colab.png"
+                    alt="Interact on Colab">Colab</button></a>
+        
+        
+    </div>
+</div>
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> 目次
+            </div>
+            <nav id="bd-toc-nav" aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#">
+   主成分分析
+  </a>
+  <ul class="visible nav section-nav flex-column">
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id2">
+     主成分分析とは？
+    </a>
+   </li>
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#pca">
+     PCAの定式化
+    </a>
+   </li>
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#sklearn">
+     sklearnライブラリを使う方法
+    </a>
+   </li>
+   <li class="toc-h2 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id3">
+     実装してみよう
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h1 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#clubsuit">
+   <span class="math notranslate nohighlight">
+    \(\clubsuit\)
+   </span>
+   オートエンコーダ(自己符号化器)
+  </a>
+ </li>
+</ul>
+
+            </nav>
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
+  <p><a href="https://colab.research.google.com/github/SotaYoshida/Lecture_DataScience/blob/main/notebooks/Python_misc_PCA.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a></p>
+<div class="tex2jax_ignore mathjax_ignore section" id="id1">
+<h1>主成分分析<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>このノートブックでは主成分分析(principal component analysis, PCA)を説明する。<br />
+基礎の理解に重点を置くため、scikit-learnなど既存のライブラリにあるPCA関数を利用するだけではなく、<br />
+定式化とnumpyを用いた実装を行う。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="id2">
+<h2>主成分分析とは？<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>まず主成分分析とはなんだろうか？</p>
+<p>Wikipediaには</p>
+<blockquote>
+<div><p>相関のある多数の変数から相関のない少数で全体のばらつきを最もよく表す<br />
+主成分と呼ばれる変数を合成する多変量解析の一手法</p>
+</div></blockquote>
+<p>とある。</p>
+<p>具体例を考えてみよう。<br />
+ある集団200人の身長(<span class="math notranslate nohighlight">\(x\)</span>)と体重(<span class="math notranslate nohighlight">\(y\)</span>)のデータが下のように<br />
+得られているとしよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mean</span> <span class="o">=</span> <span class="p">[</span><span class="mi">165</span><span class="p">,</span> <span class="mi">68</span><span class="p">]</span>
+<span class="n">mvec</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">cov</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.8</span><span class="p">],[</span><span class="mf">0.8</span><span class="p">,</span><span class="mf">1.0</span><span class="p">]])</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
+<span class="n">x</span><span class="o">=</span><span class="p">[];</span> <span class="n">y</span><span class="o">=</span><span class="p">[];</span> <span class="n">n</span><span class="o">=</span><span class="mi">200</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="n">tx</span><span class="p">,</span><span class="n">ty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">(</span><span class="n">mvec</span><span class="p">,</span><span class="n">cov</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="p">[</span> <span class="n">mean</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">8</span><span class="o">*</span><span class="n">tx</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">+=</span> <span class="p">[</span> <span class="n">mean</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">6</span><span class="o">*</span><span class="n">ty</span><span class="p">]</span>
+<span class="n">x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">);</span><span class="n">y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="n">xm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">);</span><span class="n">ym</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="n">xp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">140</span><span class="p">,</span><span class="mi">190</span><span class="p">,</span><span class="mi">1</span><span class="p">);</span> <span class="n">yp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">xp</span><span class="o">-</span><span class="n">xm</span><span class="p">)</span> <span class="o">+</span> <span class="n">ym</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">140</span><span class="p">,</span><span class="mi">190</span><span class="p">);</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;height [cm]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;weight [kg]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xp</span><span class="p">,</span><span class="n">yp</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;dotted&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">();</span><span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_misc_PCA_6_0.png" src="../_images/Python_misc_PCA_6_0.png" />
+</div>
+</div>
+<p>上では”何らかの方法で”データの分布に沿った直線を描いてみた。</p>
+<p>この赤色の線を”体の大きさ”とでも呼ぶことにすると、<br />
+元々は身長(x)と体重(y)の2つの量によってこの集団のデータを表現していたが、<br />
+集団に属する個人をこの”体の大きさ”という1つの量で<br />
+大雑把に指定(あるいは特徴づけ)できそうなことがわかる。</p>
+<p>主成分分析は<strong>高次元のデータを特徴づける少数の”軸方向”を見つけて<br />
+その新たな軸に沿った値(主成分)でデータを表現し<br />
+データを低次元空間で近似する方法</strong>と言える。</p>
+<p>人間が視覚的に理解できる情報は、3次元までである。<br />
+一方でデータを分析していると、多次元(4~数十など)のデータを扱うことが度々あるが、<br />
+主成分分析などを用いて特徴を抽出することで解釈がしやすくなったり、<br />
+大量のデータがあったときその冗長性を削減することができる。</p>
+</div>
+<div class="section" id="pca">
+<h2>PCAの定式化<a class="headerlink" href="#pca" title="Permalink to this headline">¶</a></h2>
+<p>主成分分析の大雑把なモチベーションがわかったところで<br />
+上の軸方向/主成分の決め方を定式化しておこう。</p>
+<p>主成分を決める方針は主に、[主成分の分散を最大化する方針]と<br />
+[情報量削減(主成分軸への距離の二乗和)の最小化]の2つがある。<br />
+以下では、前者を採用することにしよう。</p>
+<p><span class="math notranslate nohighlight">\(p\)</span>次元の量を持つデータが<span class="math notranslate nohighlight">\(N\)</span>個観測されているとする→<span class="math notranslate nohighlight">\(\{ x_{ni}\} (n=1,...,N, i=1,....p)\)</span><br />
+このとき<span class="math notranslate nohighlight">\(p\)</span>個の各変数について、平均値を<span class="math notranslate nohighlight">\(\bar{x}_i = \frac{1}{N} \sum_{n=1}^N x_{ni} \)</span>で定義する。</p>
+<p>このとき、<span class="math notranslate nohighlight">\(p\)</span>次元の成分それぞれの共分散を行列にもつ共分散行列<span class="math notranslate nohighlight">\({\bf C}\)</span>(<span class="math notranslate nohighlight">\(p\times p\)</span>行列)は<br />
+<span class="math notranslate nohighlight">\(
+{\bf C}  = \frac{1}{N} \sum^N_{n=1,N} ({\bf x}_n - {\bf \bar{x}})\cdot ({\bf x}_n - {\bf \bar{x}})^T
+\)</span><br />
+とかける。</p>
+<p>次に、各データを成分にもつ行列
+<span class="math notranslate nohighlight">\(
+{\bf X} = 
+\begin{pmatrix}
+x_{11} &amp; x_{12} &amp; ... &amp; x_{1p} \\
+x_{21} &amp; x_{22} &amp; ... &amp; x_{2p} \\
+\vdots &amp; \vdots &amp;\ddots &amp; \vdots \\ 
+x_{n1} &amp; x_{n2} &amp; ... &amp; x_{np} 
+\end{pmatrix}
+\)</span>
+と<br />
+成分が1の<span class="math notranslate nohighlight">\(N\)</span>次元列ベクトル<span class="math notranslate nohighlight">\(1_N\)</span>で以下の(<span class="math notranslate nohighlight">\(N\times p\)</span>)行列を定義する:<br />
+<span class="math notranslate nohighlight">\(
+\tilde{{\bf X}} = {\bf X} - 1_N  {\bf \bar{x}}^T
+\)</span></p>
+<p>これを用いて、もとの共分散行列を書き換えると…
+<span class="math notranslate nohighlight">\( {\bf C}  = \frac{1}{N} \tilde{{\bf X}}^T \tilde{{\bf X}}\)</span>とかける。</p>
+<p>次にデータ集合をある<span class="math notranslate nohighlight">\(p\)</span>次元の係数ベクトル<span class="math notranslate nohighlight">\({\bf u}\)</span>で<span class="math notranslate nohighlight">\(p\)</span>次元空間上に射影する:
+<span class="math notranslate nohighlight">\(
+{\bf s}_n = {\bf u}^T \cdot ( {\bf x}_n - {\bf \bar{x}})
+\)</span><br />
+これを全データ点(<span class="math notranslate nohighlight">\(n=1,2,...,N\)</span>)に対して行って<span class="math notranslate nohighlight">\(s_n\)</span>を縦に並べると<span class="math notranslate nohighlight">\(
+{\bf S} = \tilde{{\bf X}} {\bf u}
+\)</span>と書くことができる。</p>
+<p>このとき、適当な係数ベクトル<span class="math notranslate nohighlight">\({\bf u}\)</span>のもとでの射影方向の分散は<br />
+<span class="math notranslate nohighlight">\(\frac{1}{N}\sum^N_{i=1} |{\bf s}_i|^2 = \frac{1}{N} ({\bf u}^T\tilde{{\bf X}}^T) (\tilde{{\bf X}}{\bf u}) = {\bf u}^T {\bf C} {\bf u}
+\)</span>
+となる。</p>
+<p>今考えたい問題は、この分散を最大化するような射影<span class="math notranslate nohighlight">\({\bf u}\)</span>を見つけることと言い換えられる。</p>
+<p>加えて、以下ではそのような射影として<span class="math notranslate nohighlight">\({\bf u}^T \cdot {\bf u}=1\)</span>という条件を課すことにする。<br />
+(<span class="math notranslate nohighlight">\(p\)</span>次元空間での正規直交基底間の変換を探すことに対応)</p>
+<p>そのためには<span class="math notranslate nohighlight">\(J({\bf u}) = {\bf u}^T {\bf C} {\bf u} - \lambda ({\bf u}^T\cdot {\bf u}-1)\)</span>の最大化を考えれば良い(ラグランジュ未定乗数法)<br />
+<span class="math notranslate nohighlight">\(\frac{\partial J}{\partial {\bf u}} = 2 {\bf C} {\bf u} - 2\lambda{\bf u}=0 \)</span>から、今解きたい最適化問題は固有値問題:<br />
+<span class="math notranslate nohighlight">\({\bf C} {\bf u}  = \lambda{\bf u}\)</span>に帰着されることがわかる。</p>
+<p>この表式と上の分散の式から
+<span class="math notranslate nohighlight">\(\frac{1}{N}\sum^N_{i=1} |{\bf s}_i|^2 = \lambda\)</span>となり<br />
+<strong>未定乗数<span class="math notranslate nohighlight">\(\lambda\)</span>がいま最大化したい分散に対応している</strong>ことがわかる。</p>
+<p>最大固有値<span class="math notranslate nohighlight">\(\lambda_1\)</span>に属する固有ベクトルを第1主成分ベクトルと呼ぶ。<br />
+第2主成分からは同様にして、第1主成分ベクトルと直行する固有ベクトルを考えれば<br />
+分散を大きくする軸を順番に決定することができる。</p>
+<p>また、<span class="math notranslate nohighlight">\(\frac{\lambda_i}{\sum^p_i \lambda_i}\)</span>を<span class="math notranslate nohighlight">\(i\)</span>番目の寄与率と呼び<br />
+各主成分が元のデータに含まれる特徴をどの程度表現しているか<br />
+あるいは幾つ主成分を保持しておけば元のデータに含まれる特徴を十分に表現(近似)できるのかの指標として用いられる。</p>
+</div>
+<div class="section" id="sklearn">
+<h2>sklearnライブラリを使う方法<a class="headerlink" href="#sklearn" title="Permalink to this headline">¶</a></h2>
+<p>irisデータを使ってsklearnで主成分分析をやってみよう</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">datasets</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_iris</span><span class="p">()</span>
+ 
+<span class="n">target_names</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target_names</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target</span> 
+<span class="n">feature_names</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">feature_names</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>このデータには、3種類(‘setosa,versicolor,virginica)のアヤメについて<br />
+がく片の長さ・幅と花弁の長さ・幅のデータが入っている。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">target_names</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[&#39;setosa&#39; &#39;versicolor&#39; &#39;virginica&#39;]
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="n">feature_names</span><span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;target&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_names</span><span class="p">[</span><span class="n">targets</span><span class="p">]</span>
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html">
+  <div id="df-01684064-ff77-45de-90a5-4886e6b33b67">
+    <div class="colab-df-container">
+      <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sepal length (cm)</th>
+      <th>sepal width (cm)</th>
+      <th>petal length (cm)</th>
+      <th>petal width (cm)</th>
+      <th>target</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>5.1</td>
+      <td>3.5</td>
+      <td>1.4</td>
+      <td>0.2</td>
+      <td>setosa</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>4.9</td>
+      <td>3.0</td>
+      <td>1.4</td>
+      <td>0.2</td>
+      <td>setosa</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>4.7</td>
+      <td>3.2</td>
+      <td>1.3</td>
+      <td>0.2</td>
+      <td>setosa</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4.6</td>
+      <td>3.1</td>
+      <td>1.5</td>
+      <td>0.2</td>
+      <td>setosa</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5.0</td>
+      <td>3.6</td>
+      <td>1.4</td>
+      <td>0.2</td>
+      <td>setosa</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+      <button class="colab-df-convert" onclick="convertToInteractive('df-01684064-ff77-45de-90a5-4886e6b33b67')"
+              title="Convert this dataframe to an interactive table."
+              style="display:none;">
+
+  <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
+       width="24px">
+    <path d="M0 0h24v24H0V0z" fill="none"/>
+    <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
+  </svg>
+      </button>
+
+  <style>
+    .colab-df-container {
+      display:flex;
+      flex-wrap:wrap;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  </style>
+
+      <script>
+        const buttonEl =
+          document.querySelector('#df-01684064-ff77-45de-90a5-4886e6b33b67 button.colab-df-convert');
+        buttonEl.style.display =
+          google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+        async function convertToInteractive(key) {
+          const element = document.querySelector('#df-01684064-ff77-45de-90a5-4886e6b33b67');
+          const dataTable =
+            await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                     [key], {});
+          if (!dataTable) return;
+
+          const docLinkHtml = 'Like what you see? Visit the ' +
+            '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+            + ' to learn more about interactive tables.';
+          element.innerHTML = '';
+          dataTable['output_type'] = 'display_data';
+          await google.colab.output.renderOutput(dataTable, element);
+          const docLink = document.createElement('div');
+          docLink.innerHTML = docLinkHtml;
+          element.appendChild(docLink);
+        }
+      </script>
+    </div>
+  </div>
+</div></div>
+</div>
+<ul class="simple">
+<li><p>がくの長さ/sepal length (cm)</p></li>
+<li><p>がくの幅/sepal width (cm)</p></li>
+<li><p>花弁の長さ/petal length (cm)</p></li>
+<li><p>花弁の幅/petal width (cm)</p></li>
+</ul>
+<p>の4次元のデータで、可視化して理解することは難しい。<br />
+そこで、このデータを3次元/2次元に落とし込んで理解することを目指す。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">mpl_toolkits.mplot3d</span> <span class="kn">import</span> <span class="n">Axes3D</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># PCA関数の使用 (3次元)</span>
+<span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;固有値&quot;</span><span class="p">,</span><span class="n">pca</span><span class="o">.</span><span class="n">explained_variance_</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;固有ベクトル&quot;</span><span class="p">,</span><span class="n">pca</span><span class="o">.</span><span class="n">components_</span><span class="p">)</span>
+<span class="c1">#描画</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">Axes3D</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span> 
+<span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">targets</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                   <span class="n">res</span><span class="p">[</span><span class="n">targets</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                   <span class="n">res</span><span class="p">[</span><span class="n">targets</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+                   <span class="n">marker</span> <span class="o">=</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="c1"># PCA関数の使用 (2次元)</span>
+<span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+<span class="c1">#描画</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PC1&quot;</span><span class="p">);</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;PC2&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">targets</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span><span class="n">res</span><span class="p">[</span><span class="n">targets</span> <span class="o">==</span> <span class="n">label</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="n">target_names</span><span class="p">[</span><span class="n">label</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>固有値 [4.22824171 0.24267075 0.0782095 ]
+固有ベクトル [[ 0.36138659 -0.08452251  0.85667061  0.3582892 ]
+ [ 0.65658877  0.73016143 -0.17337266 -0.07548102]
+ [-0.58202985  0.59791083  0.07623608  0.54583143]]
+</pre></div>
+</div>
+<img alt="../_images/Python_misc_PCA_17_1.png" src="../_images/Python_misc_PCA_17_1.png" />
+<img alt="../_images/Python_misc_PCA_17_2.png" src="../_images/Python_misc_PCA_17_2.png" />
+</div>
+</div>
+<p>このように、４次元のデータを低次元に射影することで<br />
+3種類のアヤメの持つ特徴を可視化できるようになる。</p>
+</div>
+<div class="section" id="id3">
+<h2>実装してみよう<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>sklearnなどのライブラリは非常に便利だが<br />
+中で行われている計算を確認するには<br />
+複雑に設計されたソースコードを読み解かなければならず<br />
+「本当に自身が意図した計算をやっているのか」が分かりづらい。</p>
+<p>ライブラリを「使えれば良い」と「中身を分かった上で使う」の間には</p>
+<ul class="simple">
+<li><p>問題が起きたときの対処能力</p></li>
+<li><p>自身で新規な手法を開発して実装する能力</p></li>
+</ul>
+<p>などなど、様々な面で決定的な差が生じる。</p>
+<p>以下では、必要な計算をなるべくブラックボックスにしないで<br />
+PCAを実装してみよう。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#上のコードと同様 irisデータを取得</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">datasets</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_iris</span><span class="p">()</span>
+ 
+<span class="n">target_names</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target_names</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target</span> 
+<span class="n">feature_names</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">feature_names</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="n">feature_names</span><span class="p">)</span> 
+<span class="n">df</span><span class="o">.</span><span class="n">shape</span>
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html">
+  <div id="df-34a24533-7fb8-4995-98cb-f31db7418278">
+    <div class="colab-df-container">
+      <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sepal length (cm)</th>
+      <th>sepal width (cm)</th>
+      <th>petal length (cm)</th>
+      <th>petal width (cm)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>5.1</td>
+      <td>3.5</td>
+      <td>1.4</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>4.9</td>
+      <td>3.0</td>
+      <td>1.4</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>4.7</td>
+      <td>3.2</td>
+      <td>1.3</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4.6</td>
+      <td>3.1</td>
+      <td>1.5</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5.0</td>
+      <td>3.6</td>
+      <td>1.4</td>
+      <td>0.2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+      <button class="colab-df-convert" onclick="convertToInteractive('df-34a24533-7fb8-4995-98cb-f31db7418278')"
+              title="Convert this dataframe to an interactive table."
+              style="display:none;">
+
+  <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
+       width="24px">
+    <path d="M0 0h24v24H0V0z" fill="none"/>
+    <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
+  </svg>
+      </button>
+
+  <style>
+    .colab-df-container {
+      display:flex;
+      flex-wrap:wrap;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  </style>
+
+      <script>
+        const buttonEl =
+          document.querySelector('#df-34a24533-7fb8-4995-98cb-f31db7418278 button.colab-df-convert');
+        buttonEl.style.display =
+          google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+        async function convertToInteractive(key) {
+          const element = document.querySelector('#df-34a24533-7fb8-4995-98cb-f31db7418278');
+          const dataTable =
+            await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                     [key], {});
+          if (!dataTable) return;
+
+          const docLinkHtml = 'Like what you see? Visit the ' +
+            '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+            + ' to learn more about interactive tables.';
+          element.innerHTML = '';
+          dataTable['output_type'] = 'display_data';
+          await google.colab.output.renderOutput(dataTable, element);
+          const docLink = document.createElement('div');
+          docLink.innerHTML = docLinkHtml;
+          element.appendChild(docLink);
+        }
+      </script>
+    </div>
+  </div>
+</div></div>
+</div>
+<p>今のデータは、上の定式化におけるN=150, p =4の場合に相当する事がわかる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">N</span><span class="p">,</span><span class="n">p</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span>
+<span class="c1">#データ行列の定義</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">values</span> 
+
+<span class="c1">#p=1,2,3,4 各列の平均ベクトル(p×1行列)を定義</span>
+<span class="n">mv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">X</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> 
+
+<span class="c1">#共分散行列Cの計算</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">p</span><span class="p">,</span><span class="n">p</span><span class="p">))</span> <span class="c1"># p×pのゼロ行列を作成</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">mv</span> 
+    <span class="n">C</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">,</span><span class="n">d</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">/</span> <span class="n">N</span> 
+</pre></div>
+</div>
+</div>
+</div>
+<p>行列の固有値を求める部分の詳しい説明は、それだけでノートブックが複数必要なので<br />
+Numpyの中にある固有値・固有ベクトルを計算する関数<code class="docutils literal notranslate"><span class="pre">np.linalg.eig</span></code>を用いる。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">vals</span><span class="p">,</span><span class="n">vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;固有値&quot;</span><span class="p">,</span><span class="n">vals</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;固有ベクトル&quot;</span><span class="p">,</span><span class="n">vecs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="c1">#固有ベクトルは縦に並んでいることに注意</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>固有値 [4.20005343 0.24105294 0.0776881  0.02367619]
+固有ベクトル [[ 0.36138659 -0.08452251  0.85667061  0.3582892 ]
+ [-0.65658877 -0.73016143  0.17337266  0.07548102]
+ [-0.58202985  0.59791083  0.07623608  0.54583143]
+ [ 0.31548719 -0.3197231  -0.47983899  0.75365743]]
+</pre></div>
+</div>
+</div>
+</div>
+<p>sklearnで計算された<code class="docutils literal notranslate"><span class="pre">explained_variance_</span></code>(固有値に対応)=<code class="docutils literal notranslate"><span class="pre">4.22824171,</span> <span class="pre">0.24267075,</span> <span class="pre">0.0782095</span></code>と<br />
+わずかに値が異なっている。</p>
+<p>実はsklearnでは不偏分散が使われているため、</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#共分散行列Cの計算 (不偏分散, sklearnと整合)</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">p</span><span class="p">,</span><span class="n">p</span><span class="p">))</span> <span class="c1"># p×pのゼロ行列を作成</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">mv</span> 
+    <span class="n">C</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">,</span><span class="n">d</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">N</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#分母 N → N-1</span>
+<span class="n">vals</span><span class="p">,</span><span class="n">vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">vecs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[4.22824171 0.24267075 0.0782095  0.02383509]
+[[ 0.36138659 -0.08452251  0.85667061  0.3582892 ]
+ [-0.65658877 -0.73016143  0.17337266  0.07548102]
+ [-0.58202985  0.59791083  0.07623608  0.54583143]
+ [ 0.31548719 -0.3197231  -0.47983899  0.75365743]]
+</pre></div>
+</div>
+</div>
+</div>
+<p>とすると、両者を整合させることができる。<br />
+以降では、上の定式化を修正して不偏分散を用いることにしよう。</p>
+<p>このように、ライブラリのソースコードを読むか自身で実装した関数と比較することで初めて<br />
+「sklearnでは不偏分散が使われているんだな」ということが分かったりする。</p>
+<p>細かな実装が式と整合しているかどうかを確かめるのは重要で<br />
+これを怠ると、再現性が損なわれたりバグの温床になる。</p>
+<p>余談:<br />
+世の中でプログラムを書く人が全員「動けばいいや」の考えだと<br />
+それがいつかサービスやシステムを通して社会(や自分自身)に大きな不利益をもたらすかもしれない。<br />
+(たとえば自動運転の車による事故などを想像してみよう)</p>
+<p>各データに対する第1主成分軸に沿った”得点”は、<br />
+最大固有値に対応する固有ベクトル<code class="docutils literal notranslate"><span class="pre">vecs[:,0]</span></code>が<br />
+射影になっていることを思い出すと、内積を取ればよい。<br />
+<code class="docutils literal notranslate"><span class="pre">vecs[0]</span></code>とすると0番目の行ベクトルが取られて誤りになるので注意!</p>
+<p>各点について第1主成分得点を計算してリストに詰めておこう</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PC1s</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">mv</span> 
+    <span class="n">u</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">PC1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">T</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">PC1s</span> <span class="o">+=</span> <span class="p">[</span><span class="n">PC1</span><span class="p">]</span>
+    <span class="c1">#print(&quot;i&quot;,i, &quot;PC1&quot;,PC1)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>同様にして</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PC2s</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span> 
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">mv</span> 
+    <span class="n">u</span> <span class="o">=</span> <span class="n">vecs</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">PC2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">T</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">PC2s</span> <span class="o">+=</span> <span class="p">[</span> <span class="n">PC2</span> <span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>プロットしてみよう</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="s2">&quot;orange&quot;</span><span class="p">,</span><span class="s2">&quot;green&quot;</span><span class="p">]</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PC1&quot;</span><span class="p">);</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;PC2&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">PC1s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">PC2s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="n">cols</span><span class="p">[</span><span class="n">targets</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_misc_PCA_33_0.png" src="../_images/Python_misc_PCA_33_0.png" />
+</div>
+</div>
+<p>sklearnの出力と上下がひっくり返っている。<br />
+yにマイナスをかけて向きをあわせてみると…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PC1&quot;</span><span class="p">);</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;PC2&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">PC1s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">PC2s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="o">-</span><span class="n">y</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="n">cols</span><span class="p">[</span><span class="n">targets</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_misc_PCA_35_0.png" src="../_images/Python_misc_PCA_35_0.png" />
+</div>
+</div>
+<p>sklearnと同じ結果を与える自作コードを作ることが出来ました。</p>
+<p>上の符号反転について:</p>
+<p>第2主成分に対応する固有ベクトルは、sklearnと自前関数で得られた値で符号が異なっている。<br />
+今のように、分散を大きくする軸を見つける場合、<br />
+当然軸の反転(固有ベクトル全体の符号)の自由度が残されている。<br />
+実装によって符号が異なるのは、固有値問題を解く際に使用されているソルバー
+におけるconventionの違いなどに由来している。</p>
+</div>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="clubsuit">
+<h1><span class="math notranslate nohighlight">\(\clubsuit\)</span> オートエンコーダ(自己符号化器)<a class="headerlink" href="#clubsuit" title="Permalink to this headline">¶</a></h1>
+<p>上で紹介したPCAは、式(or 直交変換の定義)からもわかるように<br />
+空間上に”平坦に”分布するデータの特徴を説明するのにはうってつけです。</p>
+<p>一方、一般のデータは必ずしも直線的な分布を持っているわけではなく<br />
+空間上で曲がったり複雑な幾何学形状をしていてもおかしくありません。</p>
+<p>そんなデータに対して、データの冗長性を削減したり特徴をとらえるための方法の一つが<br />
+以下で説明するオートエンコーダです。</p>
+<p>最も基本的なオートエンコーダは隠れ層がくびれた<br />
+以下のようなニューラルネットワークで構成されます。</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>%%capture
+#from keras.models import Sequential
+#from keras.layers import Dense
+!pip install ann_visualizer
+from ann_visualizer.visualize import ann_viz
+from graphviz import Source
+from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">graph</span> <span class="o">=</span> <span class="n">temp</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">... digraph G {</span>
+<span class="s1">... </span>
+<span class="s1">...      graph[ fontname = &quot;Helvetica-Oblique&quot;,</span>
+<span class="s1">...             fontsize = 20,</span>
+<span class="s1">...             label = &quot;&quot;,</span>
+<span class="s1">...             size = &quot;15,30&quot; ];</span>
+<span class="s1">... </span>
+<span class="s1">...     rankdir = LR;</span>
+<span class="s1">...     splines=false;</span>
+<span class="s1">...     edge[style=invis];</span>
+<span class="s1">...     ranksep= 1.4;</span>
+<span class="s1">...     {</span>
+<span class="s1">...     node [shape=circle, color=chartreuse, style=filled, fillcolor=chartreuse];</span>
+<span class="s1">...     x1 [label=&lt;x&lt;sub&gt;1&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     x2 [label=&lt;x&lt;sub&gt;2&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     x3 [label=&lt;x&lt;sub&gt;3&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     x4 [label=&lt;x&lt;sub&gt;4&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     x5 [label=&lt;x&lt;sub&gt;5&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     x6 [label=&lt;x&lt;sub&gt;6&lt;/sub&gt;&gt;]; </span>
+<span class="s1">... }</span>
+<span class="s1">... {</span>
+<span class="s1">...     node [shape=circle, color=dodgerblue, style=filled, fillcolor=dodgerblue];</span>
+<span class="s1">...     a12 [label=&lt;a&lt;sub&gt;1&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     a22 [label=&lt;a&lt;sub&gt;2&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     a32 [label=&lt;a&lt;sub&gt;3&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     a42 [label=&lt;a&lt;sub&gt;4&lt;/sub&gt;&gt;];</span>
+<span class="s1">... }</span>
+<span class="s1">... {</span>
+<span class="s1">...     node [shape=circle, color=coral1, style=filled, fillcolor=coral1];</span>
+<span class="s1">...     O1 [label=&lt;y&lt;sub&gt;1&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     O2 [label=&lt;y&lt;sub&gt;2&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     O3 [label=&lt;y&lt;sub&gt;3&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     O4 [label=&lt;y&lt;sub&gt;4&lt;/sub&gt;&gt;];</span>
+<span class="s1">...     O5 [label=&lt;y&lt;sub&gt;5&lt;/sub&gt;&gt;]; </span>
+<span class="s1">...     O6 [label=&lt;y&lt;sub&gt;6&lt;/sub&gt;&gt;]; </span>
+<span class="s1">... }</span>
+<span class="s1">...     {</span>
+<span class="s1">...         rank=same;</span>
+<span class="s1">...         x1-&gt;x2-&gt;x3-&gt;x4-&gt;x5-&gt;x6;</span>
+<span class="s1">...     }</span>
+<span class="s1">...     {</span>
+<span class="s1">...         rank=same;</span>
+<span class="s1">...         a12-&gt;a22-&gt;a32-&gt;a42;</span>
+<span class="s1">...     }</span>
+<span class="s1">...     {</span>
+<span class="s1">...         rank=same;</span>
+<span class="s1">...         O1-&gt;O2-&gt;O3-&gt;O4-&gt;O5-&gt;O6;</span>
+<span class="s1">...     }</span>
+<span class="s1">...     l0 [shape=plaintext, label=&quot;layer 1 (input layer)&quot;];</span>
+<span class="s1">...     l0-&gt;x1;</span>
+<span class="s1">...     {rank=same; l0;x1};</span>
+<span class="s1">...     l1 [shape=plaintext, label=&quot;layer 2 (hidden layer)&quot;];</span>
+<span class="s1">...     l1-&gt;a12;</span>
+<span class="s1">...     {rank=same; l1;a12};</span>
+<span class="s1">...     l3 [shape=plaintext, label=&quot;layer 3 (output layer)&quot;];</span>
+<span class="s1">...     l3-&gt;O1;</span>
+<span class="s1">...     {rank=same; l3;O1};</span>
+<span class="s1">...     edge[style=solid, tailport=e, headport=w];</span>
+<span class="s1">...     {x1; x2;x3;x4;x5;x6} -&gt; {a12;a22;a32;a42};</span>
+<span class="s1">...     {a12;a22;a32;a42} -&gt; {O1,O2,O3,O4,O5,O6};</span>
+<span class="s1">... }&#39;&#39;&#39;</span>
+
+<span class="n">dot</span> <span class="o">=</span> <span class="n">Source</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+<span class="n">dot</span><span class="o">.</span><span class="n">format</span> <span class="o">=</span> <span class="s1">&#39;png&#39;</span>
+<span class="n">dot</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s1">&#39;neural_network_01&#39;</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> 
+
+<span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;neural_network_01.png&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="n">im_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">im_list</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/Python_misc_PCA_41_0.png" src="../_images/Python_misc_PCA_41_0.png" />
+</div>
+</div>
+<p>上には、入出力の次元が6で、隠れ層が1つ(ノード4)の場合のニューラルネットワークの図を描きました。
+オートエンコーダではこのようなニューラルネットワークのパラメータを出力<span class="math notranslate nohighlight">\(y\)</span>が<span class="math notranslate nohighlight">\(x\)</span>にできるだけ一致するよう学習させるということを考えます。</p>
+<p>入力層から隠れ層への信号の伝播を符号化(エンコード)と呼び隠れ層から出力層への信号の伝播を復号化(デコード)と呼びます。
+それぞれを別々に眺めるとエンコーダ部分はもとの入力の情報を圧縮するような働きをしているとみなせますし、一方デコーダ部分は一度圧縮した情報をもとに元の信号を再構成するような働きをします。</p>
+<p>オートエンコーダはPCAを特殊な場合として含むためPCAの拡張とみなすことができます。<br />
+詳しくは記載しませんが、活性化関数を恒等変換にとって重み行列を直交行列に取り二乗誤差関数を最小化する表式を書き下すとPCAの表式が現れます。</p>
+<p>上では単純な順伝播型のニューラルネットワークを描きましたがオートエンコーダを構成するアーキテクチャは上記のような単純なANNに限らず畳み込みニューラルネットワークを用いた畳み込みオートエンコーダなども知られています。</p>
+</div>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./notebooks"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+              </div>
+              
+        
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="Python_misc_ODE.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">常微分方程式の数値解法</p>
+        </div>
+    </a>
+    <a class='right-next' id="next-link" href="Python_misc_SingularValueDecomposition.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">特異値分解と情報削減</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
+        
+        </div>
+    </div>
+    <footer class="footer">
+    <div class="container">
+      <p>
+        
+          <div class="extra_footer">
+            © Copyright 2020-2023 by 吉田 聡太 (Sota Yoshida). 本コンテンツは<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0 ライセンス</a>の下に提供されています。 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>　ただし、資料中のコードセル部分は<a rel="license" href="https://opensource.org/licenses/MIT">MITライセンス</a>の下に提供されています。
+
+          </div>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
+      </div>
+    </div>
+  
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
+
+  </body>
+</html>

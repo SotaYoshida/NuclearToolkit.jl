@@ -1,0 +1,242 @@
+import math
+
+print(math.log(2.0)) #自然対数 
+print(math.log10(2.0)) #常用(底が10)対数
+print(math.exp(2.0)) #指数関数
+print(math.pi) #円周率pi (引数なし)
+print(math.sin(math.pi))  # sin(pi)
+
+#先程のmathもnumpyで置き換え可
+import numpy as np #numpyをnpという名前で使う
+print(np.log(2.0))
+print(np.log10(2.0))
+print(np.exp(2.0))
+print(np.pi)
+print(np.sin(np.pi))
+
+import numpy as np
+
+list_a = [ 1.23, 9341.22, -32.33] 
+list_a = np.array(list_a)
+print(list_a, type(list_a))
+
+import matplotlib.pyplot as plt 
+
+from matplotlib import pyplot as plt #でも同じ
+
+!pip install japanize-matplotlib #!から始めることでLinuxコマンドを使うことができる。
+import japanize_matplotlib
+import numpy as np  #ついでにコレもインポート
+
+data = [152, 170, 82, 85, 79, 92, 88]
+label = ["国語","英語", "数IA", "数IIB", "化学", "物理", "世界史"]
+total = sum(data)
+#print("合計得点は", total, "点で、得点率は"+str(total/900)+"%です")
+print("合計得点は", total, "点で、得点率は"+str("%6.1f" % (100* total/900))+"%です")
+
+plt.figure( figsize=(10,2) ) 
+plt.bar(label,data,align='center',width=0.5,color="red") 
+plt.xlabel("各科目"); plt.ylabel("Aさんの得点") 
+plt.show() 
+plt.close()
+
+
+
+#どうしても円グラフが描きたい方へ (下のコードを適当にいじって遊んでみてください)
+tlabels = ["Aと答えた人","Bと答えた人","Cと答えた人"]
+ratio = [513,142, 249]
+
+plt.figure(figsize=(4,4)) 
+plt.pie(ratio,labels=tlabels,counterclock=False, startangle=90,autopct="%.1f%%")
+plt.show()
+plt.close() 
+# labels=tlabelsは、 pie()関数の中のlabelsという引数にtlabelsを突っ込むという意味
+# label(ラベル)とは、凡例(legend)のこと。それぞれのオブジェクトが何を指すのか
+# counterclockは反時計回りのオプションをFalse(偽)とするのでつまり時計回り(回りくどいな...)
+# startangleは円グラフの始点を、x軸から見て何度のところにとるかで、今は90度(つまり12時の方向)と設定.
+# autopctは「値を%表記に直せ」というオプションで、 %.1f%%は小数点以下1桁まで出力しなさいという命令.
+
+tlabels = ["Aと答えた人","Bと答えた人","Cと答えた人"]
+ratio = [513,142, 249]
+
+plt.figure(figsize=(10,3)) 
+plt.ylim([-1,1]) #plt.ylim(-1,1)でも可
+xs = 0.0
+for i in range(len(tlabels)):
+    tx = ratio[i]
+    ty = 0.0
+    plt.barh([ty],width=tx,left=xs,label=tlabels[i]+"("+str(ratio[i])+"人, "+str("%4.1f" % (100*ratio[i]/sum(ratio)))+"%)")
+    xs += ratio[i]
+plt.legend()
+plt.show()
+plt.close()
+
+
+
+# 感染者数と重傷者数
+y= [282,314,None,581,846,1320,2014,2798,4593, 6065,7818,9826,11953,14557,17391,20630,
+    24554,28276,31481,34886, 37558.40554,43103,45171] #2019年2月13日までのデータ
+
+y_sev=[51,51,None,96,177,237,324,461,976,1239,
+       1370,1527,1795,2110,2296,2788,3219,3859,4821,6101,6188,6484,7333,8304]
+
+plt.figure(figsize=(12,4)) 
+plt.xlabel("2019年1月20日以降の経過日数")
+plt.plot(range(len(y)),y, label="世界全体での新型コロナウイルス感染者数",color="red")
+#x軸が0から始まる整数値(0,1,...)で良い場合は、x軸のデータを指定しなくてもplotしてくれる
+plt.plot(y_sev, label="重傷者数",color="blue") 
+plt.legend() ##凡例(線や点等の説明)を描画する
+plt.show()
+plt.close() 
+
+plt.figure(figsize=(12,4)) 
+plt.xlabel("1月20日以降の経過日数")
+plt.yscale("log") ## y軸を対数スケールに変換
+plt.plot(range(len(y)), y, marker="x",label="世界全体での新型コロナウイルス感染者数",color="red") ## markerの値を指定すれば、線だけじゃなく点を描くことも出来る。
+plt.plot(y_sev, label="重傷者数",marker="o",color="blue")
+plt.legend()
+plt.show()
+plt.close() 
+
+
+
+x= [3.1, 4.3, 6.6, 13.2, 19.1, 20.9, 26.4, 25.1, 21.9, 15.7, 9.6, 3.8]
+y= [568, 572, 804, 833, 930, 965, 1213, 1120, 835, 540, 451, 502]
+
+plt.figure(figsize=(4,4)) 
+plt.title("宇都宮市") ## 図にはタイトルをつけることができます
+plt.xlabel("平均気温 (℃)") #軸ラベルの指定
+plt.ylabel("世帯あたりのアイスクリーム・シャーベットの消費金額 (円)")
+plt.scatter(x,y)
+plt.show()
+plt.close() 
+
+x= [3.1, 4.3, 6.6, 13.2, 19.1, 20.9, 26.4, 25.1, 21.9, 15.7, 9.6, 3.8]
+y= [568, 572, 804, 833, 930, 965, 1213, 1120, 835, 540, 451, 502]
+
+r = np.corrcoef(x,y) ## x,yの配列間の相関行列を計算します 
+corrcoef=r[0,1] ## 行列の非対角要素が相関係数です。  r[0,1], 0行目1列の値
+
+def seasoncolor(month): #季節ごとに適当に色を塗ってみましょう
+    if month <= 2 or month ==12:
+        return "blue"
+    elif 3 <= month <=5:
+        return "green"
+    elif 6 <= month <=8:
+        return "red"
+    elif 9<= month <=11:
+        return "orange"
+    else:
+        print("month",month, " is not supported")
+
+fig = plt.figure(figsize=(5,5))
+ax = fig.add_subplot(111)  ## 注2
+ax.set_facecolor("#D3DEF1")
+ax.set_title("宇都宮市")
+ax.set_xlabel("平均気温 (℃)")
+ax.set_ylabel("世帯あたりのアイスクリーム・シャーベットの消費金額 (円)")
+ax.grid(True,axis="both",color="w", linestyle="dotted", linewidth=0.8)
+for i in range(len(x)):
+    tcol=seasoncolor(i+1)
+    ax.scatter(x[i],y[i],marker="o",s=10,color=tcol,zorder=20000,alpha=0.7)
+    ax.text(x[i],y[i],str(i+1)+"月",color="k",fontsize=8)
+ax.text(0.1,0.9, "r="+str("%5.2f" % corrcoef), transform=ax.transAxes,fontsize=12)
+plt.show()
+plt.close()
+
+data = [152, 170, 82,85,79,92,88]
+label = ["国語","英語", "数IA", "数IIB", "化学", "物理", "世界史"]
+
+fig = plt.figure(figsize=(10,5))
+axTL= fig.add_subplot(2,2,1)  #TL: Top Leftのつもり
+axTR = fig.add_subplot(2,2,2) #TR: Top Rightのつもり 
+axBL = fig.add_subplot(2,2,3) #BL: Bottom Leftのつもり
+axBR = fig.add_subplot(2,2,4) #BR: Bottom rightのつもり
+axTL.plot(y_sev)
+axTR.scatter(x,y)
+axBL.bar(label,data,align='center',width=0.5,color="red") 
+axBR.text(0.5,0.4,"右下だよ")
+plt.show()
+plt.close()
+
+from google.colab import drive
+drive.mount('/content/drive')  # ←のマウントする際の名前は好きに決められる。drive.mount('gdrive')とかでもOK
+
+!ls ./drive/MyDrive
+
+!mkdir './drive/MyDrive/Colab_pic' 
+
+### 先程の図
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot(1,1,1)  
+ax.set_facecolor("#D3DEF1")
+ax.set_title("宇都宮市")
+ax.set_xlabel("平均気温 (℃)")
+ax.set_ylabel("世帯あたりのアイスクリム・シャーベットの消費金額 (円)")
+ax.grid(True,axis="both",color="w", linestyle="dotted", linewidth=0.8)
+for i in range(len(x)):
+    tcol=seasoncolor(i+1)
+    ax.scatter(x[i],y[i],marker="o",s=10,color=tcol,zorder=20000,alpha=0.7)
+    ax.text(x[i],y[i],str(i+1)+"月",color="k",fontsize=8)
+ax.text(0.1,0.9, "r="+str("%5.2f" % corrcoef), transform=ax.transAxes,fontsize=12)
+plt.savefig("./drive/My Drive/Colab_pic/scatter_Utsunomiya_ice.pdf") #####  ここがさっきと違います！ 
+#plt.show()
+plt.close()
+
+
+
+!ls  ./drive/MyDrive/AdDS/GDPvsWomenInSchool/*.png
+
+from PIL import Image
+import glob
+
+files = sorted(glob.glob('./drive/My Drive/AdDS/GDPvsWomenInSchool/GDPvsWomen*.png')) ##まとめたいpngをワイルドカードで指定
+images = list(map(lambda file: Image.open(file), files))
+
+oupf = './drive/My Drive/Colab_pic/GDPvsWomen.gif' ##出力名と保存場所を指定する
+images[0].save(oupf, save_all=True, append_images=images[1:], duration=400, loop=0)
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
+from mpl_toolkits.mplot3d.axes3d import get_test_data
+import os
+
+X, Y, Z = get_test_data()
+fig = plt.figure(figsize=(10,5))
+ax = fig.gca(projection='3d')
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_zlabel("target function")
+ax.view_init(elev=45)#上から見た角度を調整できる
+ax.plot_surface(X, Y, Z,cmap=plt.cm.viridis)
+plt.show()
+plt.close()
+
+import matplotlib.cm as cm
+import numpy as np
+
+mu1 = [ 3.0, 2.0]
+cov1 = [ [1.0, 0.7],[0.7,1.0]]
+numS = 50000
+
+sample1 = np.random.multivariate_normal(mu1,cov1,numS)
+x1, y1 = sample1.T
+
+fig = plt.figure(figsize=(6,5))
+ax1 = fig.add_subplot(111)
+H1 = ax1.hist2d(x1,y1, bins=40, cmap=cm.jet)
+ax1.scatter(mu1[0],mu1[1],color="k",marker="x")
+ax1.set_title('sample1')
+ax1.set_xlabel('x'); ax1.set_ylabel('y')
+fig.colorbar(H1[3],ax=ax1)
+plt.show()
+plt.close()
+
+
+!pip install japanmap
+from japanmap import pref_names,pref_code,groups,picture
+import matplotlib.pyplot as plt
+from pylab import rcParams
+
+plt.figure(figsize=(6,6))
+plt.imshow(picture({'栃木県': 'red', '群馬県': 'blue'}))

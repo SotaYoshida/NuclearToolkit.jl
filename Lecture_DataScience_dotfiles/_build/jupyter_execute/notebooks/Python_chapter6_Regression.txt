@@ -1,0 +1,164 @@
+from matplotlib import pyplot as plt 
+!pip install japanize-matplotlib 
+import japanize_matplotlib 
+import numpy as np 
+
+x= [3.1, 4.3, 6.6, 13.2, 19.1, 20.9, 26.4, 25.1, 21.9, 15.7, 9.6, 3.8]
+y= [568, 572, 804, 833, 930, 965, 1213, 1120, 835, 540, 451, 502]
+
+plt.figure(figsize=(6,6)) 
+plt.title("宇都宮市") 
+plt.xlabel("平均気温 (℃)")
+plt.ylabel("世帯あたりのアイスクリム・シャーベットの消費金額 (円)")
+plt.scatter(x,y)
+plt.show()
+plt.close()
+
+### ライブラリを一切使わない方法
+def cor_coeff(x,y):
+    # xとyの長さが違う場合や長さ0の場合はエラーを出す
+    if len(x) != len(y) or len(x)==len(y)==0:
+        raise ValueError("Error: x&y must satisfy len(x) = len(y) != 0")
+    n = len(x) 
+    ## 平均を計算
+    xbar = sum(x)/n; ybar = sum(y)/n 
+
+    ##分子(numerator)の和を計算 (初期値を0に)
+    s_n = 0.0 
+    for i in range(n):
+        s_n += (x[i]-xbar)*(y[i]-ybar)
+
+    ##分母(denominator)の計算 (和を先に計算して積を取り、最後にsquare rootをとる)
+    s_x = 0.0; s_y = 0.0
+    for i in range(n):
+        s_x += (x[i]-xbar)**2 
+        s_y += (y[i]-ybar)**2
+    s_d = (s_x * s_y)**0.5
+    # 一行で書くなら
+    #s_d = ( sum([(x[i]-xbar)**2 for i in range(n)]) * sum([(y[i]-ybar)**2 for i in range(n)]) )**0.5
+
+    return s_n/s_d # 分子/分母の値を返す
+
+cor_coeff(x,y)
+
+cor_coeff(x,y[1:])
+
+def cor_coeff_np(x,y):
+    xbar = np.mean(x); ybar=np.mean(y)
+    return np.dot(x - xbar,y-ybar) / np.sqrt( np.dot(x-xbar,x-xbar) * np.dot(y-ybar,y-ybar) ) 
+
+cor_coeff_np(x,y) 
+
+print(np.corrcoef(x,y))
+print("r(x,y)=", np.corrcoef(x,y)[0,1])
+
+"""
+0,1で定義された区間でsample_size(int)個の点で
+sin関数に正規乱数に従う誤差を加えた値を返す関数。
+- sample_size: データの数
+- std: standard deviation (標準偏差σ)
+"""
+def create_toy_data(sample_size, std):
+    x = np.linspace(0, 1, sample_size)
+    t = np.sin(2*np.pi*x) + np.random.normal(scale=std, size=x.shape)  
+    return x, t
+
+#私と皆さんで結果が変わらないよう乱数のseedを固定
+#randomモジュールの関数を使うときはrandom.seedを、
+#numpyのrandom関数を使うときはnp.random.seedを用いる
+np.random.seed(1234) 
+
+x,y = create_toy_data(10,1.e-1) 
+
+fig = plt.figure(figsize=(10,4))
+ax = fig.add_subplot(111)
+ax.set_xlabel("x"); ax.set_ylabel("y")
+ax.scatter(x, y, facecolor="none", edgecolor="b", s=50, label="Data")
+ax.legend()
+plt.show()
+plt.close()
+
+## 多項式をplotするためのxの値を準備(グラフをなめらかにするために、0から1までの間の500点を等間隔に取る)
+xp = np.linspace(0, 1, 500) 
+
+#多項式の次元pを決める. 今は3次式.
+p=3 
+
+#polyfit関数で最適化し、返り値(係数)を取得する
+coeff = np.polyfit(x, y, p) 
+
+#最適化された係数と、1次元入力xに対する多項式を計算してくれるpoly1d関数を用いて描画点xpでのモデル関数の値を計算する。
+yp = np.poly1d( coeff )(xp)
+
+print("係数",coeff)
+
+#お絵かき
+fig = plt.figure(figsize=(10,4))
+ax = fig.add_subplot(111)
+ax.set_xlabel("x"); ax.set_ylabel("y")
+ax.scatter(x, y, facecolor="none", edgecolor="b", s=50, label="Data")
+ax.plot(xp, yp,label="p=3")
+ax.legend()
+plt.show()
+plt.close()
+
+ps = [0,1,3,6,9]
+xp = np.linspace(0, 1, 500) 
+
+# 各pでのfitの結果(xpでの対応する値のリスト)をysに入れ子のリストにしていく
+ys = []
+for p in ps:
+    ys += [np.poly1d(np.polyfit(x, y, p))(xp)]
+
+# データのは以後にある"真の関数"(本当は知り得ない)の値をxpの各点で計算
+ytrue = np.sin(2*np.pi*xp) 
+
+# お絵かき
+fig = plt.figure(figsize=(12,5))
+ax = fig.add_subplot(111)
+ax.set_xlabel("x"); ax.set_ylabel("y")
+ax.scatter(x, y, facecolor="none", edgecolor="b", s=80, label="Data")
+for i in range(len(ps)):
+    ax.plot(xp, ys[i],label="p="+str(ps[i]),alpha=0.8)
+ax.plot(xp,ytrue,linestyle="dotted", label="True",color="k")
+ax.legend(loc="upper right")
+plt.show()
+plt.close()
+
+def complexity(r):
+    return np.sqrt(np.dot(r,r))
+def my_criteria(comp,err,lam=1.0): #lambda=1.0
+    return err + lam * np.log10(comp)
+
+for p in ps:
+    coeff = np.polyfit(x, y, p)
+    diff = np.poly1d(np.polyfit(x, y, p))(x) - y
+    chi2 = np.dot(diff,diff)
+    comp = complexity(coeff)
+    print("p",p, "モデルの複雑さ(log10)→", np.log10(comp),
+          "二乗誤差", chi2, "モデル選択基準量", my_criteria(comp,chi2))
+
+
+y = [ 10.06, 10.03,10.02, 9.95,9.93, 9.92,9.9, 9.86,9.85, 9.84, 9.79, 9.78, 9.77, 9.74,9.72,9.69,9.58 ]
+x = [1964, 1968,1968,1968,1983,1988,1991,1991,1994,1996,1999,2002,2005,2007,2008,2008,2009 ]
+
+fig = plt.figure(figsize=(12,3))
+ax = fig.add_subplot(111)
+ax.set_xlabel("year"); ax.set_ylabel("Mens 100m")
+ax.scatter(x,y,marker="o",color="red")
+plt.show()
+plt.close()
+
+xp = np.arange(2020,2101,1)
+fig = plt.figure(figsize=(12,6))
+ax = fig.add_subplot(111)
+ax.set_xlabel("year"); ax.set_ylabel("Mens 100m")
+ax.set_xlim(1960,2100)
+ax.set_ylim(0,12)
+for p in [3]:
+    yp = np.poly1d(np.polyfit(x, y, p))(xp)
+    ax.plot(xp,yp,marker="x",label="p="+str(p))
+ax.scatter(x,y,marker="x",color="red")    
+ax.legend(loc="upper right")
+plt.show()
+plt.close()

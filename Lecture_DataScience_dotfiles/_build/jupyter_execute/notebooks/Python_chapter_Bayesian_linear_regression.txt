@@ -1,0 +1,81 @@
+import numpy as np
+from matplotlib import pyplot as plt
+
+## データ点の生成
+np.random.seed(1234)
+x = np.linspace(-2.0,6.0,1000)
+beta = 1.e+2
+xt = np.linspace(0.0,4.0,20)
+yt = np.sin(xt) + np.array([ np.random.normal(0.0,1.0/np.sqrt(beta)) for i in range(len(xt))])
+
+fig = plt.figure(figsize = (15,5))
+axs = [fig.add_subplot(111)]
+axs[0].scatter(xt,yt,label="Data",color="k",marker="x")
+axs[0].legend()
+plt.show()
+plt.close() 
+
+N = len(xt)
+
+##　多項式の次元を固定しておく
+p=3
+
+##numpyのfit
+yp = np.poly1d(np.polyfit(xt, yt, p))(x) 
+
+## 計画行列を用いる方法
+def phi(x,p):
+    return np.array([ x**i for i in range(p+1)])
+Phi = np.zeros((N,p+1))
+for i in range(N):
+    xn = xt[i]
+    tmp = phi(xn,p) 
+    for j in range(p+1):
+        Phi[i][j] = tmp[j]
+S = np.linalg.inv(np.dot(Phi.T,Phi))
+wML = np.dot(S,np.dot(Phi.T,yt))
+yD = [ np.dot(wML,phi(xn,p)) for xn in x ]
+
+#図のplot
+fig = plt.figure(figsize = (20,4))
+axs = [fig.add_subplot(121),fig.add_subplot(122)]
+axs[0].scatter(xt,yt,label="Data",color="k",marker="x")
+axs[0].plot(x,yp,label="np.polyfit",color="r",alpha=0.5)
+axs[0].plot(x,yD,label="DMat",linestyle="dotted", color="g")
+axs[0].legend()
+
+axs[1].plot(x,np.log10(abs(yp-yD)))
+plt.show()
+plt.close() 
+
+## alpha(事前分布の精度=分散の逆数)は決め打ちとする
+alpha = 1.e-5 #精度が小さい=分散が大きい=パラメータの事前知識が"弱い"
+
+## wの事後分布の計算
+I = np.diag([1.0 for i in range(p+1)])
+Sigma = np.linalg.inv( alpha * I + beta * np.dot(Phi.T, Phi) )
+mu = beta * np.dot(Sigma, np.dot(Phi.T,yt))
+
+## 予測値(その分散)のリストを作成
+y_BLR = []
+for tx in x :
+    tmp = phi(tx,p)
+    mu_p = np.dot(mu,tmp)    
+    term1 = 1.0/beta
+    term2 =  np.dot(tmp,np.dot(Sigma,tmp))
+    sigma_p = term1 + term2 
+    #print("term1", term1, "term2", term2)
+    y_BLR += [ [mu_p, sigma_p] ]
+y_BLR = np.array(y_BLR).T
+
+## plot
+fig = plt.figure(figsize = (10,4))
+axs = [fig.add_subplot(111)]
+axs[0].scatter(xt,yt,label="Data",color="k",marker="x")
+axs[0].plot(x,yD,label="Maximum Likelihood",linestyle="dotted", color="red")
+axs[0].plot(x,y_BLR[0],label="Mean",linestyle="dashed", color="blue")
+axs[0].fill_between(x,y_BLR[0]+np.sqrt(y_BLR[1]),y_BLR[0]-np.sqrt(y_BLR[1]),label="1sigma", color="blue",alpha=0.5)
+axs[0].fill_between(x,y_BLR[0]+3*np.sqrt(y_BLR[1]),y_BLR[0]-3*np.sqrt(y_BLR[1]),label="3sigma", color="gray",alpha=0.3)
+axs[0].legend()
+plt.show()
+plt.close() 

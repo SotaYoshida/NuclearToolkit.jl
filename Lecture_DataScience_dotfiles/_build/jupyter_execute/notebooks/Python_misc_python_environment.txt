@@ -1,9 +1,0 @@
-#動画貼り付け用
-from IPython.display import HTML
-from base64 import b64encode
-
-HTML(r'<iframe width="560" height="315" src="https://www.youtube.com/embed/z2_nNvpgonY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
-
-HTML(r'<iframe width="560" height="315" src="https://www.youtube.com/embed/deZTrWYk9vU" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
-
-HTML(r'<iframe width="560" height="315" src="https://www.youtube.com/embed/X2FMQYpXtGY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')

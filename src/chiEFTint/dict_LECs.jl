@@ -1,12 +1,5 @@
-struct LECs
-    vals::Vector{Float64}
-    idxs::Dict{String,Int64}
-    dLECs::Dict{String,Float64}
-end
-
 """
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
-
 overwrites `vals` and `idxs`, which are to be used in e.g., MCMC algorithms, by dict for LECs `dLECs`.
 """
 function prep_valsidxs_dLECs!(vals,idxs,dLECs)
@@ -29,7 +22,7 @@ function dict_em500n3lo()
     dLECs=Dict{String,Float64}() 
     ## LO con  10^4 GeV^-2
     dLECs["C0_1S0"]  = -0.147167
-    dLECs["C0_3S1"]  = -0.11897839697675265
+    dLECs["C0_3S1"]  = -0.118972496
     dLECs["C_CSB"] = 0.00049950
     dLECs["C_CIB"] = 0.00069075
     ## NLO con 10^4 GeV^-4
@@ -56,25 +49,35 @@ function dict_em500n3lo()
     dLECs["D_3D2"] = -1.46
     dLECs["D_3PF2"] = -0.465
     dLECs["D_3D3"] = 5.66
-
     ## For pion exchange contribution
     ## NNLO GeV^-1
     dLECs["c1_NNLO"] = -0.81
     dLECs["c2_NNLO"] =  2.8
     dLECs["c3_NNLO"] = -3.2
     dLECs["c4_NNLO"] =  5.4
+    dLECs["cD"] = 1.000
+    dLECs["cE"] = 1.0 
     ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
     dLECs["ct1_NNLO"] = -0.804  
     dLECs["ct3_NNLO"] = -2.828   
     dLECs["ct4_NNLO"] =  4.811   
-    dLECs["cD"] =  0.545
-    dLECs["cE"] = -0.044 
+
+    dLECs["ct1_NNLO"] = -0.81  
+    dLECs["ct3_NNLO"] = -3.2   
+    dLECs["ct4_NNLO"] =  5.4
+
+    dLECs["cD"] = 1.264
+    dLECs["cE"] = -0.120
+
 
     ## N3LO GeV^-2
     dLECs["d12"] = 3.06
     dLECs["d3"] = -3.27
     dLECs["d5"] = 0.45
     dLECs["d145"] = -5.65
+    ## N4LO (unused)
+    dLECs["e14"] = 0.0
+    dLECs["e17"] = 0.0
     ### NLOvs  (usually not used)
     dLECs["c_vs_1"] =  0.19162
     dLECs["c_vs_2"] = -0.28374
@@ -91,7 +94,7 @@ end
 
 returns vector&dict. for EMN500N3LO: Entem-Machleidt-Nosyk interaction upto N3LO with 500 MeV cutoff 
 """
-function dict_emn500nlo()
+function dict_emn500n3lo()
     vals = Float64[ ]
     idxs=Dict{String,Int64}()
     dLECs=Dict{String,Float64}() 
@@ -124,10 +127,6 @@ function dict_emn500nlo()
     dLECs["D_3D2"] = -3.200942439
     dLECs["D_3PF2"]= 0.010519022
     dLECs["D_3D3"] = -1.3336602
-    ## N4LO con 10^4 GeV^-8
-    dLECs["E_3F2"] = 0.0
-    dLECs["E_1F3"] = 0.0
-    dLECs["E_3F4"] = 0.0
     ## For pion exchange contribution
     ## NNLO GeV^-1
     dLECs["c1_NNLO"] = -1.07
@@ -140,7 +139,7 @@ function dict_emn500nlo()
     dLECs["ct4_NNLO"] = dLECs["c4_NNLO"]
     dLECs["cD"] = 0.0
     dLECs["cE"] = 0.0
-
+    
     ## N3LO GeV^-2
     dLECs["d12"] = 1.04
     dLECs["d3"] =  -0.48
@@ -155,7 +154,6 @@ function dict_emn500nlo()
     dLECs["c_vs_3"] = 0.0
     dLECs["c_vs_4"] = 0.0
     dLECs["c_vs_5"] = 0.0
-
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
     return LECs(vals,idxs,dLECs)
 end
@@ -193,7 +191,7 @@ function dict_emn500n4lo()
     dLECs["D_3P2"] =   5.342585336
     dLECs["hD_3S1"] = -2.949089421
     dLECs["D_3S1"] = -20.793199632
-    dLECs["hD_3SD1"] = 1.345478412
+    dLECs["hD_3SD1"] = 1.3545478412
     dLECs["D_3SD1"] = 2.176852098
     dLECs["D_3D1"] = -6.01826561
     dLECs["D_1D2"] = -1.545851484
@@ -210,12 +208,25 @@ function dict_emn500n4lo()
     dLECs["c2_NNLO"] =  3.57
     dLECs["c3_NNLO"] = -5.54
     dLECs["c4_NNLO"] =  4.17
-    ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
+    # for density-dependent NN, c1,c3,c4 can be different from genuine NN part
+    ## EMN effective c's 
+    dLECs["ct1_NNLO"] = -0.73
+    dLECs["ct3_NNLO"] = -3.38
+    dLECs["ct4_NNLO"] = 1.69
+    ## NN sector
+    dLECs["ct1_NNLO"] = dLECs["c1_NNLO"]
+    dLECs["ct3_NNLO"] = dLECs["c3_NNLO"]
+    dLECs["ct4_NNLO"] = dLECs["c4_NNLO"]
+
+    dLECs["cD"] =  0.0
+    dLECs["cE"] =  0.0
+
+    # ## old MAP
     dLECs["ct1_NNLO"] = -1.10
-    dLECs["ct3_NNLO"] = -4.7534
-    dLECs["ct4_NNLO"] = 4.0889
-    dLECs["cD"] = -0.2766
-    dLECs["cE"] = 0.8202
+    dLECs["ct3_NNLO"] = -4.453
+    dLECs["ct4_NNLO"] = 4.089
+    dLECs["cD"] = -0.177
+    dLECs["cE"] = 0.820
 
     ## N3LO GeV^-2
     dLECs["d12"] = 6.18
@@ -231,7 +242,6 @@ function dict_emn500n4lo()
     dLECs["c_vs_3"] = 0.0
     dLECs["c_vs_4"] = 0.0
     dLECs["c_vs_5"] = 0.0
-
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
     return LECs(vals,idxs,dLECs)
 end

@@ -1,35 +1,14 @@
-struct QLs
-    QL0s::Vector{Matrix{Float64}}
-    QWL2s::Vector{Matrix{Float64}}
-    QWL1s::Vector{Matrix{Float64}}
-    QWL0s::Vector{Matrix{Float64}}
-    QWlss::Vector{Matrix{Float64}}
-    ndQW1s::Vector{Vector{Matrix{Float64}}}
-    ndQW2s::Vector{Vector{Matrix{Float64}}}
-    QLdict::Vector{Dict{Float64,Float64}}
-end
-struct Fis_2n3n
-    F0s::Vector{Float64}
-    F1s::Vector{Float64}
-    F2s::Vector{Float64}
-    F3s::Vector{Float64}
-end
-struct util_2n3n
-    Fis::Fis_2n3n
-    QWs::QLs
-    wsyms::wsyms_j1_1or2
-end
-
 function XF(Anum)
     return (1.0 + (0.35*pi/1.15)^2 * Anum^(-2/3) )^(-1/3)
 end
 function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
+    if !chiEFTobj.calc_3N;return nothing;end
     kF = chiEFTobj.kF
     n_mesh = chiEFTobj.n_mesh
     mpi = sum(mpis)/3.0 / hc; mpi2 = mpi^2; mpi4=mpi2^2
     kF2 = kF^2; kF4 = kF2^2
     fac = 1.0 / (2*pi)^2
-    for i = 1:n_mesh
+    @threads for i = 1:n_mesh
         k = xr[i] / hc; k2 = k^2; k4=k2^2
         F0s[i] = fac * ( kF
                          + (kF2+mpi2-k2)/(4.0*k) *log( ((k+kF)^2 +mpi2)/((k-kF)^2 +mpi2))
@@ -50,7 +29,7 @@ function prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
 end
 
 """
-    prep_integrals_for2n3n(chiEFTobj)
+    prep_integrals_for2n3n(chiEFTobj,xr,ts,ws,to)
 
 preparing integrals and Wigner symbols for density-dependent 3NFs:
 - `Fis::Fis_2n3n` vectors {F0s,F1s,F2s,F3s}, Eqs.(A13)-(A16) in [Kohno2013].
@@ -60,14 +39,12 @@ preparing integrals and Wigner symbols for density-dependent 3NFs:
 Reference:  
 [Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
 """
-function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws)
+function prep_integrals_for2n3n(chiEFTobj,xr,ts,ws,to)
     calc_3N = chiEFTobj.calc_3N
     n_mesh = ifelse(calc_3N,chiEFTobj.n_mesh,3)
     F0s = zeros(Float64,n_mesh); F1s = zeros(Float64,n_mesh); F2s = zeros(Float64,n_mesh); F3s = zeros(Float64,n_mesh)
     QWs = prep_QWs(chiEFTobj,xr,ts,ws)
-    if calc_3N
-        prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)        
-    end
+    prep_Fis!(chiEFTobj,xr,F0s,F1s,F2s,F3s)
     wsyms = prep_wsyms()
     Fis = Fis_2n3n(F0s,F1s,F2s,F3s)
     return util_2n3n(Fis,QWs,wsyms)
@@ -77,7 +54,7 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     if !chiEFTobj.params.calc_3N; return nothing; end
     if it > 1; for i in eachindex(chiEFTobj.pw_channels); chiEFTobj.V12mom_2n3n[i] .= 0.0; end;end
     dLECs = chiEFTobj.LECs.dLECs; xr = chiEFTobj.xr
-    V12mom = chiEFTobj.V12mom; dict_pwch = chiEFTobj.dict_pwch
+    V12mom = chiEFTobj.V12mom_2n3n; dict_pwch = chiEFTobj.dict_pwch
     util_2n3n = chiEFTobj.util_2n3n; lsjs = chiEFTobj.lsjs
     tmp_llsj = chiEFTobj.tllsj                    
     kF = chiEFTobj.params.kF
@@ -87,7 +64,6 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     nreg = 3
     mpi = sum(mpis)/3.0/hc; mpi2 = mpi^2
     bbf =  2.0/3.0 / (4.0 * pi^2)
-
     r_c1 = dLECs["ct1_NNLO"] *1.e-3 *gA^2 * mpi2  / ((Fpi/hc)^4) *hc^2
     r_c3 = dLECs["ct3_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
     r_c4 = dLECs["ct4_NNLO"] *1.e-3 *gA^2 / (2.0*(Fpi/hc)^4) *hc^2
@@ -100,7 +76,7 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
         #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
-        itt = itts[pnrank]
+        itt = 2 *(pnrank -2)
         @views tllsj[1:nthreads()][1] .= itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
@@ -155,8 +131,8 @@ end
 """ 
     prep_QWs(chiEFTobj,xr,ts,ws)
 
-returns struct `QWs`, second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
-Note that QWs.QLdict is also used in OPEP to avoid redundant calculations.
+returns struct `QLs`, second kind Legendre functions, Eqs.(B1)-(B5) in [Kohno2013].
+Note that QLs.QLdict is also used in OPEP to avoid redundant calculations.
 Reference:  [Kohno2013] M.Kohno Phys. Rev. C 88, 064005(2013)
 """
 function prep_QWs(chiEFTobj,xr,ts,ws)
@@ -172,11 +148,10 @@ function prep_QWs(chiEFTobj,xr,ts,ws)
     ndQW1s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
     ndQW2s = [ [ zeros(Float64,n_mesh,n_mesh) for ellp = 0:dim] for ell=0:dim]
     QLdict = [ Dict{Float64,Float64}() for ell=0:dim+1]
-    for i = 1:n_mesh #for (i,x) in enumerate(xr)
-        x = xr[i]
-        x_fm = x/hc
-        for (j,y) in enumerate(xr)
-            y_fm = y/hc
+    for i in eachindex(xr)
+        x = xr[i]; x_fm = x/hc
+        for j in eachindex(xr)
+            y = xr[j]; y_fm = y/hc
             z = (x^2 + y^2 + mpi2*hc^2) / (2.0 * x*y)
             for ell = 0:lmax+1
                 QL0s[ell+1][i,j] = QL(z,ell,ts,ws,QLdict)
@@ -944,7 +919,7 @@ function QWL(kF,k,kp,ell,ellp,p,ts,ws,mpi2,QLdict;is_xmul=true)
         deno *= (k*kp)^div(p,2)
     elseif p==1 
         if is_xmul 
-            deno *= kp  
+            deno *= kp
         else    
             deno *= k
         end 

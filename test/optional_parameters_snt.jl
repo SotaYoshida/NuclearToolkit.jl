@@ -1,12 +1,12 @@
 ###--- ChiralEFT ---
 n_mesh = 50
-emax = 4
-chi_order = 3
+emax = 2
 calc_NN = true
-calc_3N = false 
+calc_3N = false
 hw = 20.0
-srg_lambda = 2.0
-tbme_fmt = "snt.bin"
+srg = false
+tbme_fmt = "snt"
+chi_order = 3; pottype="em500n3lo"
 
 ### --- IMSRG ---
 smax = 500.0

@@ -1,11 +1,12 @@
-function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=[""])    
+function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;Operators=[""])
     @assert optimizer != "" "optimizer should be BayesOpt/LHS/MCMC"
     if !MPIcomm        
         for it = 1:itnum
-            add2n3n(chiEFTobj,to,it)
-            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+            #add2n3n(chiEFTobj,to,it)
+            calc_vmom_3nf(chiEFTobj,1,to)
+            @timeit to "Vtrans" dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
-            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators)
+            @timeit to "HF/HFMBPT" hf_main_mem(chiEFTobj,nucs,dicts_tbme,dWS,HFdata,to;Operators=Operators)
             if optimizer=="BayesOpt"
                 BO_HFMBPT(it,OPTobj,HFdata,to)
             elseif optimizer=="LHS"
@@ -19,11 +20,11 @@ function caliblating_2n3nLECs_byHFMBPT(itnum,optimizer,MPIcomm,chiEFTobj,OPTobj,
             updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,OPTobj.params)
         end
     else
-        mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;Operators=Operators)
+        mpi_hfmbpt(itnum,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;Operators=Operators)
+        MPI.Finalize()
     end
     return nothing
 end
-
 
 mutable struct MCMCobject
     dim::Int64    
@@ -206,7 +207,7 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
         @assert num_cand > 2 "itnum must be >2"
         Data = [zeros(Float64,pDim) for i=1:num_cand] 
         gens = 200
-        @timeit to "LHS" plan, _ = LHCoptim(num_cand+1,pDim,gens)
+        @timeit to "LHCoptim" plan, _ = LHCoptim(num_cand+1,pDim,gens)
         tmp = scaleLHC(plan,pdomains)    
         cand = [ tmp[i,:] for i =1:num_cand+1]
         history = [zeros(Float64,3) for i=1:num_cand]
@@ -246,8 +247,7 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
             end
             return OPTobj
         end
-    end
-    if optimizer=="MCMC"
+    elseif optimizer=="MCMC"
         dim = length(params)
         nstep = num_cand
         thining = 1
@@ -285,11 +285,13 @@ function prepOPT(strLECs::LECs,opt,to,io;num_cand=500,op="2n3nall",optimizer="MC
             end 
             return OPTobj
         else
-            sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]        
+            sigmas = [0.1, 0.3, 0.3, 0.4, 0.2]
             OPTobj = MCMCobject(dim,nstep,burnin,thining,acchit,targetLECs,params,params_ref,sigmas,cand,chain,history)
             return OPTobj
         end
         #println("params_ref ",params_ref)
+    else
+        @error "optimizer $optimizer not supported"
     end
 end
 
@@ -325,7 +327,7 @@ function propose_MH!(it,OPTobj)
         OPTobj.chain[:,it] .= OPTobj.chain[:,it-1]
         OPTobj.history[it] .= OPTobj.history[it-1]
     end
-    for n = 1:length(params)
+    for n in eachindex(params)
         params[n] += OPTobj.sigmas[n] * randn()
     end
     return nothing
@@ -367,7 +369,7 @@ function BO_HFMBPT(it,BOobj,HFdata,to;var_proposal=0.2,varE=1.0,varR=0.25,Lam=0.
     BOobj.Data[it] .= BOobj.params
     return nothing
 end
-function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
+function calcKernel!(it,BOobj;ini=false,myeps=1.e-8)
     Ktt = @view BOobj.Ktt[1:it,1:it]
     obs = BOobj.observed
     cand = BOobj.cand
@@ -389,7 +391,7 @@ function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
                 BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
                 Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
             end
-            Ktt[i,i] += eps
+            Ktt[i,i] += myeps
         end
     else
         i = it
@@ -402,7 +404,7 @@ function calcKernel!(it,BOobj;ini=false,eps=1.e-8)
             BLAS.gemm!('T','N',1.0,tv,tv2,0.0,rTr)
             Ktt[i,j] = Ktt[j,i] = exp(-0.5*tau*rTr[1])
         end
-        Ktt[i,i] += eps
+        Ktt[i,i] += myeps
     end
     ## Calculate Ktt^{-1} 
     Ktinv = @view BOobj.Ktinv[1:it,1:it]
@@ -504,7 +506,6 @@ function fPhi(Z)
     return  0.5 * erfc(-(Z/sqrt(2.0)))
 end
 
-
 """
 function used for proposals in Affine invariant MCMC
 """
@@ -512,7 +513,7 @@ function gz(a=2.0)
     return (((a-1)*rand() +1)^2) / a
 end
 
-function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
+function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,dWS,nucs,HFdata,to,io;
                     Operators=["Rp2"],rank_master=0,writesnt=false,debug=false)   
     LECs = chiEFTobj.LECs.vals; idxLECs = chiEFTobj.LECs.idxs; dLECs = chiEFTobj.LECs.dLECs
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)       
@@ -537,9 +538,9 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
             updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,OPTobj.params)
             calc_vmom_3nf(chiEFTobj,it,to)
             add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)           
-            dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+            dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
             if !debug
-                hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
+                hf_main_mem(chiEFTobj,nucs,dicts_tbme,dWS,HFdata,to;Operators=Operators,io=io)
             end
             eval_HFMBPT(it,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
             print_vec("it = "*@sprintf("%8i",it),OPTobj.params,io)
@@ -572,9 +573,9 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
                         updateLECs_in_chiEFTobj!(chiEFTobj,OPTobj.targetLECs,candidate)
                         calc_vmom_3nf(chiEFTobj,it,to)
                         add_V12mom!(chiEFTobj.V12mom,chiEFTobj.V12mom_2n3n)                      
-                        dicts_tbme = TMtrans(chiEFTobj,to;writesnt=false)
+                        dicts_tbme = TMtrans(chiEFTobj,dWS,to;writesnt=false)
                         if !debug
-                            hf_main_mem(chiEFTobj,nucs,dicts_tbme,d9j,HOBs,HFdata,to;Operators=Operators,io=io)
+                            hf_main_mem(chiEFTobj,nucs,dicts_tbme,dWS,HFdata,to;Operators=Operators,io=io)
                         end
                         eval_HFMBPT(it,OPTobj,HFdata,0.1,1.0;io=io,debug=debug)
                         logratio = 1.0
@@ -607,28 +608,29 @@ function mpi_hfmbpt(itnum,chiEFTobj,OPTobj,d9j,HOBs,nucs,HFdata,to,io;
             MPI.Barrier(comm) 
         end
     end
-    MPI.Finalize()
     return nothing
 end
 
 """
+    sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},nstep::Integer, thinning::Integer,a::Float64=2.)
+
+Function to carry out a parameter sampling with Affince invariant MCMC method.
 
 Reference:
 Goodman & Weare, "Ensemble samplers with affine invariance", Communications in Applied Mathematics and Computational Science, DOI: 10.2140/camcos.2010.5.65, 2010.
 """
-function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64}, 
-                              nstep::Integer, thinning::Integer,a::Float64=2.)
+function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},nstep::Integer, thinning::Integer,a::Float64=2.)
 	@assert length(size(x0)) == 2
 	ndim = size(x0)[1]
     chain = zeros(Float64,ndim,numwalkers,nstep)    
-    llhs = zeros(Float64,1,numwalkers,nstep)
+    lLHS = zeros(Float64,1,numwalkers,nstep)
     for n =1:ndim
         tX = @view chain[n,:,1]
         tX .= x0[n,:]
     end
     for walker = 1:numwalkers
         Xi = @view chain[:,walker,1]
-        llhs[1,walker,1] = myllh(Xi)
+        lLHS[1,walker,1] = myllh(Xi)
     end    
     idx_S0 = collect(1:div(numwalkers,2))
     idx_S1 = collect(div(numwalkers,2)+1:numwalkers)
@@ -640,7 +642,7 @@ function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},
             for walker in idxs_target                
                 Xi = @view chain[:,walker,t-1]
                 nX = @view chain[:,walker,t]
-                llh = llhs[1,walker,t-1]
+                llh = lLHS[1,walker,t-1]
                 walker2 = sample(idxs_complement)
                 Xj = @view chain[:,walker2,t-ifelse(nbatch==1,1,0)]
                 z = (((a-1)*rand() + 1)^2) / a
@@ -648,18 +650,18 @@ function sample_AffineInvMCMC(numwalkers::Int, x0::Matrix{Float64},
                 nllh = myllh(nX)
                 logratio = (ndim-1)*log(z) + nllh - llh
                 if log(rand(rng)) < logratio
-                    llhs[1,walker,t] = nllh
+                    lLHS[1,walker,t] = nllh
                     acchit += 1
                 else
-                    llhs[1,walker,t] = llh
+                    lLHS[1,walker,t] = llh
                     nX .= Xi    
                 end
             end
         end
     end
     println("Acc. rate: ",@sprintf("%6.2f",100*acchit/((nstep-1)*numwalkers)))
-    chain,llhs = flatten_mcmcarray(chain,llhs)
-    return chain, llhs
+    chain,lLHS = flatten_mcmcarray(chain,lLHS)
+    return chain, lLHS
 end
 function flatten_mcmcarray(chain::Array, llhoodvals::Array,order=true)
 	numdims, numwalkers, numsteps = size(chain)

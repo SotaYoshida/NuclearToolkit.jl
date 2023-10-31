@@ -1,9 +1,7 @@
-
-
 """
     SRG(xr,wr,V12mom,dict_pwch,to)
 
-main function for Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
+Similarity Renormalization Group (SRG) transformation of NN interaction in CM-rel momentum space.
 """
 function SRG(chiEFTobj,to) 
     if !chiEFTobj.params.srg; return nothing;end
@@ -26,8 +24,7 @@ function SRG(chiEFTobj,to)
     etas = [zeros(Float64,ndim,ndim) for i = 1:nthre]
     Rs = [zeros(Float64,ndim,ndim) for i = 1:nthre]
     tkeys = [ zeros(Int64,5) for i=1:nthre]
-    
-    sSRG = (1.0/srg_lambda)^4 # s in literature
+    sSRG = (1.0/srg_lambda)^4
     ds = 1.e-4
     srange = 0.0:ds:sSRG
     numit = length(srange)
@@ -58,7 +55,7 @@ function SRG(chiEFTobj,to)
         tkey[1] = 2*iz; tkey[2]=l1; tkey[3]=l2; tkey[4]=S;tkey[5]=J
         if l1 == l2
             V12idx = tdict[tkey]; tv = V12mom[V12idx]
-            sV  = @view  V[1:n_mesh,1:n_mesh]          
+            sV  = @view  V[1:n_mesh,1:n_mesh]
             sT  = @view  T[1:n_mesh,1:n_mesh]
             sH  = @view  H[1:n_mesh,1:n_mesh]
             sHt = @view Ht[1:n_mesh,1:n_mesh]
@@ -72,8 +69,8 @@ function SRG(chiEFTobj,to)
                 sT[i,i] = (x *hc)^2 / (2*rmass)
                 sH[i,i] += (x *hc)^2 / (2*rmass)
             end
-            if norm(sH-sH',Inf) > 1.e-9; println(" norm(sH-sH') ", norm(sH-sH',Inf));end
-            srg_tr(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
+            if norm(sH-sH',Inf) > 1.e-6; println("Tz ",@sprintf("%3i",iz)," L $l1 L' $l2 S $S J $J norm(sH-sH') ", norm(sH-sH',Inf));end
+            srg_RK4(sH,sT,sHt,sV,seta,tR,sSRG,face,ds,numit,to)
             ## overwrite V12
             for (i,x) in enumerate(xr_fm)
                 for (j,y) in enumerate(xr_fm) 
@@ -97,7 +94,7 @@ function SRG(chiEFTobj,to)
                 T[i,i] = T[n_mesh+i,n_mesh+i] = (x *hc)^2 / (2*rmass)
             end
             H .= V;H .+= T
-            srg_tr(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
+            srg_RK4(H,T,Ht,V,eta,R,sSRG,face,ds,numit,to)
             H .= V; H .-= T # Veff = H(s) - T # H is reused as Veff            
             for (i,x) in enumerate(xr_fm)
                 for (j,y) in enumerate(xr_fm)
@@ -133,8 +130,8 @@ function RKstep(T,Ho,eta,R,faceta,fRK,Ht)
     BLAS.gemm!('N', 'N',  faceta, T, Ho, 0.0, eta)
     BLAS.gemm!('N', 'N', -faceta, Ho, T, 1.0, eta) # =>eta
     BLAS.gemm!('N', 'N',  1.0, eta, Ho, 0.0, R)
-    BLAS.gemm!('N', 'N', -1.0, Ho, eta, 1.0, R)    
-    BLAS.axpy!(fRK,R,Ht)    
+    BLAS.gemm!('N', 'N', -1.0, Ho, eta, 1.0, R)
+    axpy!(fRK,R,Ht)
     return nothing
 end
 function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
@@ -142,17 +139,16 @@ function RKstep_mul(T,Ho,eta,R,faceta,fRK,Ht)
     mul!(eta,Ho,T,-faceta,1.0)
     mul!(R,eta,Ho,1.0,0.0)
     mul!(R,Ho,eta,-1.0,1.0)
-    BLAS.axpy!(fRK,R,Ht)    
+    axpy!(fRK,R,Ht)    
     return nothing
 end
 
 """
-    srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to; r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
+    srg_RK4(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to; r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
 
-to carry out SRG transformation
+to carry out SRG transformation with RK4
 """
-function srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;
-                r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
+function srg_RK4(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;r_err=1.e-8,a_err=1.e-8,tol=1.e-6)
     Hs .= Ho
     Ht .= Hs
     for it = 1:numit
@@ -160,13 +156,13 @@ function srg_tr(Ho,T,Ht,Hs,eta,R,sSRG,face,ds,numit,to;
         Ho .= Hs        
         RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
+        Ho .= Hs; axpy!(0.5*ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(0.5*ds,R,Ho)
+        Ho .= Hs; axpy!(0.5*ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/3.0,Ht)
 
-        Ho .= Hs; BLAS.axpy!(ds,R,Ho)
+        Ho .= Hs; axpy!(ds,R,Ho)
         RKstep(T,Ho,eta,R,face,ds/6.0,Ht)
 
         Hs .= Ht

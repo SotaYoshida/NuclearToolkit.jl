@@ -2,7 +2,8 @@
 
 In NuclearToolkit.jl, input/output interactions are in the so-called snt format (or its binary form).
 The snt format is one used in widely-used shell-model code [KSHELL](https://sites.google.com/alumni.tsukuba.ac.jp/kshell-nuclear/).
-If you specify the option `tbme_fmt="snt.bin"` for Chiral EFT interactions, the output becomes binary form, where the integers are in `Int64` and floating point numbers are in `Float64`.
+If you specify the option `tbme_fmt="snt.bin"` for Chiral EFT interactions, the output becomes binary form. 
+The integers are in `Int16` for `a,b,c,d,J` (single particle index and total-J of two-body matrix elements, TBMEs) and `Int64` for others, and the floating point numbers for TBMEs are in `Float32` (by default).
 
 Here is an example of w.snt. The comments are not written in the outputs of NuclearToolkit.
 ```
@@ -34,4 +35,13 @@ Here is an example of w.snt. The comments are not written in the outputs of Nucl
 ! i j k l J <i,j| V | k,l>_J
 1 1 1 1 0 -2.18450
 1 1 1 1 2 -0.06650
+```
+
+For free space interactions, output of `chiEFTint`, they have V2n3n and Vpp terms in addition to the VNN term:
+```
+...
+! i j k l J <i,j| VNN | k,l>_J <i,j| V2n3n | k,l>_J <i,j| Vpp | k,l>_J
+  1    1    1    1     0     -6.4492081719      0.0000000000   -0.0000000000e+00
+  1    2    1    2     0     -1.9671496992      0.0000000000    5.0000000000e-01
+...
 ```

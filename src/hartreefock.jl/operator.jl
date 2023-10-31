@@ -2,12 +2,12 @@
     aOp!(Op::Operator,a::Float64)
 function to multiply scaler to an operator.
 """
-function aOp!(Op::Operator,a)
-    Op.zerobody[1] *= a 
+function aOp!(Op::Operator,a::Float64)
+    Op.zerobody .*= a 
     for pn =1:2
         lmul!(a,Op.onebody[pn])
     end
-    for ch =1:length(Op.twobody)
+    for ch in eachindex(Op.twobody)
         lmul!(a,Op.twobody[ch])
     end
     return nothing
@@ -17,24 +17,43 @@ end
     aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
 function to overwrite ```Op2``` by ```a*Op1 + b*Op2```
 """
-function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a,b)
+function aOp1_p_bOp2!(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
     aOp!(Op2,b)
     Op2.zerobody[1] += a * Op1.zerobody[1]
     for pn = 1:2
         axpy!(a,Op1.onebody[pn],Op2.onebody[pn])
     end
     Op2_2b = Op2.twobody
-    for ch = 1:length(Op2_2b)
+    for ch in eachindex(Op2_2b)
         axpy!(a,Op1.twobody[ch],Op2_2b[ch])
     end
     return nothing
 end
 
 """
+    aOp1_p_bOp2(Op1::Operator,Op2::Operator,a,b)
+function to return new Operator = aOp1 + bOp2
+"""
+function aOp1_p_bOp2(Op1::Operator,Op2::Operator,a::Float64,b::Float64)
+    ret = deepcopy(Op1); aOp!(ret,0.0)
+    ret.zerobody[1] = a*Op1.zerobody[1] + b*Op2.zerobody[1]
+    for pn = 1:2
+        axpy!(a,Op1.onebody[pn],ret.onebody[pn])
+        axpy!(b,Op2.onebody[pn],ret.onebody[pn])
+    end
+    ret_2b = ret.twobody
+    for ch in eachindex(ret_2b)
+        axpy!(a,Op1.twobody[ch],ret_2b[ch])
+        axpy!(b,Op2.twobody[ch],ret_2b[ch])
+    end
+    return ret 
+end
+
+"""
     aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
 function to overwrite `Op3` by `c*Op3 + a*Op1 + b*Op2`
 """
-function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
+function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a::Float64,b::Float64,c::Float64)
     aOp!(Op3,c)
     Op3.zerobody[1] += a * Op1.zerobody[1] + b * Op2.zerobody[1]
     for pn = 1:2
@@ -42,7 +61,7 @@ function aOp1_p_bOp2_Op3!(Op1::Operator,Op2::Operator,Op3::Operator,a,b,c)
         axpy!(b,Op2.onebody[pn],Op3.onebody[pn])
     end
     Op3_2b = Op3.twobody
-    for ch = 1:length(Op3_2b)
+    for ch in eachindex(Op3_2b)
         axpy!(a,Op1.twobody[ch],Op3_2b[ch])
         axpy!(b,Op2.twobody[ch],Op3_2b[ch])
     end
@@ -69,11 +88,12 @@ function InitOp(Chan1b,Chan2b)
         npq = length(tkets)
         push!(twobody,zeros(Float64,npq,npq))
     end
-    return Operator([0.0],onebody,twobody,true,false)
+    return Operator([0.0],onebody,twobody,[true],[false])
 end
 
 """
-function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
+    difA_RCM(Op::Operator,Aold,Anew)
+Function to redefine RCM. Note that `non0_ij` for Calculate_RCM assumed to be `false`.
 """
 function difA_RCM(Op::Operator,Aold,Anew)
     for pn = 1:2
@@ -125,12 +145,12 @@ function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
 end
 
 """
-    Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
+    Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,dWS,to;non0_cm=true,non0_ij=true)
 calculate ``R_{CM}`` term
 
 Note that rirj term is also included here to avoid redundancy.
 """
-function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,non0_ij=true)
+function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,dWS,to;non0_cm=true,non0_ij=true)
     b2 = hc2 / (Mm * binfo.hw)
     A = binfo.nuc.A; Z = binfo.nuc.Z
     ## one-body part
@@ -158,7 +178,7 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,n
     twobody = Op_Rp2.twobody
     frirj = - 4/(A*Z)
     nch = length(Chan2b)
-    @threads for ch = 1:nch
+    @timeit to "RCM 2body" @threads for ch in eachindex(Chan2b)
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J;kets = tmp.kets
         factor_rirj = ifelse(Tz==0, 0.5, 1.0)
@@ -169,7 +189,7 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,d9j,HOBs,to;non0_cm=true,n
             bra = kets[ib]
             for ik = ib:npq
                 ket = kets[ik]
-                r1r2 = calc_single_r1r2(bra,ket,sps,J,d9j,HOBs,b2,to)                
+                r1r2 = calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)                
                 ## RCM term
                 if non0_cm
                     tRCM = 2.0 * r1r2/(A^2)
@@ -257,7 +277,7 @@ function Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
 end
 
 """
-    Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true,verbose=false)
+    Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfmbptlevel=true,verbose=false)
 
 Calculate expectation value of Rp2 and its HFMBPT corrections.
 
@@ -265,7 +285,8 @@ Details about HFMBPT correction can be found in
 Many-Body Methods in Chemistry and Physics by Isaiah Shavitt and Rodney J. Bartlett (2009, Cambridge Molecular Science) 
 or Appendix in [T. Miyagi et al., Phys. Rev. C 105, 0143022 (2022)](https://doi.org/10.1103/PhysRevC.105.014302).
 """
-function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true,verbose=false)
+function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfmbptlevel=true,verbose=false)
+    d6j_lj = dWS.d6j_lj
     MS = HFobj.modelspace; sps = MS.sps
     p_sps = MS.p_sps; Cp = HFobj.Cp; e1b_p = HFobj.e1b_p; occ_p = MS.occ_p
     n_sps = MS.n_sps; Cn = HFobj.Cn; e1b_n = HFobj.e1b_n; occ_n = MS.occ_n
@@ -344,7 +365,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         S1b = ifelse(Tz<=0,Op_Rp2.onebody[1],Op_Rp2.onebody[2])
         for ib = 1:nkets
             α, α_ = kets[ib]
-            na = sps[α].occ; naa = sps[α_].occ 
+            na = sps[α].occ[1]; naa = sps[α_].occ[1] 
             #if sps[α].occ + sps[α_].occ != 2;continue;end
             if (na ==0.0) || (naa == 0.0);continue;end
             tobe = Op2b[ib,ib] * Nocc * na * naa # needed?
@@ -358,12 +379,12 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
             idx_a = div(a,2)+ a%2
             idx_b = div(b,2)+ b%2
             #if (sps[a].occ ==1 || sps[b].occ ==1); continue; end            
-            if (sps[a].occ !=0.0 || sps[b].occ !=0.0); continue; end            
+            if (sps[a].occ[1] !=0.0 || sps[b].occ[1] !=0.0); continue; end            
             sqab = ifelse(a==b,sqrt(2.0),1.0)
             for ik = 1:nkets
                 i,j = kets[ik]
                 #if sps[i].occ == 0 || sps[j].occ ==0; continue; end
-                if sps[i].occ == 0.0 || sps[j].occ ==0.0; continue; end                
+                if sps[i].occ[1] == 0.0 || sps[j].occ[1] ==0.0; continue; end                
                 sqij = ifelse(i==j,sqrt(2.0),1.0)
                 sqfac = sqab * sqij
                 idx_i = div(i,2)+ i%2
@@ -377,7 +398,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 for ii = 1:nkets 
                     k,q= kets[ii] 
                     #if sps[k].occ + sps[q].occ != 1;continue;end
-                    if (sps[k].occ ==0.0 && sps[q].occ ==0.0) || (sps[k].occ !=0.0 && sps[q].occ !=0.0);continue;end
+                    if (sps[k].occ[1] ==0.0 && sps[q].occ[1] ==0.0) || (sps[k].occ[1] !=0.0 && sps[q].occ[1] !=0.0);continue;end
                     if !( q==b || k==b);continue;end
                     phase = 1.0
                     if k==b 
@@ -393,10 +414,10 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 for ii = 1:nkets
                     c,q = kets[ii]
                     #if sps[c].occ + sps[q].occ != 1; continue;end
-                    if (sps[c].occ ==0.0 && sps[q].occ == 0.0) || (sps[c].occ !=0.0 && sps[q].occ !=0.0) ; continue;end
+                    if (sps[c].occ[1] ==0.0 && sps[q].occ[1] == 0.0) || (sps[c].occ[1] !=0.0 && sps[q].occ[1] !=0.0) ; continue;end
                     if !( c==j || q==j);continue;end
                     phase = 1.0
-                    if sps[c].occ !=0.0 
+                    if sps[c].occ[1] !=0.0 
                         if c != j;println("errS2");exit();end                        
                         phase *= (-1)^(div(sps[c].j+sps[q].j,2)+J+1) 
                         c = q; q = kets[ii][1]
@@ -409,7 +430,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S3 term
                 for ii = 1:nkets
                     q,c = kets[ii]
-                    if sps[q].occ + sps[c].occ != 0.0; continue;end
+                    if sps[q].occ[1] + sps[c].occ[1] != 0.0; continue;end
                     if !( c==a || q==a);continue;end
                     phase = 1.0
                     if q != a && c ==a
@@ -424,7 +445,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S4 term 
                 for ii = 1:nkets
                     q,k = kets[ii]
-                    if sps[q].occ * sps[k].occ ==0.0; continue;end
+                    if sps[q].occ[1] * sps[k].occ[1] ==0.0; continue;end
                     if !( q==i || k==i);continue;end
                     phase = 1.0
                     if q != i && k == i
@@ -439,7 +460,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S7 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ + sps[d].occ != 0.0;continue;end
+                    if sps[c].occ[1] + sps[d].occ[1] != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Gam[ib,ii] * Op2b[ii,ik]
                     deno =  (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S7 += nume *sqfac/deno
@@ -447,7 +468,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S8 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ * sps[l].occ ==0.0;continue;end
+                    if sps[k].occ[1] * sps[l].occ[1] ==0.0;continue;end
                     nume = 0.125* Nocc * tGam * Gam[ik,ii] * Op2b[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S8 += nume *sqfac/deno
@@ -455,7 +476,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S10 term
                 for ii = 1:nkets
                     c,d = kets[ii]
-                    if sps[c].occ +sps[d].occ != 0.0;continue;end
+                    if sps[c].occ[1] +sps[d].occ[1] != 0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ib,ik] * Gam[ii,ik]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[i]+e1b[j]-e1b[c]-e1b[d])
                     S10 += nume/deno
@@ -463,7 +484,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                 # S11 term
                 for ii = 1:nkets
                     k,l = kets[ii]
-                    if sps[k].occ * sps[l].occ ==0.0;continue;end
+                    if sps[k].occ[1] * sps[l].occ[1] ==0.0;continue;end
                     nume = 0.125*Nocc * tGam * Op2b[ik,ii] * Gam[ib,ii]
                     deno = (e1b[i]+e1b[j]-e1b[a]-e1b[b]) * (e1b[k]+e1b[l]-e1b[a]-e1b[b])
                     S11 += nume *sqfac/deno
@@ -477,7 +498,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
         nthre = nthreads()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
-        @inbounds @threads for idx_a =1:length(allps)
+        @inbounds @threads for idx_a in eachindex(allps)
             a = allps[idx_a]
             threid = threadid()
             keych = keychs[threid]
@@ -493,7 +514,6 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                     for totJ = Jmin:Jmax                           
                         if tri_check(ja,jj,totJ*2)==false;continue;end
                         Jfac = (2.0*totJ+1.0)
-                        tdict6j = dict6j[totJ+1]  
                         ehole = e1b[i] +e1b[j]
                         prty_ij = (-1)^(li+lj)
                         for b in allps
@@ -503,7 +523,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                             if (-1)^(la+lb) != prty_ij;continue;end
                             if tri_check(ji,jb,totJ*2)==false;continue;end
                             keych[1] = tz_a + tz_b; keych[2] = (-1)^(la+lb)
-                            v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                            v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                             if v1 == 0.0;continue;end
                             v1 = v1 / (ehole - e1b[a] - e1b[b])
                             for k in allhs
@@ -517,19 +537,19 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
                                     if tri_check(jk,jc,totJ*2)==false;continue;end                               
                                     # S9 term  O123 = Gamma/Gamma/Omats
                                     keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                     if v2!=0.0
                                         keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Omats,keych)
+                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,d6j_lj,Omats,keych)
                                         v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                         S9tmp += - Jfac * v1 * v2 * v3 
                                     end
                                     # S12 term O123 = Gamma/Omats/Gamma
                                     keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Omats,keych)
+                                    v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,d6j_lj,Omats,keych)
                                     if v2!=0.0
                                         keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                        v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                         v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                         S12tmp += - Jfac * v1 * v2 * v3  
                                     end
@@ -557,17 +577,14 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;
 end
 
 """ 
-    calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
+    calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)
 
 Calc ``<r_1 \\cdot r_2>`` for a given 2b-channel.
 - `bra`: <ab| a&b: s.p.s. (n,l,j,tz)
 - `ket`: |cd> c&d: s.p.s. (n,l,j,tz)
-- `dictWS`: dict of WignerSymobls
-- `d9j`: 9j-symbols (array of J->S and key=[la,ja,lb,jb,L])
 """
-function calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
+function calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)
     r1r2 = 0.0
-    dict9j = dict_9j_2n[J+1]
     oa = sps[bra[1]]; ob = sps[bra[2]]
     oc = sps[ket[1]]; od = sps[ket[2]]
     na = oa.n; la = oa.l; ja = oa.j; tza = oa.tz
@@ -576,15 +593,18 @@ function calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
     nd = od.n; ld = od.l; jd = od.j; tzd = od.tz
     fab = 2*na + la + 2*nb + lb
     fcd = 2*nc + lc + 2*nd + ld
-    for Lab = abs(la-lb):la+lb
-        for Sab = 0:1
+    
+    d9j_lsj = dWS.d9j_lsj
+    dictHOB = dWS.dictHOB
+    for Sab = 0:1
+        Scd = Sab
+        for Lab = abs(la-lb):la+lb
             if !tri_check(Lab,Sab,J);continue;end
-            tdict9j = dict9j[Sab+1]
-            njab = tdict9j[div(ja,2)+1][la+1][div(jb,2)+1][lb+1][Lab+1]
+            njab = call_d9j_lsj(la*2,lb*2,Lab*2,1,1,Sab*2,ja,jb,J*2,d9j_lsj)
             njab *= sqrt( (2*Lab+1) *(2*Sab+1) * (ja+1) * (jb+1))
             if njab == 0.0; continue;end
-            Scd = Sab; Lcd = Lab
-            njcd = tdict9j[div(jc,2)+1][lc+1][div(jd,2)+1][ld+1][Lab+1]
+            Lcd = Lab
+            njcd = call_d9j_lsj(lc*2,ld*2,Lcd*2,1,1,Scd*2,jc,jd,J*2,d9j_lsj)
             njcd *= sqrt( (2*Lcd+1) *(2*Scd+1) * (jc+1) * (jd+1) )
             if njcd == 0.0; continue; end
             for N_ab = 0:div(fab,2)                
@@ -596,35 +616,13 @@ function calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
                         if asymm_factor == 0.0; continue;end     
                         lam_cd = lam_ab
                         n_ab = div(fab - 2*N_ab-Lam_ab -lam_ab,2) # determined by energy conservation                        
-                        ##To get HOB(N_ab,Lam_ab,n_ab,lam_ab,na,la,nb,lb,Lab)            
-                        mosh_ab = 0.0
-                        if (2*N_ab+Lam_ab > 2*n_ab+lam_ab) && (2*na+la > 2*nb+lb)
-                            phase = (-1)^(Lam_ab+lb)
-                            nkey1 = get_nkey_from_key6j(n_ab,N_ab,lam_ab,Lam_ab,0)
-                            nkey2 = get_nkey_from_key6j(Lab,nb,na,lb,0)
-                            target = HOBs[nkey1][nkey2]
-                            mosh_ab = target * phase
-                        else
-                            nkey1 = get_nkey_from_key6j(N_ab,n_ab,Lam_ab,lam_ab,0)
-                            nkey2 = get_nkey_from_key6j(Lab,na,nb,la,0)
-                            mosh_ab = HOBs[nkey1][nkey2]
-                        end                                                                     
+                        mosh_ab = get_dictHOB(N_ab,Lam_ab,n_ab,lam_ab,na,la,nb,lb,Lab,dictHOB)                                                                  
                         if mosh_ab == 0.0;continue;end
+
                         for N_cd = max(0,N_ab-1):N_ab+1 
                             n_cd = div(fcd-2*N_cd-Lam_cd-lam_cd,2)
                             if n_cd < 0 || (n_ab!=n_cd && N_ab !=N_cd); continue;end
-                            mosh_cd = 0.0
-                            if (2*N_cd+Lam_cd > 2*n_cd+lam_cd) && (2*nc+lc > 2*nd+ld)
-                                phase = (-1)^(Lam_cd+ld)
-                                nkey1 = get_nkey_from_key6j(n_cd,N_cd,lam_cd,Lam_cd,0)
-                                nkey2 = get_nkey_from_key6j(Lcd,nd,nc,ld,0)
-                                target = HOBs[nkey1][nkey2]    
-                                mosh_cd = target * phase
-                            else
-                                nkey1 = get_nkey_from_key6j(N_cd,n_cd,Lam_cd,lam_cd,0)
-                                nkey2 = get_nkey_from_key6j(Lcd,nc,nd,lc,0)
-                                mosh_cd = HOBs[nkey1][nkey2]
-                            end   
+                            mosh_cd = get_dictHOB(N_cd,Lam_cd,n_cd,lam_cd,nc,lc,nd,ld,Lcd,dictHOB)
                             if mosh_cd == 0.0; continue;end
                             r2cm = 0.0;r2rel = 0.0
                             if n_ab == n_cd 
@@ -661,7 +659,7 @@ function calc_single_r1r2(bra,ket,sps,J,dict_9j_2n,HOBs,b2,to)
 end 
 
 """ 
-    Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,to;hfmbptlevel=true) 
+    Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dWS,dict_2b_ch,to;hfmbptlevel=true) 
 
 To calculate squared point proton radius and its MBPT correction.
 The squared point proton radius is related to the charge radius as follows
@@ -672,20 +670,20 @@ R^2_{ch} = R^2_p + \\langle r^2_p \\rangle + \\frac{N}{Z} \\langle r^2_n \\rangl
 where ``\\langle r^2_p \\rangle = 0.769 \\mathrm{fm}^2``, ``\\langle r^2_n \\rangle = -0.116 \\mathrm{fm}^2``,
 `` \\frac{3}{4m^2_p c^4} =0.033\\mathrm{fm}^2`` is the so-called Darwin-Foldy term, and the last term is Spin-Orbit correction term.
 """
-function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=true)   
-    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dict_9j_2n,HOBs,to)
+function Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dWS,dict_2b_ch,MatOp,to;hfmbptlevel=true)   
+    Calculate_RCM(binfo,Chan1b,Chan2b,HFobj.modelspace.sps,Op_Rp2,dWS,to)
     Calculate_intR2p(binfo,Chan1b,HFobj,Op_Rp2)
     Calculate_SOterm(binfo,Chan1b,HFobj,Op_Rp2)
-    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dict6j,MatOp,to;hfmbptlevel=hfmbptlevel)
+    Rp,Rp_PT = Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfmbptlevel=hfmbptlevel)
     return Rp,Rp_PT
 end
 
 """
-    eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,to)
+    eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dWS,to)
 
-evaluate charge radii with HFMBPT
+function to evaluate charge radii with HFMBPT
 """
-function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6j,MatOp,to)
+function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dWS,MatOp,to;io=stdout)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -693,7 +691,7 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
     DF = 0.033 
     Rp2 = 0.8775^2
     Rn2 = -0.1149
-    Rpp,Rp_MP = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to)
+    Rpp,Rp_MP = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dWS,dict_2b_ch,MatOp,to)
     Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
     Rch = NaN 
     try 
@@ -711,17 +709,17 @@ function eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict6
         end
         ctxt = " HF+PT => " * RPT
     end
-    println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
-    getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to) 
+    println(io,"   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",Rch," ",ctxt)
+    getNormalOrderedO(HFobj,Op_Rp2,Chan1b,Chan2bD,to) 
     return nothing
 end
 
 """
-    eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n,HOBs,dictMono,dict6j,to)
+    eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,dictMono,to)
 
 evaluate charge radii with IMSRG.
 """
-function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n,HOBs,dictMono,dict6j,MatOp,to)
+function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_defbyrun,dictMono,MatOp,restart_from_files,to;debug_mode=false)
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -729,8 +727,8 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     DF = 0.033; Rp2 = 0.8775^2; Rn2 = -0.1149
     Op_Rp2 = InitOp(Chan1b,Chan2b)
     ## HF level
-    Rpp,Rp_PT = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_9j_2n,HOBs,dict_2b_ch,dict6j,MatOp,to)
-    getNormalOrderedO(binfo,HFobj,Op_Rp2,Chan1b,Chan2bD,dict6j,to;firstNO=true) 
+    Rpp,Rp_PT = Calculate_Rp(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dWS,dict_2b_ch,MatOp,to)
+    getNormalOrderedO(HFobj,Op_Rp2,Chan1b,Chan2bD,to;firstNO=true) 
     Rpp_HF = Op_Rp2.zerobody[1]
     Rch2_HF = Rpp_HF + Rp2 + N/Z *Rn2 + DF
     Rch_HF = sqrt(Rch2_HF)
@@ -741,18 +739,64 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
     ncomm = [0]
     norms = zeros(Float64,4)
     Omega = IMSRGobj.Omega
-    tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
-    tmpOp  = deepcopy(Op_Rp2);  aOp!(tmpOp,0.0)
-    tmpOp2 = deepcopy(Op_Rp2); aOp!(tmpOp2,0.0)
-    Nested = deepcopy(Op_Rp2); aOp!(Nested,0.0)
-    nwritten = IMSRGobj.n_written_omega[1]
-    for i = 1:nwritten
-        read_omega_bin!(binfo,i,tOmega)
-        BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dict6j,PandyaObj,to)
-        aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
-    end
+    tmpOp  = deepcopy(Op_Rp2);aOp!(tmpOp,0.0)
+    tmpOp2 = deepcopy(Op_Rp2);aOp!(tmpOp2,0.0)
+    Nested = deepcopy(Op_Rp2);aOp!(Nested,0.0)
+    
+    if length(restart_from_files) >= 1 # hf5 files by emulator are specified
+        tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
+        dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,Omega,Chan2b)
+        for fn in restart_from_files[1]
+            aOp!(tOmega,0.0)
+            fvec = read_fvec_hdf5(fn)   
+            s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
+            aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
+            update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
+            Rpp = tmpOp.zerobody[1]
+            Rch2_emu = Rpp + Rp2 + N/Z *Rn2 + DF
+            Rch_emu = sqrt(Rch2_emu)
+            println("s="*strip(@sprintf("%10.2f",s))*"(Net): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_emu))
+            aOp!(tOmega,0.0)
 
-    Rpp = tmpOp.zerobody[1]
+            ## remnant for IMSRG-Net ##
+            # if s == 20.00
+            #     aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
+            #     update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            #     BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            #     Rpp = tmpOp.zerobody[1]
+            #     Rch2_20 = Rpp + Rp2 + N/Z *Rn2 + DF
+            #     Rch_20 = sqrt(Rch2_20)
+            #     println("s=20(Net): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_20))
+            #     aOp!(tOmega,0.0)
+            #     target_dir = "../imsrg_data/runlog_e$(binfo.emax)_$(inttype)/"
+            #     target_dir = "../../Desktop/imsrg_data/runlog_e$(binfo.emax)_$(inttype)/"
+            #     fn_20 = glob(target_dir * "omega_vec_*$(binfo.nuc.cnuc)_s20.00.h5")[1]
+            #     fvec = read_fvec_hdf5(fn_20)   
+            #     aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
+            #     update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
+            #     BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,dWS,PandyaObj,to)
+            #     Rpp = tmpOp.zerobody[1]
+            #     Rch2_20 = Rpp + Rp2 + N/Z *Rn2 + DF
+            #     Rch_20 = sqrt(Rch2_20)
+            #     println("s=20(IMSRG): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_20))
+            #     aOp!(tOmega,0.0)
+            # end    
+            if fn == restart_from_files[1][end]
+                aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
+            end
+        
+        end     
+    else
+        tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
+        nwritten = IMSRGobj.n_written_omega[1]
+        for i = 1:nwritten
+            read_omega_bin!(binfo,Chan2b,i,tOmega)
+            BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
+            aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
+        end
+    end
+    Rpp = Op_Rp2.zerobody[1]
     Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
     Rch = sqrt(Rch2)
     println("IMSRG point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch))
@@ -760,11 +804,11 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dict_9j_2n
 end
 
 """
-    getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
+    getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
 
 NormalOrdering for a target Operator. For now, it only supports scaler operators.
 """
-function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
+function getNormalOrderedO(HFobj,targetOp,Chan1b,Chan2bD,to;verbose=false,undo=false,OpeqH=false,firstNO=false)
     Chan2b = Chan2bD.Chan2b
     dict_idx_from_chket = Chan2bD.dict_idx_from_chket
     sps = HFobj.modelspace.sps
@@ -772,7 +816,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
     Cp = HFobj.Cp; Cn = HFobj.Cn
     holes = Int64[ ]
     for (ith,o) in enumerate(HFobj.modelspace.sps)
-        if o.occ != 0.0
+        if o.occ[1] != 0.0
             push!(holes,ith)
         end
     end 
@@ -784,7 +828,7 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
     end
     ## 0-body from One-body 
     for (i,oi) in enumerate(sps)
-        ni = oi.occ
+        ni = oi.occ[1]
         if ni != 0.0
             pn = 1 + div(1+oi.tz,2)
             idx_i = div(i,2) + i%2            
@@ -805,15 +849,15 @@ function getNormalOrderedO(binfo,HFobj,targetOp,Chan1b,Chan2bD,dict6j,to;verbose
         tsum = 0.0        
         for ib = 1:nket
             p,q = tkets[ib]
-            if sps[p].occ * sps[q].occ ==0.0;continue;end
-            tsum += sps[p].occ * sps[q].occ * O2b[ib,ib]
+            if sps[p].occ[1] * sps[q].occ[1] ==0.0;continue;end
+            tsum += sps[p].occ[1] * sps[q].occ[1] * O2b[ib,ib]
         end
         targetOp.zerobody[1] += tsum * hatfactor
 
         # => NO1B        
         tdict = dict_idx_from_chket[ch]
         for h in holes
-            jh = sps[h].j; nh = sps[h].occ
+            jh = sps[h].j; nh = sps[h].occ[1]
             for (a,oa) in enumerate(sps)
                 ja = oa.j
                 if !tri_check(jh,ja,2*J);continue;end

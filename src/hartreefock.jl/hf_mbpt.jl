@@ -17,7 +17,7 @@ E^{(2)} = \\frac{1}{4}\\sum_{abij} \\frac{\\bar{H}^{[2]}_{abij} \\bar{H}^{[2]}_{
 \\frac{{}^J\\bar{H}^{[2]}_{\\tilde{a}\\tilde{b}\\tilde{i}\\tilde{j}} {}^J\\bar{H}^{[2]}_{\\tilde{i}\\tilde{j}\\tilde{a}\\tilde{b}}}{\\epsilon^{ab}_{ij}}
 ```
 """
-function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
+function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,io=stdout)
     p_sps = modelspace.p_sps
     n_sps = modelspace.n_sps
     sps = modelspace.sps
@@ -50,7 +50,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
         for ib = 1:npq
             α, α_ = kets[ib]
             oα = sps[α]; oα_= sps[α_]
-            nafac = oα.occ * oα_.occ
+            nafac = oα.occ[1] * oα_.occ[1]
             if nafac == 0.0; continue;end
             if (oα.tz + oα_.tz != Tz);continue;end
             iα = div(α,2) + α%2 
@@ -59,7 +59,7 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
             e1b_α_ = ifelse(α_%2==1,e1b_p,e1b_n)
             for ik = 1:npq
                 β, β_ = kets[ik]
-                if sps[β].occ + sps[β_].occ !=0.0;continue;end 
+                if sps[β].occ[1] + sps[β_].occ[1] !=0.0;continue;end 
                 if (sps[β].tz + sps[β_].tz != Tz);continue;end
                 iβ = div(β,2) + β%2 
                 iβ_= div(β_,2) + β_%2 
@@ -74,15 +74,15 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false)
             end
         end
     end
-    if verbose
-        println("EMP2 ",@sprintf("%9.3f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
+    if true # verbose
+        println(io,"EMP2 ",@sprintf("%12.5f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
                 " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
     end
     return EMP2
 end
 
 """
-    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to)
+    HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;io=stdout)
 
 Calculate 2nd order correction to HF energy
 ```math
@@ -118,9 +118,8 @@ E^{(3)}=
 Ref. Many-Body Methods in Chemistry and Physics by Isaiah Shavitt and Rodney J. Bartlett (2009, Cambridge Molecular Science).
 More details can be found in e.g. Dr. thesis by A.Tichai (2017, TU Darmstadt).
 """
-function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to;verbose=false)
-    p_sps = modelspace.p_sps
-    n_sps = modelspace.n_sps
+function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;verbose=false,io=io)
+    d6j_lj = dWS.d6j_lj
     sps = modelspace.sps
     holes = modelspace.holes
     particles = modelspace.particles
@@ -129,7 +128,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
         return 0.0
     end
     e1b = Float64[ ] 
-    for i = 1:length(e1b_p)
+    for i in eachindex(e1b_p)
         push!(e1b,e1b_p[i]); push!(e1b,e1b_n[i])
     end
     EMP3 = EMP3_pp = EMP3_ph = EMP3_hh = 0.0
@@ -144,15 +143,15 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
         npq = length(kets)
         for i = 1:npq
             α, α_ = kets[i]
-            nafac = sps[α].occ * sps[α_].occ
+            nafac = sps[α].occ[1] * sps[α_].occ[1]
             if nafac == 0; continue;end
             for j = 1:npq                       
                 β, β_ = kets[j]                
-                if sps[β].occ + sps[β_].occ == 0
+                if sps[β].occ[1] + sps[β_].occ[1] == 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
-                        if sps[γ].occ + sps[γ_].occ != 0.0; continue;end
+                        if sps[γ].occ[1] + sps[γ_].occ[1] != 0.0; continue;end
                         v2 = Gam[j,k]
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
@@ -160,12 +159,12 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                         EMP3_pp += (2*J+1) * nume/deno # * nafac
                     end
                 end
-                nbfac = sps[β].occ * sps[β_].occ
+                nbfac = sps[β].occ[1] * sps[β_].occ[1]
                 if nbfac != 0
                     v1 = Gam[i,j]
                     for k = 1:npq
                         γ, γ_ = kets[k]
-                        if sps[γ].occ + sps[γ_].occ != 0; continue;end
+                        if sps[γ].occ[1] + sps[γ_].occ[1] != 0; continue;end
                         v2 = Gam[j,k]
                         v3 = Gam[k,i]
                         nume = v1 * v2 * v3
@@ -179,16 +178,12 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     allhs = vcat(holes[1],holes[2])
     allps = vcat(particles[1],particles[2])
     nthre = nthreads()
-    keys6j = [ zeros(Int64,5) for i=1:nthre]
     keychs = [ zeros(Int64,3) for i=1:nthre]
-    keyabs = [ zeros(Int64,2) for i=1:nthre]
     Ethreads = zeros(Float64,nthre)      
-    @threads for idxa = 1:length(allps)
+    @threads for idxa in eachindex(allps)
         a = allps[idxa]
         threid = threadid()
-        key6j = keys6j[threid]
         keych = keychs[threid]
-        keyab = keyabs[threid]
         oa = sps[a]; la = oa.l; ja = oa.j; tz_a = oa.tz
         Etmp = 0.0 
         for i in allhs
@@ -201,7 +196,6 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                 for totJ = Jmin:Jmax                           
                     if tri_check(ja,jj,totJ*2)==false;continue;end
                     Jfac = (2.0*totJ+1.0)
-                    tdict6j = dict6j[totJ+1]  
                     ehole = e1b[i]+e1b[j]
                     prty_ij = (-1)^(li+lj)
                     for b in allps                        
@@ -211,7 +205,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                         if (-1)^(la+lb) != prty_ij;continue;end                            
                         if tri_check(ji,jb,totJ*2)==false;continue;end
                         keych[1] = tz_a + tz_b; keych[2] = (-1)^(la+lb)
-                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,tdict6j,Gamma,keych) 
+                        v1 = vPandya(a,b,i,j,ja,jb,ji,jj,totJ,dict_2b_ch,d6j_lj,Gamma,keych) 
                         if v1 == 0.0;continue;end
                         v1 = v1 / (ehole - e1b[a] - e1b[b])
                         for k in allhs                                 
@@ -227,10 +221,10 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
                                 jc = oc.j
                                 if tri_check(jk,jc,totJ*2)==false;continue;end
                                 keych[1] = tz_i + tz_c; keych[2] = prty_kb # prty_ic 
-                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                v2 = vPandya(i,c,k,b,ji,jc,jk,jb,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                 if v2==0.0;continue;end
                                 keych[1] = tz_k + tz_j; keych[2] = (-1)^(lk+lj)  
-                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,tdict6j,Gamma,keych)
+                                v3 = vPandya(k,j,a,c,jk,jj,ja,jc,totJ,dict_2b_ch,d6j_lj,Gamma,keych)
                                 v3 = v3 / (e1b[k] + e1b[j] -e1b[a] -e1b[c])
                                 Etmp += Jfac * v1 * v2 * v3                                   
                             end
@@ -243,47 +237,45 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dict6j,Gamma,to
     end
     EMP3_ph = sum(Ethreads)
     EMP3 = EMP3_pp + EMP3_hh + EMP3_ph 
-    if verbose
-        println("pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh),
-                " ph ",@sprintf("%9.3f",EMP3_ph)," EMP3 ",@sprintf("%9.3f",EMP3))
+    if  true # verbose
+        println(io,"EMP3 ",@sprintf("%12.5f",EMP3), 
+                " pp ",@sprintf("%9.3f",EMP3_pp)," hh ",@sprintf("%9.3f",EMP3_hh)," ph ",@sprintf("%9.3f",EMP3_ph),)
     end 
     return EMP3
 end
 
-function get_intkey_2(a,b;ofst=1000)
-    return ofst*a + b
-end
-
 """
-    vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych,key6j,keyab;verbose=false) 
+    vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,d6j_lj,Gamma,keych,key6j,keyab;verbose=false) 
 
 returns generalized Pandya transformed matrix element:
 ```math
 \\tilde{V}^J_{ajib} = -\\sum_{J'} [J'] 
 \\begin{Bmatrix} 
-j_a & j_j & J \\\\
-j_i & j_d & J'
+j_a & j_j & J \\\\ j_i & j_d & J'
 \\end{Bmatrix}
 V^{J'}_{abij}
 ```
 """
-function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,tdict6j,Gamma,keych;verbose=false) 
+function vPandya(a,b,c,d,ja,jb,jc,jd,totJ,dict_2b_ch,d6j_lj,Gamma,keych;verbose=false) 
     Jmin = div(max(abs(ja-jb),abs(jc-jd)),2)
     Jmax = div(min(ja+jb,jc+jd),2)
-    nkeyab = get_intkey_2(a,b); nkeycd = get_intkey_2(c,d)
+    nkeyab = get_nkey2(a,b); nkeycd = get_nkey2(c,d)
+    
     if a > b # this can happen only when Tz=0 now
-        nkeyab = get_intkey_2(b,a)
+        nkeyab = get_nkey2(b,a)        
     end
     if c > d # this can happen only when Tz=0 now
-        nkeycd = get_intkey_2(d,c)
+        nkeycd = get_nkey2(d,c)
     end
     v = 0.0
     @inbounds for Jp = Jmin:Jmax
         if Jp % 2 == 1 && (a==b || c==d);continue;end          
-        nkey = get_nkey_from_key6j(ja,jd,jc,jb,Jp); t6j = tdict6j[nkey]
+        t6j = call_d6j(ja,jd,totJ*2,jc,jb,Jp*2,d6j_lj)
         if t6j == 0.0; continue;end
         keych[3] = Jp
-        vch = dict_2b_ch[keych].Vch; vdict = dict_2b_ch[keych].Vdict
+        vch = dict_2b_ch[get_nkey3_JPT(keych[1],keych[2],Jp)].Vch
+        vdict = dict_2b_ch[get_nkey3_JPT(keych[1],keych[2],Jp)].Vdict
+        
         norfac = ifelse(a == b,sqrt(2.0),1.0) *  ifelse(c == d,sqrt(2.0),1.0)        
         if a > b; norfac *= (-1)^(div(ja+jb,2)+Jp+1); end 
         if c > d; norfac *= (-1)^(div(jc+jd,2)+Jp+1); end

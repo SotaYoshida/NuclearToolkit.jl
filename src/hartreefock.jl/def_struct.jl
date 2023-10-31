@@ -72,22 +72,23 @@ struct chan2b
     Tz::Int64
     prty::Int64
     J::Int64
-    kets::Vector{Vector{Int64}}
+    kets::Vector{NTuple{2,Int64}}    
+    nkets::Int64
 end
 
 """
-struct `chan2bD`
+struct `Chan2bD`
 # Fields
 - `Chan2b::Vector{chan2b}` array of chan2b (ch=1,...,nchan)
 - `dict_ch_JPT::Dict{Vector{Int64},VdictCh}` dict to get VdictCh by given key `[J,prty,T]`
-- `dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}` dict to get [ch,idx], having array structure [pnrank(=1/2/3)][J+1], `key`=ket
+- `dict_ch_idx_from_ket::Vector{Dict{UInt64,NTuple{2,Int64}}}` dict to get `(ch,idx)`, having array structure [pnrank(=1/2/3)] and key structure [i_ket,j_ket,J].
 - `dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}` dict to get idx from ket, having array structure [ch]
 """
-struct Chan2bD
+struct chan2bD
     Chan2b::Vector{chan2b}
-    dict_ch_JPT::Dict{Vector{Int64},VdictCh}
-    dict_ch_idx_from_ket::Vector{Vector{Dict{Vector{Int64},Vector{Vector{Int64}}}}}
-    dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}   
+    dict_ch_JPT::Dict{UInt64,VdictCh}
+    dict_ch_idx_from_ket::Vector{Dict{UInt64,NTuple{2,Int64}}}
+    dict_idx_from_chket::Vector{Dict{Vector{Int64},Int64}}
 end
 
 """
@@ -105,23 +106,28 @@ end
 struct `PandyaObject`, used for Pandya transformation (especially in `comm222ph_ss!`)
 """
 struct PandyaObject
-    numbers::Vector{Vector{Int64}}
-    numbers_addinv::Vector{Vector{Int64}}
+    numbers::Vector{NTuple{4,Int64}}
+    numbers_addinv::Vector{NTuple{4,Int64}}
     Chan2b::Vector{chan2b}
     phkets::Vector{Vector{Int64}}
-    dict_ich_idx_from_ketcc::Vector{Dict{Int64,Int64}}
+    copy_1bmat::Vector{Matrix{Float64}}
+    vecs_nab::Vector{Vector{Float64}}
+    vecs_nab_bar::Vector{Vector{Float64}}
+    dict_ich_idx_from_ketcc::Vector{Dict{UInt64,Int64}}
     XYbars::Vector{Vector{Matrix{Float64}}}
     Zbars::Vector{Matrix{Float64}}
     PhaseMats::Vector{Matrix{Float64}}
     tMat::Vector{Matrix{Float64}}
-    dict_ch2ich::Dict{Int64,Int64}
+    dict_ch2ich::Vector{Int64}
     keys6j::Vector{Vector{Int64}}
     util122::Vector{Vector{single_util122}}
     Mats_hh::Vector{Matrix{Float64}}
     Mats_pp::Vector{Matrix{Float64}}
     Mats_ph::Vector{Matrix{Float64}}
+    vec_flat::Vector{Float64}
+    idxdict_nth::Dict{UInt64,Int64}
+    Pandya3Channels::Vector{NTuple{3,Int64}}
 end
-
 
 mutable struct valDictMonopole
     monopole::Vector{Float64}
@@ -134,7 +140,7 @@ struct `dictTBMEs` contains dictionaries for TBME/monopole
 - `dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}` one can get monopole component of two-body interaction by `dictMonopole[pnrank][key]`, `key` to be ket array like `[1,1]`
 """
 struct dictSnt
-    dictTBMEs::Vector{Dict{Vector{Int64},Float64}}
+    dictTBMEs::Vector{Dict{Vector{Int64},Vector{Float64}}}
     dictMonopole::Vector{Dict{Vector{Int64},valDictMonopole}}
 end
 
@@ -207,15 +213,15 @@ mutable struct `SingleParticleState`
 - `v::Bool` whether belongs to "valence" or not 
 - `q::Bool` whether belongs to "q-space" or not 
 """
-mutable struct SingleParticleState
+struct SingleParticleState  
     n::Int64
     l::Int64
     j::Int64
     tz::Int64
-    occ::Float64
-    c::Bool
-    v::Bool
-    q::Bool
+    occ::Vector{Float64}
+    c::Vector{Bool}
+    v::Vector{Bool}
+    q::Vector{Bool}
 end
 
 """
@@ -242,7 +248,7 @@ struct ModelSpace
 end
 
 """
-mutable struct `Operator`
+struct `Operator`
 # Fields
 - `zerobody::Vector{Float64}` zerobody part of the operator
 - `onebody::Vector{Matrix{Float64}}` one-body matrix elements ([1]=>proton, [2]=>neutron)
@@ -250,12 +256,12 @@ mutable struct `Operator`
 - `hermite::Bool` whether it is hermitian operator or not
 - `antihermite::Bool` antihermitian or not
 """
-mutable struct Operator
+struct Operator
     zerobody::Vector{Float64}
     onebody::Vector{Matrix{Float64}}
     twobody::Vector{Matrix{Float64}}
-    hermite::Bool
-    antihermite::Bool
+    hermite::Vector{Bool}
+    antihermite::Vector{Bool}
 end
 
 """
@@ -291,7 +297,8 @@ mutable struct `IMSRGobject`
 - `s::Vector{Float}` current ``s`` and ``ds``
 - `smax::Float` maximum ``s``
 - `dsmax::Float` maximum ``ds``
-- `maxnormOmega::Float` maximum ||Omega||
+- `maxnormOmega::Float` maximum ||Omega|| for spliting
+- `magnusmethod::String` "" or "split" => spliting method, "NS" or "no-split" => w/o spliting
 - `eta::Operator` generator of IMSRG flow (antihermite Operator)
 - `Omega::Operator` generator of IMSRG flow (antihermite Operator) 
 - `eta_criterion::Float` ||eta|| to check convergence
@@ -306,6 +313,7 @@ mutable struct IMSRGobject
     smax::Float64
     dsmax::Float64
     maxnormOmega::Float64
+    magnusmethod::String
     eta::Operator
     Omega::Operator
     eta_criterion::Float64
@@ -318,28 +326,13 @@ end
 struct `dWS2n`, Wigner symbols used in PreCalcHOB
 # Fields
 - `dtri::Dict{Vector{Int64},Float64}` dict for trinomial 
-- `dcgm0::Dict{Vector{Int64},Float64}` dict for special CG coefficients
-- `keycg::Vector{Vector{Int64}}` array of key for cg
+- `dcgm0::Dict{Int64,Float64}` dict for special CG coefficients (l0l'0|L0)
 """
 struct dWS2n
-    dtri::Dict{Vector{Int64},Float64}
-    dcgm0::Dict{Vector{Int64},Float64}
-    keycg::Vector{Vector{Int64}}
-end
-
-"""
-struct `HarmonicOscillatorBrackets`
-
-A hierarchical array of dictionaries reduces readability, but on the other hand a few hierarchical structures.
-It may reduce the time taken to traverse the elements...
-
-# Fields
-- `dict::Vector{Vector{Dict{Vector{Int64},Float64}}}` dictionary for HOB [L][e2] #e2=2n+l+2N+L=2n1+l1+2n2+l2
-- `key::Vector{Int64}` 
-"""
-struct HarmonicOscillatorBrackets
-    dict::Vector{Vector{Dict{Vector{Int64},Float64}}}
-    key::Vector{Int64}
+    dtri::Dict{Int64,Float64}
+    dcgm0::Dict{Int64,Float64}
+    d6j_int::Dict{UInt64,Float64}
+    d6j_lj::Dict{UInt64,Float64}    
+    d9j_lsj::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
+    dictHOB::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}
 end 
-
-

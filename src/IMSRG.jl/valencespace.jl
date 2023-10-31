@@ -5,7 +5,7 @@ check validity of specified valence space
 """
 function check_valence_space(HFobj,valencespace)
     v = Int64[ ]
-    if length(valencespace)==0
+    if length(valencespace)==0 # "" or [ ]
         return v
     elseif typeof(valencespace)== String
         check_major_valencespace(valencespace,HFobj,v)
@@ -49,11 +49,11 @@ function check_major_valencespace(str::String,HFobj,v)
         tsps = ifelse(o.tz==-1,p_sps,n_sps)[idx]
         if [o.n,o.l,o.j,o.tz] in target_nljtz
             push!(v,i)
-            o.v = tsps.v = true
-            o.c = tsps.c = false
+            o.v[1] = tsps.v[1] = true
+            o.c[1] = tsps.c[1] = false
         else
-            if o.occ == 0.0
-                o.q = tsps.q = true
+            if o.occ[1] == 0.0
+                o.q[1] = tsps.q[1] = true
             end
         end
     end
@@ -89,32 +89,32 @@ function update_vsspace_chs!(HFobj,valencespace,Chan2b)
     spaces = HFobj.modelspace.spaces
     cc = spaces.cc; vc = spaces.vc; qc = spaces.qc
     vv = spaces.vv; qv = spaces.qv; qq = spaces.qq
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         tbc = Chan2b[ch]
         kets = tbc.kets
         for (ik,ket) in enumerate(kets)
             i,j = ket
-            v_i = ifelse(i in valencespace,1,0)
-            v_j = ifelse(j in valencespace,1,0)
+            v_i = ifelse(sps[i].v[1],1,0)
+            v_j = ifelse(sps[j].v[1],1,0)            
             ## cc 
-            if sps[i].c && sps[j].c 
+            if sps[i].c[1] && sps[j].c[1]
                 add_ch_ket!(ch,ik,cc) 
             end
             ## vc or qc case
-            if (sps[i].c || sps[j].c) && !(sps[i].c && sps[j].c)
+            if (sps[i].c[1] || sps[j].c[1]) && !(sps[i].c[1] && sps[j].c[1])
                 if v_i+v_j == 1
                     add_ch_ket!(ch,ik,vc)
                 else 
                     add_ch_ket!(ch,ik,qc)
                 end
             end
-            ## ni+nj=0, vv,qv,qq
+            ## vv,qv,qq
             if v_i + v_j == 2 
                 # if you need additional truncations, specify here
                 add_ch_ket!(ch,ik,vv)
-            elseif v_i + v_j == 1 && (sps[i].q || sps[j].q)
+            elseif v_i + v_j == 1 && (sps[i].q[1] || sps[j].q[1])
                 add_ch_ket!(ch,ik,qv) 
-            elseif sps[i].q && sps[j].q
+            elseif sps[i].q[1] && sps[j].q[1]
                 add_ch_ket!(ch,ik,qq) 
             end
         end       
@@ -125,9 +125,9 @@ end
 """
     calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
-``\\eta(s)`` with shell-model atan generator to decouple valence space
+``\\eta(s)`` with shell-model atan generator to decouple the specified valence space.
 """
-function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
+function calc_Eta_smatan!(HFobj::HamiltonianNormalOrdered,IMSRGobj,Chan2b,dictMono,norms)
     MS = HFobj.modelspace
     sps = MS.sps; p_sps = MS.p_sps; n_sps = MS.n_sps    
     key = zeros(Int64,2)
@@ -144,18 +144,18 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
         tz_pn = ifelse(pn==1,-1,1)
         for (a,oa) in enumerate(sps)
             if oa.tz != tz_pn;continue;end
-            if oa.q == true;continue;end 
+            if oa.q[1];continue;end 
             idx_a = div(a,2) +a%2
             for (i,oi) in enumerate(sps)
                 if i==a;continue;end
                 if oi.tz != tz_pn; continue;end
-                if oi.c; continue;end
+                if oi.c[1]; continue;end
                 idx_i = div(i,2) + i%2
                 nume = 2 * tf[idx_a,idx_i]
                 key[1] = a; key[2] = i
                 if a > i; key[1] = i; key[2]= a; end
                 mono_ai = dMono[key].monopole[1] 
-                deno = tf[idx_i,idx_i] -tf[idx_a,idx_a] + (oi.occ-oa.occ)*mono_ai + Delta                
+                deno = tf[idx_i,idx_i] -tf[idx_a,idx_a] + (oi.occ[1]-oa.occ[1])*mono_ai + Delta                
                 tmp = 0.5 * atan( nume / deno)
                 eta1b[idx_i,idx_a] = tmp
                 eta1b[idx_a,idx_i] = -tmp
@@ -164,25 +164,25 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
     end 
 
     ## two-body piece, decoupling of core 
-    for ch = 1:length(Chan2b)
+    for ch in eachindex(Chan2b)
         Gam = Gamma[ch]; tbc = Chan2b[ch]; Tz = tbc.Tz; kets = tbc.kets
         eta2b = Eta2b[ch]; eta2b .*= 0.0
         pnrank = div(Tz,2) + 2
         ### decoupling of core - valence/qspace
-        for ik = 1:length(kets) # to be cc/vc (cq is not considered)
+        for ik in eachindex(kets) # to be cc/vc (cq is not considered)
             i,j = kets[ik]  
             oi =sps[i]; oj = sps[j]      
-            if !oi.c && !oj.c;continue;end
-            ni = oi.occ; nj = oj.occ
+            if !oi.c[1] && !oj.c[1];continue;end
+            ni = oi.occ[1]; nj = oj.occ[1]
             #if ni + nj == 1 && (oi.q || oj.q); continue;end
-            if (ni*nj==0.0 && ni+nj!=0.0) && (oi.q || oj.q); continue;end
+            if (ni*nj==0.0 && ni+nj!=0.0) && (oi.q[1] || oj.q[1]); continue;end
             tz_ij = oi.tz + oj.tz
             if tz_ij != Tz;continue;end
-            for ib =1:length(kets) # to be vv/qv/qq
+            for ib in eachindex(kets) # to be vv/qv/qq
                 a,b = kets[ib]
                 oa = sps[a]; ob = sps[b]
-                if oa.c || ob.c; continue;end
-                na = oa.occ; nb = ob.occ
+                if oa.c[1] || ob.c[1]; continue;end
+                na = oa.occ[1]; nb = ob.occ[1]
                 tz_ab = oa.tz + ob.tz
                 if tz_ab != Tz;continue;end
                 nume = 2 * Gam[ib,ik]
@@ -193,15 +193,15 @@ function calc_Eta_smatan!(HFobj,IMSRGobj,Chan2b,dictMono,norms)
             end
         end          
         ### decoupling of valence - qspace
-        for ik = 1:length(kets) # to be vv
+        for ik in eachindex(kets) # to be vv
             i,j = kets[ik]
-            if !sps[i].v || !sps[j].v; continue;end
-            ni = sps[i].occ; nj = sps[j].occ 
-            for ib =1:length(kets) # to be qv/qq
+            if !sps[i].v[1] || !sps[j].v[1]; continue;end
+            ni = sps[i].occ[1]; nj = sps[j].occ[1] 
+            for ib in eachindex(kets) # to be qv/qq
                 a,b = kets[ib]
-                if sps[a].c || sps[b].c; continue;end
-                if !sps[a].q && !sps[b].q; continue;end
-                na = sps[a].occ; nb = sps[b].occ
+                if sps[a].c[1] || sps[b].c[1]; continue;end
+                if !sps[a].q[1] && !sps[b].q[1]; continue;end
+                na = sps[a].occ[1]; nb = sps[b].occ[1]
                 nume = 2 * Gam[ib,ik]
                 deno = Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key)
                 tmp = 0.5 * atan(nume / deno)                
@@ -222,7 +222,7 @@ end
 
 Function to write out valence space effective interaction in snt (KSHELL/ShellModel.jl) format.
 """
-function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspace)
+function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,vspace;effOps=Operator[])
     hw = binfo.hw
     emax = binfo.emax
     dict_ms2snt = Chan1b.ms2snt
@@ -234,7 +234,7 @@ function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspac
         cOp = "Hamiltonian"
         refnuc = ifelse(ref=="core",binfo.nuc.corenuc,binfo.nuc.cnuc)
         fname = "vsimsrg_" * vspace * "_core"*binfo.nuc.corenuc* "ref"*refnuc* "_" * binfo.nuc.cnuc *"_"*"hw"*string(hw)*"e"*string(emax)* "_Delta$cDelta.snt"
-        if i !=1
+        if i != 1
             Op = effOps[i-1]; cOp = Operators[i-1]
             fname = "vsimsrg_" * vspace * "_core" *binfo.nuc.corenuc* "ref"*refnuc * "_" * binfo.nuc.cnuc * "_"*"hw"*string(hw)*"e"*string(emax)*"_Delta"*cDelta*"_"*cOp*".snt"
         end
@@ -247,7 +247,7 @@ function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspac
         vp_sps = Int[ ]
         vn_sps = Int[ ]
         for (a,oa) in enumerate(sps)
-            if !oa.v;continue;end
+            if !oa.v[1];continue;end
             pn = ifelse(oa.tz==-1,1,2)
             if pn == 1
                 push!(vp_sps,a)
@@ -276,7 +276,7 @@ function write_vs_snt(binfo,HFobj,IMSRGobj,Operators,effOps,Chan1b,Chan2bD,vspac
         println(io, txt)
 
         for (a,oa) in enumerate(sps)
-            if !oa.v;continue;end
+            if !oa.v[1];continue;end
             idx_a = div(a,2) +a%2   
             pn = ifelse(oa.tz==-1,1,2)
             spe = f[pn][idx_a,idx_a]

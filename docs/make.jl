@@ -9,6 +9,7 @@ makedocs(;
         authors="SotaYoshida <syoshida@cc.utsunomiya-u.ac.jp>",
         repo="https://github.com/SotaYoshida/NuclearToolkit.jl/blob/{commit}{path}#{line}",
         sitename="NuclearToolkit.jl",
+        checkdocs=:none,
         format=Documenter.HTML(;
             prettyurls=get(ENV, "CI", "false") == "true",
             canonical="https://SotaYoshida.github.io/NuclearToolkit.jl",

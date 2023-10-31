@@ -36,28 +36,28 @@ In the author's personal opinion, it would be too difficult for students (especi
 The author thought the Julia language can be a game changer to this situation with its high readbility, portabillity, and performance. Since all the source code in NuclearToolkit.jl is a pure Julia implementation, there is no more need to prepare different Makefiles for different environments, worry about library dependencies, homemade Python script to run the Fortran/C++ codes. The code can be easily executed on either a laptop or a supercomputer.
 While NuclearToolkit covers a wide range of methods, the overall code length is still in a few tens of thousands, including "docstring" to generate the document.
 
-- [ChiEFTint](ChiEFTint): NN interaction from Chiral EFT ~ 6,000 lines.
+- [ChiEFTint](ChiEFTint.md): NN interaction from Chiral EFT ~ 6,000 lines.
   - EM (Entem & Machleidt) N3L0
   - EMN (Entem, Machleidt, Nosyc) N4LO
   - Density-Dependent NN from 3NF (The author prefers to call it "2n3n" to distinguish with genuine 3NF)
   - valence chiral EFT potential upto LO
-- [Hartreefock](HartreeFock): Hartree-Fock (HF) and HF Many-Body Perturbation Theory (HFMBPT)  ~ 3,000 lines.
+- [Hartreefock](HartreeFock.md): Hartree-Fock (HF) and HF Many-Body Perturbation Theory (HFMBPT)  ~ 3,000 lines.
   - Energy (up to 3rd order)
   - Scaler operator (up to 2nd order)
-- [IMSRG](IMSRG): In-medium Similarity Renormalization Group (IMSRG)  ~ 2,000 lines.
+- [IMSRG](IMSRG.md): In-medium Similarity Renormalization Group (IMSRG)  ~ 2,000 lines.
   - IMSRG(2) calc. for ground state energy
   - consistent IMSRG(2) flow of (scaler) operator
   - Valence-space IMSRG (VS-IMSRG)
     - derive effective interaction for shell-model calculations
     - consistent VSIMSRG flow to get effective operators 
-- [ShellModel.jl](ShellModel) ~ 5,000 lines.
+- [ShellModel.jl](ShellModel.md) ~ 5,000 lines.
   This was originally developed as [an independent package] (https://github.com/SotaYoshida/ShellModel.jl).
   - shell model calculations
   - construct approximate wavefunctions with eigenvector continuation 
 
 ## Optional parameters
 For some parameters, the default values are used unless the user specifies those in the file, `optional_parameters.jl`.
-See the [Optional parameters](parameters) page for more details.
+See the [Optional parameters](parameters.md) page for more details.
 
 ## Issues/Pull requests
 

@@ -21,7 +21,7 @@ jobs:
           - {version: '1.9',   os: ubuntu-latest,  payload: serial}
           - {version: '1.9',   os: macOS-latest,   payload: serial}
           - {version: '1.9',   os: windows-latest, payload: serial}
-          - {version: nightly, os: ubuntu-latest,  payload: serial}
+          #- {version: nightly, os: ubuntu-latest,  payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

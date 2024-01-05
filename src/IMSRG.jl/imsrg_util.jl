@@ -74,7 +74,9 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     end
     if !delete_Ops
         pid = getpid()
-        rm("flowOmega/*_$(pid)*.bin")
+        for f in glob("flowOmega/Omega_$(pid)*.bin")
+            rm(f)
+        end
     end
     return IMSRGobj
 end

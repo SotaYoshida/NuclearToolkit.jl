@@ -1,4 +1,3 @@
-
 """
 read_fvec_hdf5(fname)
 
@@ -267,15 +266,6 @@ function svd_Op_twobody(s,Op::Operator,Chan2b;verbose=true,max_rank=20)
                     hit += 1
                     println("rank=",@sprintf("%4i",trank), " norm(V-V') ",@sprintf("%12.5e",norm(mat-Vtilde,2)))
                     dimtr += 2*trank*dim + trank
-                    # if trank != fullrank 
-                    #     trank = fullrank 
-                    #     U = SVD.U; Sig = deepcopy(SVD.S); Vt = SVD.Vt
-                    #     Sig[trank+1:end] .= 0.0
-                    #     SV = Diagonal(Sig)* Vt
-                    #     Vtilde = BLAS.gemm('N','N',1.0,U,SV)
-                    #     tnorm = norm(mat-Vtilde,2)
-                    #     println("rank=",@sprintf("%4i",trank), " norm(V-V') ",@sprintf("%12.5e",norm(mat-Vtilde,2)))
-                    # end
                     break
                 end
             end
@@ -283,5 +273,160 @@ function svd_Op_twobody(s,Op::Operator,Chan2b;verbose=true,max_rank=20)
         end        
     end
     println("dimfull $dimfull dimtr $dimtr")
+    return nothing
+end
+
+function constructor_snapshot_matrix(fns)
+    num_snapshots = length(fns)
+    fvec_dim = length(read_fvec_hdf5(fns[1])) -2 
+
+    X = zeros(Float64,fvec_dim,num_snapshots-1)
+    Y = zeros(Float64,fvec_dim,num_snapshots-1)
+    for (i,fname) in enumerate(fns[1:end-1])
+        fvec = read_fvec_hdf5(fname)[3:end]
+        X[:,i] .= fvec
+        if i > 1
+            Y[:,i-1] .= fvec
+        end
+    end
+    Y[:,end] .= read_fvec_hdf5(fns[end])[3:end]
+    s_end = split(split(fns[end],"_s")[end],".h5")[1]
+    return parse(Float64,s_end),X,Y
+end
+
+function get_DMD_operator(X,Y,r)
+    Z = svds(X; nsv=r)[1]
+    U_r, S_r, Vt_r = Z.U, Z.S, Z.Vt
+
+    S_r_inv = diagm( 1.0 ./ S_r)
+    Z = BLAS.gemm('T', 'N', 1.0, Vt_r, S_r_inv)
+    YZ = BLAS.gemm('N','N',1.0, Y, Z)
+    Atilde = BLAS.gemm('T', 'N', 1.0, U_r, YZ)
+
+    return U_r, Atilde
+end
+
+function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
+    Y_latent = zeros(Float64, r, size(Y)[2])
+    x1 = X[:,1]
+    x1_r = BLAS.gemv('T', 1.0, U_r, x1)
+    x_k = zeros(Float64,r)
+    x_new = zeros(Float64,r) .+ x1_r
+    for k = 1:size(Y)[2]
+        x_k .= x_new
+        BLAS.gemv!('N', 1.0, Atilde, x_k, 0.0, x_new)
+        Y_latent[:,k] .= x_new
+        
+    end
+    Yapprox = BLAS.gemm('N', 'N', 1.0, U_r, Y_latent)
+    if verbose 
+        for k = 1:size(Y)[2]
+            println("k $k normvec ", norm(Yapprox[:,k]-Y[:,k]))
+            print_vec("Yap", Yapprox[1:10,k])
+            print_vec("Y  ", Y[1:10,k])
+        end
+    end
+    println("norm(Y-Yapprox,Inf) = ", @sprintf("%10.4e",norm(Y - Yapprox,Inf)), " Fro. ", @sprintf("%10.4e",norm(Y - Yapprox,2)))
+end
+
+function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
+    @assert length(s_pred) == length(fn_exact) "s_pred and fn_exact must have the same length"
+    if length(s_pred) > 0
+        r = size(U_r)[2]
+        x1_r = BLAS.gemv('T', 1.0, U_r, x_start)
+        x_k = zeros(Float64,r)
+        x_new = zeros(Float64,r) .+ x1_r
+        for ith = 1:length(s_pred)
+            s_target = s_pred[ith]
+            x_k .= 0.0
+            x_new .= x1_r
+            s = s_end
+            while true
+                x_k .= x_new
+                BLAS.gemv!('N', 1.0, Atilde, x_k, 0.0, x_new)
+                s += ds
+                if s >= s_target; break; end
+            end
+            x_pred = BLAS.gemv('N', 1.0, U_r, x_k)
+            E_imsrg = 0.0
+            if isfile(fn_exact[ith])
+                fvec_inf = read_fvec_hdf5(fn_exact[ith])
+                s_file = fvec_inf[1]
+                @assert s == s_file "s $s must be equal to s_file $s_file for $(fn_exact[ith])"
+                E_imsrg = fvec_inf[2]
+                x_inf = fvec_inf[3:end]
+                println("s =  ",@sprintf("%6.2f", s),"   ||x'-x||  ", @sprintf("%10.4e", norm(x_inf-x_pred)), "   ", @sprintf("%10.4e",norm(x_inf-x_pred,Inf)))
+            end
+            write_dmdvec_hdf5(x_pred,s,E_imsrg,nuc,inttype,emax,oupdir)
+        end
+    end
+    return nothing
+end
+
+function write_dmdvec_hdf5(vec_in,s,E_imsrg,nuc,inttype,emax,oupdir)
+    vec = zeros(Float64,length(vec_in)+2)
+    vec[1] = s
+    vec[2] = E_imsrg
+    vec[3:end] .= vec_in
+    fname = oupdir*"omega_dmdvec_$(inttype)_e$(emax)_$(nuc)_s"*strip(@sprintf("%6.2f",s))*".h5"
+    io = h5open(fname,"w")
+    write(io,"vec",vec)
+    close(io)
+    return nothing
+end
+
+function read_dmdvec_hdf5(fn)
+    io = h5open(fn,"r")
+    vec = read(io,"vec")
+    close(io)
+    return vec
+end
+
+"""
+main API for DMD
+
+# Arguments
+- `emax::Int64`: maximum energy for the IMSRG calculation, which is used only for the filename of the emulated fvec data
+- `nuc::String`: nucleus name
+- `fns::Vector{String}`: filenames of the snapshot data
+- `trank::Int64`: specified largest rank of truncated SVD
+- `smin::Float64`: starting value of `s` for the training data
+- `ds::Float64`: step size of `s` for the training data
+
+# Optional arguments
+- `s_pred::Vector{Float64}`: values of `s` for the extrapolation
+- `fn_exact::Vector{String}`: filenames of the exact data for the extrapolation, which must have the same length as `s_pred`
+- `allow_fullSVD::Bool`: if `true`, the full SVD is performed and the rank is determined by `trank` and the tolerance `tol_svd`
+- `tol_svd::Float64`: tolerance for the singular values for the truncated SVD
+- `inttype::String`: interaction type, which is used for the filename of the output data
+"""
+function dmd_main(emax, nuc, fns, trank, smin, ds;s_pred=Float64[],fn_exact=String[],
+                  allow_fullSVD=true,tol_svd=1e-7,inttype="",oupdir="flowOmega/")
+    if !isdir("flowOmega")
+        println("dir. flowOmega is created!")
+        mkdir("flowOmega")
+    end
+    println("Trying to perform DMD....")
+
+    #  construct snapshot matrices X and Y
+    s_end, X,Y = constructor_snapshot_matrix(fns)
+    println("Snapshot from smin $smin s_end $s_end ds $ds")
+
+    # truncated SVD using Arpack.jl and construct tilde(A)
+    fullrank = rank(X)
+    r = trank
+    if allow_fullSVD
+        SVD = svd(X)
+        sigma_full = SVD.S
+        r = min(r, fullrank, sum(sigma_full .> tol_svd))
+        println("fullrank $(fullrank) rank $r")
+        print_vec("singular values", sigma_full[1:r];ine=true)
+    end
+    U_r, Atilde = get_DMD_operator(X,Y,r)    
+    check_DMD_norm(X, Y, r, U_r, Atilde)
+
+    # extrapolation
+    extrapolate_DMD(Y[:,end],U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
+
     return nothing
 end

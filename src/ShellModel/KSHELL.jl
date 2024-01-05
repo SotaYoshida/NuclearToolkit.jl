@@ -68,17 +68,17 @@ function read_kshell_summary(fns::Vector{String};targetJpi="",nuc="")
             if !(state in states)
                 push!(states,state)
             end 
-            tmpJpi = "j"*string(J2)*ifelse(tl[3]=="+","p","n") 
+            tmpJpi = "j"*string(J2)*ifelse(tl[3]=="+","p","n")
             Egs = min(Energy,Egs)
             if targetJpi == "" 
                 Egs_target = Egs
             end
             if targetJpi == tmpJpi
                 Egs_target = min(Energy,Egs_target)
-            end
-            
+            end            
         end
     end
+    @assert Egs_target != 1.e+5 "Egs_target error"
     nuclei = def_nuc(string(nuc),"","")
     return kshell_nuc(nuclei,sntf,Egs,Egs_target,states)
 end

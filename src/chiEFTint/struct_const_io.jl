@@ -23,7 +23,7 @@ const fsalpha = 7.2973525693* 1.e-3 #fine structure const.
 const l2l = [ wigner3j(Float64,l,2,l,0,0,0) for l=0:8]
 const l2lnd =[[ wigner3j(Float64,l1,2,l2,0,0,0) for l2=0:8] for l1=0:8]
 const nuclist = [
-     "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
+    "H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F", "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
     "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
     "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
     "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
@@ -645,10 +645,10 @@ function svd_vmom(chiEFTobj::ChiralEFTobject,target_LSJ;pnrank=2,verbose=false,t
     end
 end
 
-
 """ 
-    write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int;label="")
+write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int;label="")
 
+Function to write out potentials in momentum space.
 """
 function write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int,target_LSJ;label="")
     n_mesh = chiEFTobj.params.n_mesh
@@ -712,7 +712,10 @@ end
 
 plot nn potential in partial wave over relative momentum space
 """
-function momplot(xr,V12mom,tdict,pnrank,llpSJ_s;ctext="",fpath="")
+function momplot(chiEFTobj,pnrank,llpSJ_s;fnlabel="",ctext="",fpath="",write_hdf5=true)
+    xr = chiEFTobj.xr_fm
+    V12mom = chiEFTobj.V12mom
+    tdict = chiEFTobj.dict_pwch[pnrank]
     tfdat = []
     if fpath != ""; xf,yfs = compfdat(fpath); end    
     itt = 2 *(pnrank -2)
@@ -720,7 +723,7 @@ function momplot(xr,V12mom,tdict,pnrank,llpSJ_s;ctext="",fpath="")
     for vidx = 1:7
         l,lp,S,J= llpSJ_s[vidx]
         V12idx = get(tdict,[itt,l,lp,S,J],-1)
-        if V12idx==-1;println("V12idx==$V12idx");continue;end
+        if V12idx==-1;continue;end
         V = V12mom[V12idx]
         tx = ""
         cS = ifelse(S==0,"1","3")
@@ -732,38 +735,88 @@ function momplot(xr,V12mom,tdict,pnrank,llpSJ_s;ctext="",fpath="")
         end
         for i =1:n_mesh;  tv[i] = V[i,i]; end
         if fpath != ""; tfdat = [xf,yfs[vidx]];end
-        pw_plt(tx,xr,V,tv,pnrank;fdat=tfdat)
+        #pw_plt(tx,xr,V,tv,pnrank,fnlabel;fdat=tfdat)
+        if write_hdf5
+            fn = "vmom_"*fnlabel*"_chiEFT_"*tx*"_"*string(pnrank)*".h5"
+            h5open(fn,"w") do file
+                write(file,"pnrank",pnrank)
+                write(file,"srg",chiEFTobj.params.srg)
+                write(file,"x",xr)
+                write(file,"V",V)
+            end
+        end
+        momplot_from_file(pnrank,tx)
     end
     return nothing
+end
+
+function momplot_from_file(pnrank,tx)
+    fn_bare = "vmom_bare_chiEFT_"*tx*"_"*string(pnrank)*".h5"
+    fn_srg = "vmom_srg_chiEFT_"*tx*"_"*string(pnrank)*".h5"
+    if !isfile(fn_bare);println("file $fn_bare is not found");return nothing;end
+    if !isfile(fn_srg);println("file $fn_srg is not found");return nothing;end
+    file = h5open(fn_bare,"r"); x_b = read(file,"x"); V_b = read(file,"V"); V_b_diag = diag(V_b);  close(file)    
+    file = h5open(fn_srg,"r");  x_s = read(file,"x"); V_s = read(file,"V"); V_s_diag = diag(V_s); close(file)
+    tls = ["pp", "pn", "nn"]
+    cpnrank = tls[pnrank]
+    fig = plot(layout=(1, 3), size=(1200, 300), dpi=400,
+               left_margin = 10mm, bottom_margin = 8mm,
+               xtick_direction = :out, ytick_direction = :out)
+    plot!(fig[1], x_b, V_b_diag, 
+          label="bare",grid=:true)
+    plot!(fig[1], x_s, V_s_diag, 
+          xlabel=latexstring("p=p' \\ \\mathrm{fm}^{-1}"), 
+          ylabel=latexstring("V(p,p) \\ \\mathrm{MeV}\\ \\mathrm{fm}^3"),
+          label="SRG",grid=:true)
+    cmin = minimum([minimum(V_b),minimum(V_s)])
+    cmax = maximum([maximum(V_b),maximum(V_s)])
+    heatmap!(fig[2], x_b, x_b, V_b,
+            xlabel=latexstring("p \\ \\mathrm{fm}^{-1}"), 
+            ylabel=latexstring("p' \\   \\mathrm{fm}^{-1}"), 
+            c = :jet, grid=:true, clims=(cmin,cmax))
+    heatmap!(fig[3], x_s, x_s, V_s,
+            xlabel=latexstring("p \\ \\mathrm{fm}^{-1}"), 
+            ylabel=latexstring("p' \\   \\mathrm{fm}^{-1}"), 
+            c = :jet, grid=:true, clims=(cmin,cmax))
+    pntext = cpnrank*":"
+    annotate!(fig[2], 3.5, 4.5, 
+              pntext*latex_pw(tx), halign = :left, valign = :bottom, c=:white)
+    #savefig(fig, "vmom_bare_vs_SRG_chiEFT_"*tx*"_"*cpnrank*".pdf")
+    savefig(fig, "vmom_bare_vs_SRG_chiEFT_"*tx*"_"*cpnrank*".png")
+    return nothing
+end
+
+function latex_pw(tx)
+    ret = latexstring("{}^{"*tx[1]*"}\\mathrm{$(tx[2])}_{"*tx[3]*"}")
+    return ret
 end
 
 """
     pw_plt(tx,xr,z,zds,pnrank;fdat=[])
 
+Function to 
     fdat: normally no need to specify. optional array to specify text file for cross check
 """
-function pw_plt(tx,xr,z,zds,pnrank;fdat=[])
-    tls = ["pp","pn","nn"]
-    cpnrank = tls[pnrank]    
-    xr *= 1.0/hc; yr = copy(xr)
-    fig = plt.figure(figsize=(10,4))
-    axs = [fig.add_subplot(121),fig.add_subplot(122)]
-    axs[2].set_xlabel(latexstring("p ")*" [fm"*latexstring("^{-1}")*"]")
-    axs[2].set_ylabel(latexstring("p'")*" [fm"*latexstring("^{-1}")*"]")
-    CS = axs[2].contourf(xr, yr, z)
-    fig.colorbar(CS)
-    axs[1].set_xlabel(latexstring("p=p' ")*" [fm"*latexstring("^{-1}")*"]")
-    axs[1].set_ylabel(latexstring("V(p,p)")*" [MeV fm"*latexstring("^3")*"]")
-    axs[1].plot(xr,zds,marker="o",markersize=2)
-    if fdat != []
-        axs[1].plot(fdat[1],fdat[2],marker="x",markersize=2,alpha=0.4,label="Fortran")
-        axs[1].legend()
-    end
-    axs[1].grid(color="gray",linestyle="dotted")
-    plt.savefig("pic/chiEFT_"*tx*"_"*cpnrank*".pdf",pad_inches=0)
-    plt.close()
+function pw_plt(tx, xr, z, zds, pnrank, fnlabel; fdat=[])
+    tls = ["pp", "pn", "nn"]
+    cpnrank = tls[pnrank]
+    yr = copy(xr)
+    fig = plot(layout=(1, 2), size=(800, 300), dpi=400,
+               left_margin = 5mm, bottom_margin = 5mm,
+               xtick_direction = :out, ytick_direction = :out)
+    plot!(fig[1], xr, zds, 
+          xlabel=latexstring("p=p' \\ \\mathrm{fm}^{-1}"), 
+          ylabel=latexstring("V(p,p) \\ \\mathrm{MeV}\\ \\mathrm{fm}^3"),
+          label=nothing,grid=:true)
+    heatmap!(fig[2], xr, yr, z,
+            xlabel=latexstring("p \\ \\mathrm{fm}^{-1}"), 
+            ylabel=latexstring("p' \\   \\mathrm{fm}^{-1}"), 
+            c = :viridis, grid=:true)    
+    savefig(fig, "vmom_"*fnlabel*"_chiEFT_"*tx*"_"*cpnrank*".png")
+    return nothing
 end
 
+# unused
 function compfdat(inpf)
     f = open(inpf,"r");lines = readlines(f);close(f)
     xs = Float64[]

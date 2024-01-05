@@ -720,6 +720,7 @@ end
 evaluate charge radii with IMSRG.
 """
 function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_defbyrun,dictMono,MatOp,restart_from_files,to;debug_mode=false)
+    emulating = length(restart_from_files) >= 1
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     tnuc = binfo.nuc
     N = tnuc.N
@@ -732,8 +733,10 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_de
     Rpp_HF = Op_Rp2.zerobody[1]
     Rch2_HF = Rpp_HF + Rp2 + N/Z *Rn2 + DF
     Rch_HF = sqrt(Rch2_HF)
-    println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp_HF)),
-            " charge radius ",@sprintf("%12.6f", Rch_HF), " => HF+PT ",@sprintf("%12.6f", sqrt(Rch2_HF+Rp_PT)))
+    if !emulating
+        println("   HF point proton radius ",@sprintf("%12.6f", sqrt(Rpp_HF)),
+                " charge radius ",@sprintf("%12.6f", Rch_HF), " => HF+PT ",@sprintf("%12.6f", sqrt(Rch2_HF+Rp_PT)))
+    end
 
     ##IMSRG(2) level
     ncomm = [0]
@@ -746,17 +749,29 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_de
     if length(restart_from_files) >= 1 # hf5 files by emulator are specified
         tOmega = deepcopy(Omega); aOp!(tOmega,0.0)
         dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,Omega,Chan2b)
+        emutype = "Exact"
+        fn1 = restart_from_files[1][1]
+        if occursin("ann",fn1)
+            emutype = "IMSRGNet"
+        elseif occursin("dmd",fn1)
+            emutype = "DMD"
+        end
         for fn in restart_from_files[1]
-            aOp!(tOmega,0.0)
-            fvec = read_fvec_hdf5(fn)   
             s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
+            if emutype == "DMD" # we need to rename `fn`, because fvecfile is made online in emulator.jl
+                pid = getpid()
+                fn = "flowOmega/omega_dmd_vec_$pid"*binfo.nuc.cnuc*"_s"*strip(@sprintf("%6.2f",s))*".h5"
+            end
+            println("fn $fn emutype $emutype")
+            aOp!(tOmega,0.0)
+            fvec = read_fvec_hdf5(fn)
             aOp!(tmpOp,0.0); aOp!(tmpOp2,0.0); aOp!(Nested,0.0)
             update_Op_with_fvec!(fvec,tOmega,dict_idx_flatvec_to_op)
             BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
             Rpp = tmpOp.zerobody[1]
             Rch2_emu = Rpp + Rp2 + N/Z *Rn2 + DF
             Rch_emu = sqrt(Rch2_emu)
-            println("s="*strip(@sprintf("%10.2f",s))*"(Net): point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_emu))
+            println("emutype $emutype s="*strip(@sprintf("%10.2f",s))*": point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch_emu))
             aOp!(tOmega,0.0)
 
             ## remnant for IMSRG-Net ##
@@ -795,11 +810,11 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_de
             BCH_Transform(tOmega,Op_Rp2,tmpOp,tmpOp2,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_defbyrun,PandyaObj,to)
             aOp1_p_bOp2!(tmpOp,Op_Rp2,1.0,0.0)
         end
+        Rpp = Op_Rp2.zerobody[1]
+        Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
+        Rch = sqrt(Rch2)
+        println("IMSRG point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch))
     end
-    Rpp = Op_Rp2.zerobody[1]
-    Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
-    Rch = sqrt(Rch2)
-    println("IMSRG point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch))
     return tmpOp
 end
 

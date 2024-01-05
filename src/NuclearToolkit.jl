@@ -1,6 +1,7 @@
 module NuclearToolkit
 
 using AssociatedLegendrePolynomials
+using Arpack
 using Base.Threads
 using Combinatorics
 using FLoops
@@ -10,8 +11,10 @@ using KrylovKit
 using LatinHypercubeSampling
 using LaTeXStrings
 using LinearAlgebra
+using Measures
 using MKL # for intel machine
 using MPI
+using Plots
 using Printf
 using Random
 using StatsBase
@@ -58,6 +61,7 @@ include("IMSRG.jl/commutator.jl")
 include("IMSRG.jl/valencespace.jl")
 include("IMSRG.jl/emulator_imsrg.jl")
 export imsrg_flow_check
+export dmd_main
 
 ### ShellModel.jl
 include("ShellModel/shellmodel_main.jl")

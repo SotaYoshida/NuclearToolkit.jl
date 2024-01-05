@@ -13,13 +13,15 @@
 - `to` TimerOutput object to measure runtime&memory allocations
 
 # Optional Arguments
+- `delete_Ops` if true, delete Operators with current pid after IMSRGflow
 - `core_generator_type` only the "atan" is available
 - `valence_generator_type` only the "shell-model-atan" is available
 - `denominatorDelta::Float` denominator Delta, which is needed for multi-major shell decoupling
-- `debugmode::Int` 2: sample HF/IMSRG files
+- `debugmode=0`: 0: no debug, 1: debug, 2: debug with more info
+- `restart_from_files`: files to be read for restart 1st one is for IMSRG and 2nd one is for VSIMSRG
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,dWS,valencespace,Operators,MatOp,to;
-                    core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=2,Hsample=false,restart_from_files=String[])
+                    delete_Ops=false,core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
 
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[]&&valencespace!="",true,false)
@@ -31,7 +33,7 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     init_dictMonopole!(dictMono,Chan2b)
     IMSRGobj = init_IMSRGobject(HFobj,fn_params)
     PandyaObj = prep_PandyaLookup(binfo,HFobj,Chan1b,Chan2bD)
-    if length(restart_from_files) >= 1; IMSRGobj.smax = 0.5;end
+    if length(restart_from_files) >= 1; IMSRGobj.smax = IMSRGobj.dsmax;end
     d6j_defbyrun = Dict{UInt64,Float64}()
     IMSRGflow(binfo,HFobj,IMSRGobj,PandyaObj,Chan1b,Chan2bD,dictMono,d6j_defbyrun,core_generator_type,valence_generator_type,to;debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
     if vsIMSRG && length(restart_from_files) == 0
@@ -54,7 +56,6 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
     end
 
     if length(restart_from_files) >= 1
-        println("cZ $(binfo.nuc.cZ) Z $(binfo.nuc.Z) cN $(binfo.nuc.cN) N $(binfo.nuc.N)")
         if binfo.nuc.cZ != binfo.nuc.Z || binfo.nuc.cN != binfo.nuc.N
             println("normal ordering...")
             getNormalOrderedO(HFobj,IMSRGobj.H,Chan1b,Chan2bD,to;undo=true,OpeqH=true)
@@ -69,9 +70,12 @@ function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::Hamilt
                 getNormalOrderedO(HFobj,Op,Chan1b,Chan2bD,to;OpeqH=false)
             end
         end
-        write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,valencespace)
+        #write_vs_snt(binfo,HFobj,IMSRGobj,Operators,Chan1b,Chan2bD,valencespace)
     end
-
+    if !delete_Ops
+        pid = getpid()
+        rm("flowOmega/*_$(pid)*.bin")
+    end
     return IMSRGobj
 end
 
@@ -691,7 +695,6 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
     
     dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,nOmega,Chan2b)
     fvec = get_fvec_from_Op(s, nOmega, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
-
     set_dictMonopole!(dictMono,HFobj,Hs.twobody)
     func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
@@ -725,14 +728,15 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
         # remnant for IMSRG-Net sampling
-        if Hsample && ( ( 15.0 <= s <= 20.00  || s == 30.0  || s == 50.0 ) || valenceflow) #(istep <=10 && valenceflow)
+        #if Hsample && ( ( 15.0 <= s <= 20.00  || s == 30.0  || s == 50.0 ) || valenceflow) #(istep <=10 && valenceflow)
+        if Hsample && ( ( s <= 20.00  || s == 30.0  || s == 50.0 ) || valenceflow) #(istep <=10 && valenceflow)
             Nested = deepcopy(IMSRGobj.Omega)
             gather_omega_sofar_write(Hsample,istep, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, d6j_lj, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op,dict_if_idx_for_hdf5)
         end
 
         print_flowstatus(istep,s,ncomm,norms,IMSRGobj,Chan2b)
         if sqrt(norms[3]^2+norms[4]^2) < eta_criterion || s >= smax
-            aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)
+            aOp1_p_bOp2!(nOmega,Omega,1.0,0.0)            
             write_omega_bin(binfo,Chan2b,IMSRGobj.n_written_omega[1],nOmega,s,IMSRGobj.H.zerobody[1])
             gather_omega_sofar_write(Hsample,istep+1, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, d6j_lj, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op,dict_if_idx_for_hdf5)
             #svd_Op_twobody(s,Omega,Chan2b;verbose=true,max_rank=20)
@@ -742,39 +746,43 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
     end
 
     if length(restart_from_files) >= 1
+        s = 0.0
+        fvec = zeros(Float64,1)
+        emutype = ""
+        fn1 = restart_from_files[1][1]
+        if occursin("annomega",fn1)
+            emutype = ";IMSRGNet"
+        elseif occursin("dmd",fn1)
+            emutype = ";DMD"
+        end
         for (nth,fn) in enumerate(restart_from_files[1])
+            inttype = 
             aOp!(Omega,0.0)
-            fvec = read_fvec_hdf5(fn)   
             s = parse(Float64,split(split(split(fn,"_")[end],"s")[end],".h5")[1])
+            if occursin("dmdvec",fn) # make fvec from dmdvec
+                dmdvec = read_dmdvec_hdf5(fn)
+                write_fvec_hdf5(binfo,dmdvec,dict_if_idx_for_hdf5,s,IMSRGobj.H.zerobody[1];label="omega_dmd")
+                pid = getpid()
+                fn = "flowOmega/omega_dmd_vec_$pid"*binfo.nuc.cnuc*"_s"*strip(@sprintf("%6.2f",s))*".h5"
+            end
+            fvec = read_fvec_hdf5(fn)
             update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
             BCH_Transform(Omega,HFobj.H,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_lj,PandyaObj,to)
             println("IMSRG from file $fn")
-            println("En(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])    
+            println("En(s=",strip(@sprintf("%8.2f",s)),"$emutype) = ",tmpOp.zerobody[1])    
             if length(restart_from_files) == 2
-                Hcopy = deepcopy(tmpOp)
-                                
-                # to check
-                # nw = 2 
-                # read_omega_bin!(binfo,Chan2b,nw,Omega;fn="vsrunlog_e4_em500/Omega_82794O18_2.bin")
-                # println("Onebody from Omega ", Omega.onebody[1][1,:])
-                # s = parse(Float64,split(split(fn,"_s")[end],".h5")[1])
-                # BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_lj,PandyaObj,to)
-                # println("p1b=> ", tmpOp.onebody[1][1,:])                
-                # 
-
+                if length(restart_from_files[2]) == 0; continue; end 
                 fn = restart_from_files[2][nth]
                 fvec = read_fvec_hdf5(fn)
                 update_Op_with_fvec!(fvec,Omega,dict_idx_flatvec_to_op)
-                println("Onebody from fvecENN ", Omega.onebody[1][1,:])
+                println("Onebody from fvec ", Omega.onebody[1][1,:])
                 BCH_Transform(Omega,Hcopy,tmpOp,nOmega,Nested,ncomm,norms,Chan1b,Chan2bD,HFobj,dictMono,d6j_lj,PandyaObj,to)
                 println("p1b=> ", tmpOp.onebody[1][1,:])  
-
                 println("VSIMSRG from file $fn \nEn(s=",strip(@sprintf("%8.2f",s)),") = ",tmpOp.zerobody[1])
                 aOp1_p_bOp2!(tmpOp,Hs,1.0,0.0)
             end
         end
     end
-
     return nothing
 end 
 
@@ -817,8 +825,7 @@ function gather_omega_sofar_write(Hsample::Bool, istep, s, fvec, oOmega, nOmega,
 
     end
     get_fvec_from_Op!(s, fvec, tildeO, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
-    write_fvec_hdf5(binfo,fvec,dict_if_idx_for_hdf5,s,IMSRGobj.H.zerobody[1];label="omega") 
-
+    write_fvec_hdf5(binfo,fvec,dict_if_idx_for_hdf5,s,IMSRGobj.H.zerobody[1];label="omega")  
     get_fvec_from_Op!(s, fvec, IMSRGobj.eta, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
     write_fvec_hdf5(binfo,fvec,dict_if_idx_for_hdf5,s,IMSRGobj.H.zerobody[1];label="eta")
     return nothing 
@@ -902,32 +909,34 @@ function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Om
     end 
     close(io)
 
-    dim_pp = dim_nn = dim_pn = 0
-    for ch = 1:nch
-        dim = dims[ch]
-        J = Chan2b[ch].J
-        P = Chan2b[ch].prty
-        Tz = Chan2b[ch].Tz
-        O2b = Omega.twobody[ch]
-        #println("ch $ch JPT $J $P $Tz")
-        if Tz == -2; dim_pp += dim*(dim+1)÷2;end
-        if Tz == 0; dim_pn += dim*(dim+1)÷2;end
-        if Tz == 2; dim_nn += dim*(dim+1)÷2;end
-        if Tz != -2; continue;end
-        for chp = 1:nch
-            Jp = Chan2b[chp].J
-            Pp = Chan2b[chp].prty
-            Tzp = Chan2b[chp].Tz
-            if J != Jp; continue; end
-            if P != Pp; continue; end
-            if Tz != - Tzp;continue;end
-            O2bp = Omega.twobody[chp]
-            #println("s $s ch $ch J $J P $P O-O' ",norm(O2b-O2bp,2))
-        end
-    end 
+    # dim_pp = dim_nn = dim_pn = 0
+    # for ch = 1:nch
+    #     dim = dims[ch]
+    #     J = Chan2b[ch].J
+    #     P = Chan2b[ch].prty
+    #     Tz = Chan2b[ch].Tz
+    #     O2b = Omega.twobody[ch]
+    #     #println("ch $ch JPT $J $P $Tz")
+    #     if Tz == -2; dim_pp += dim*(dim+1)÷2;end
+    #     if Tz == 0; dim_pn += dim*(dim+1)÷2;end
+    #     if Tz == 2; dim_nn += dim*(dim+1)÷2;end
+    #     if Tz != -2; continue;end
+    #     for chp = 1:nch
+    #         Jp = Chan2b[chp].J
+    #         Pp = Chan2b[chp].prty
+    #         Tzp = Chan2b[chp].Tz
+    #         if J != Jp; continue; end
+    #         if P != Pp; continue; end
+    #         if Tz != - Tzp;continue;end
+    #         O2bp = Omega.twobody[chp]
+    #         #println("s $s ch $ch J $J P $P O-O' ",norm(O2b-O2bp,2))
+    #     end
+    # end 
     #println("dim: $(2*count1b+dim_pp+dim_pn+dim_nn) 1b $count1b 2bsum $(dim_pp+dim_pn+dim_nn) pp $dim_pp pn $dim_pn nn $dim_nn")
     return nothing
 end
+
+
 
 """
     read_omega_bin!(nw,Op,verbose=false)

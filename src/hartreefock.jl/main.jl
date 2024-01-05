@@ -13,14 +13,24 @@ Main API to carry out HF/HFMBPT or IMSRG calculation from snt file
 - `Operators=String[]` target observables other than Hamiltonian
 - `is_show=false` to show TimerOutput log (summary of run time and memory allocation)
 - `doIMSRG=false` to carry out IMSRG/VSIMSRG calculation 
-- `valencespace=[]` to spacify the valence space (e.g., "sd-shell" or ["sd-shell"], [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]]), if this is not empty, it tries to perform VS-IMSRG calculations
+- `valencespace=""` to spacify the valence space (e.g., "sd-shell" or ["sd-shell"], [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]]), if this is not empty, it tries to perform VS-IMSRG calculations
 - `corenuc=""` core nucleus, example=> "He4"
-- `ref="nucl"` to specify target reference state, "core" or "nucl" is supported
+- `ref="nucl"` to specify target reference state, "core" or "nucl" is supported.
+- `return_obj=false` to return `hfdata` or `imsrgdata` object from this function
+- `oupfn=""` to specify output file (writing stdout) name
+- `fn_params="optional_parameters.jl"` to specify the name of file to read optional parameters
+- `debugmode=0` to specify debug mode (0: no debug, 1: debug, 2: debug with more details)
+- `Hsample=false` to specify whether to sample IMSRG omega and eta operators for emulators in hdf5 format 
+- `restart_from_files=String[]` to specify the files to restart IMSRG flow from (e.g., ["ann_omega_vec_s20.h5"]). If this has two elements, the first one is for IMSRG and the other one is for VS-IMSRG.
 """
-function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,doIMSRG=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
+function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show=false,
+                doIMSRG=false,delete_Ops=false,valencespace="",corenuc="",ref="nucl",return_obj=false,oupfn="",
+                fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
     BLAS.set_num_threads(1)
-    println("BLAS.get_config() ",BLAS.get_config())
-    println("BLAS.get_num_threads() $(BLAS.get_num_threads()) nthreads $(Base.Threads.nthreads())")
+    if debugmode != 0
+        println("BLAS.get_config() ",BLAS.get_config())
+        println("BLAS.get_num_threads() $(BLAS.get_num_threads()) nthreads $(Base.Threads.nthreads())")
+    end
     @assert isfile(sntf) "sntf:$sntf is not found!"
     to = TimerOutput()
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
@@ -76,7 +86,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;delete_Ops=delete_Ops,fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators

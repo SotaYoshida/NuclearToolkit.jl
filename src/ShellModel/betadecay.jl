@@ -510,7 +510,7 @@ end
     ME_FF_func!(chan,qfactors,C_J,Mred,lambda_Ce,mass_n_nu,dict)
 
 Function to calc FF matrix elements.
-Since M0rs,M1r,M1rs,M2rs (M0sp,M1p) are evaluated in fm (1/fm) in KSHELL, it is needed to multiply 1/lambda_Ce (lambda_Ce) to get transition matrix element in natural unit.
+Since M0rs,M1r,M1rs,M2rs (M0sp,M1p) are evaluated in [fm] ([1/fm]) in KSHELL, it is needed to multiply 1/lambda_Ce (lambda_Ce) to get transition matrix element in natural unit.
 """
 function ME_FF_func!(chan,qfactors,C_J,Mred,lambda_Ce,mass_n_nu,dict)
     if chan == "M0rs" #M0rs=<f||[rC1 x sigma]^(0)t^-||i>

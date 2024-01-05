@@ -47,7 +47,7 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     end
     if io != stdout; close(io);end
     show_TimerOutput_results(to;tf=is_show)
-    return nothing
+    return true
 end
 
 """

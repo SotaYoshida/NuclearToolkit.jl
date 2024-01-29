@@ -1,7 +1,5 @@
-# using NuclearToolkit
+using NuclearToolkit
 using Test
-include("src/NuclearToolkit.jl")
-using .NuclearToolkit
 
 @testset  "NuclearToolkit.jl" begin
     @testset "generate NN potential" begin

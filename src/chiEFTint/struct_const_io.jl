@@ -713,6 +713,14 @@ end
 plot nn potential in partial wave over relative momentum space
 """
 function momplot(chiEFTobj,pnrank,llpSJ_s;fnlabel="",ctext="",fpath="",write_hdf5=true)
+    cpnrank = "pp"
+    if pnrank == 1
+        cpnrank = "pp"
+    elseif pnrank == 2
+        cpnrank = "pn"
+    elseif pnrank == 3
+        cpnrank = "nn"
+    end
     xr = chiEFTobj.xr_fm
     V12mom = chiEFTobj.V12mom
     tdict = chiEFTobj.dict_pwch[pnrank]
@@ -735,7 +743,6 @@ function momplot(chiEFTobj,pnrank,llpSJ_s;fnlabel="",ctext="",fpath="",write_hdf
         end
         for i =1:n_mesh;  tv[i] = V[i,i]; end
         if fpath != ""; tfdat = [xf,yfs[vidx]];end
-        #pw_plt(tx,xr,V,tv,pnrank,fnlabel;fdat=tfdat)
         if write_hdf5
             fn = "vmom_"*fnlabel*"_chiEFT_"*tx*"_"*string(pnrank)*".h5"
             h5open(fn,"w") do file
@@ -753,8 +760,8 @@ end
 function momplot_from_file(pnrank,tx)
     fn_bare = "vmom_bare_chiEFT_"*tx*"_"*string(pnrank)*".h5"
     fn_srg = "vmom_srg_chiEFT_"*tx*"_"*string(pnrank)*".h5"
-    if !isfile(fn_bare);println("file $fn_bare is not found");return nothing;end
-    if !isfile(fn_srg);println("file $fn_srg is not found");return nothing;end
+    if !isfile(fn_bare);println("file $fn_bare is not found, you need to run srg=false calculations to create 'vmom' files");return nothing;end
+    if !isfile(fn_srg);println("file $fn_srg is not found , you need to run srg=true calculations to create 'vmom' files");return nothing;end
     file = h5open(fn_bare,"r"); x_b = read(file,"x"); V_b = read(file,"V"); V_b_diag = diag(V_b);  close(file)    
     file = h5open(fn_srg,"r");  x_s = read(file,"x"); V_s = read(file,"V"); V_s_diag = diag(V_s); close(file)
     tls = ["pp", "pn", "nn"]

@@ -25,8 +25,12 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     BE_d_bare = Calc_Deuteron(chiEFTobj,to;io=io)
     @timeit to "renorm." SRG(chiEFTobj,to)
     BE_d_srg = Calc_Deuteron(chiEFTobj,to;io=io)
-    println("E(2H): bare = ",@sprintf("%8.5f", BE_d_bare),
-            " srg = ", @sprintf("%8.5f", BE_d_srg), " Diff.", @sprintf("%8.3e", BE_d_bare - BE_d_srg))
+    if chiEFTobj.params.srg
+        println("E(2H): bare = ",@sprintf("%9.6f", BE_d_bare),
+                " srg = ", @sprintf("%9.6f", BE_d_srg), " Diff.", @sprintf("%8.3e", BE_d_bare - BE_d_srg))
+    else
+        println("E(2H): bare = ",@sprintf("%9.6f", BE_d_bare))        
+    end
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
 
     if do_svd; target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]; svd_vmom(chiEFTobj,target_LSJ); end
@@ -34,8 +38,8 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     if write_vmom
         target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]]
         write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn"); write_onshell_vmom(chiEFTobj,3,target_LSJ;label="nn")
-        momplot(chiEFTobj,2,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
-        momplot(chiEFTobj,3,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
+        #momplot(chiEFTobj,2,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
+        #momplot(chiEFTobj,3,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
     end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT
@@ -83,6 +87,7 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     f_ss!(opfs[2]);f_c!(opfs[3])
     ## prep. Gauss point for integrals
     ts, ws = Gauss_Legendre(-1,1,40)
+    ts, ws = Gauss_Legendre(-1,1,96)
     ## prep. for TBMEs        
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
     println(io,"# of channels 2bstate ",length(infos)," #TBME = $nTBME")

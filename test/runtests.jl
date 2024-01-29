@@ -1,7 +1,6 @@
 using NuclearToolkit
 using Test
 
-
 @testset  "NuclearToolkit.jl" begin
     @testset "generate NN potential" begin
         @test make_chiEFTint(;fn_params="optional_parameters.jl")
@@ -14,7 +13,7 @@ using Test
         sntf = "tbme_em500n3lo_barehw20emax2.snt.bin"
         ## HF-MBPT from snt/snt.bin
         @testset "HFMBPT results under bare EM500,hw20,e2,nmesh50" begin
-            Eref = [1.47561,-5.80114,0.39324] 
+            Eref = [1.493, -5.805, 0.395]
             HFobj1 = hf_main(nucs,sntf,hw,emax;return_obj=true,verbose=true)
             Es1 = [HFobj1.E0, HFobj1.EMP2, HFobj1.EMP3]
             println("Eref $Eref")
@@ -35,7 +34,7 @@ using Test
                 @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
             end
         end
-        Eref = -4.06623902 
+        Eref = -4.05224909
         @testset "IMSRG results under bare EM500,hw20,e2,nmesh50" begin
             IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,return_obj=true)
             Es = IMSRGobj.H.zerobody[1]
@@ -47,7 +46,7 @@ using Test
             @test abs(Eref - Es[1]) < 1.e-6
         end
         @testset "shell model calculation" begin
-            Eref = [ -10.737, -8.426]
+            Eref = [ -10.720, -8.410]
             vs_sntf = "vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt";  n_eigen=2;targetJ=[]
             Ens = main_sm(vs_sntf,"Be8",n_eigen,targetJ)
             @test ((Eref[1]-Ens[1])^2 + (Eref[2] - Ens[2])^2) < 1.e-6

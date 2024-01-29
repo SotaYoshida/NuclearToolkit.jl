@@ -191,7 +191,7 @@ function dict_emn500n4lo()
     dLECs["D_3P2"] =   5.342585336
     dLECs["hD_3S1"] = -2.949089421
     dLECs["D_3S1"] = -20.793199632
-    dLECs["hD_3SD1"] = 1.3545478412
+    dLECs["hD_3SD1"] = 1.345478412 
     dLECs["D_3SD1"] = 2.176852098
     dLECs["D_3D1"] = -6.01826561
     dLECs["D_1D2"] = -1.545851484

@@ -5,7 +5,7 @@ calc. One-pion exchange potential in the momentum-space
 
 Reference: R. Machleidt, Phys. Rev. C 63 024001 (2001).
 """
-function OPEP(chiEFTobj,to;pigamma=false)
+function OPEP(chiEFTobj,to;pigamma=true)
     ts = chiEFTobj.ts; ws = chiEFTobj.ws; xr = chiEFTobj.xr; V12mom = chiEFTobj.V12mom
     dict_pwch = chiEFTobj.dict_pwch; 
     lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj
@@ -34,13 +34,13 @@ function OPEP(chiEFTobj,to;pigamma=false)
                     nfac = 1.0 / (xdwn * ydwn)
                     ree =  1.0 /sqrt(ex*ey) *freg(x,y,4)
                     f_sq!(opfs,xdwn,ydwn)
-                    t_fc = fff * ree *hc3 * nfac
+                    t_fc = fff  *hc3 * nfac * ree
                     tVs .= 0.0
                     cib_lsj_opep(t_fc,opfs,x,y,mpi02,1,J,pnrank,ts,ws,tVs,QLdict)
-                    if pnrank == 2 ## pp/nn
+                    if pnrank == 2 # charged pion exchange
                         cib_lsj_opep(t_fc,opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict;additive=true)
                         if pigamma
-                            t_fc_pig = t_fc 
+                            t_fc_pig = t_fc
                             cib_lsj_opep(t_fc,opfs,x,y,mpipm2,2,J,pnrank,ts,ws,tVs,QLdict,pigamma;additive=true,factor_pig=t_fc_pig)
                         end
                     end
@@ -49,7 +49,7 @@ function OPEP(chiEFTobj,to;pigamma=false)
                         tl,tlp,S,tJ = lsj[idx] 
                         if pnrank%2 == 1 && (tl+S+1)%2 != 1;continue;end
                         V12idx = get(tdict,tllsj,-1)
-                        if V12idx == -1;continue;end                        
+                        if V12idx == -1;continue;end
                         V12mom[V12idx][i,j] += tVs[idx]
                     end
                 end
@@ -59,25 +59,35 @@ function OPEP(chiEFTobj,to;pigamma=false)
     return nothing
 end
 
+"""
+pi-gamma correction Eq.(4) of U. van Kolck et al., Phys. Rev. Lett. 80, 4386 (1998).
+
+Note that 1/(1+beta^2) is ommited, since it is also included in the OPEP contribution,
+i.e. one needs to consider only the difference other than this factor.
+"""
 function fac_pig(beta,c5=0.0)
     return - (1.0-beta)^2 / (2*beta^2) * log(1+beta) +(1.0+beta)/(2*beta) -2.0*c5
 end
 
 """
 Ref: R. Machleidt, Phys. Rev. C 63, 024001 (2001).
+
+For pi-gamma correction term, which is introduced in e.g. EM500 interaction,
+one needs to evaluate integrals in (B11)~ terms in an explicit manner.
 """
-function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false,factor_pig=1.0)
+function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigamma=false;additive=false,factor_pig=1.0)    
     x2 = x^2; y2 = y^2; z = (mpi2+x2+y2) / (2*x*y)
     QJ = QJm1 = 0.0
-    nfac = fac_in
+    nfac = fac_in 
     q2s = Float64[ ]
+    qfac = 1.0
     if pigamma
         q2s = zeros(Float64,length(ts))        
-        nfac = ifelse(J==0,0.0,factor_pig)
         for (i,t) in enumerate(ts)
             q2 = x2 + y2 -2.0*x*y*t
             beta = q2 / mpi2
-            q2s[i] = (fsalpha/pi) * fac_pig(beta)
+            nfac = fac_in  * fsalpha/pi      
+            q2s[i] = fac_pig(beta) 
         end
         QJ = QL_numeric_fac(z,J,ts,ws,q2s)
         if J>0;QJm1=QL_numeric_fac(z,J-1,ts,ws,q2s);end    
@@ -85,10 +95,42 @@ function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigam
         QJ = QL(z,J,ts,ws,QLdict)
         if J>0;QJm1=QL(z,J-1,ts,ws,QLdict);end
     end
+
+    # Using Eq.(B17)-(B20), which is valid for OPEP (not pi-gamma correction term)
     IJ0 = nfac * QJ
-    IJ1 = nfac * (z * QJ -delta(J,0)) #Eq. (B18)
-    IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) #Eq. (B19)
-    IJ3 = nfac * sqrt(J/(J+1)) * (z* QJ - QJm1) #Eq. (B20)
+    IJ1 = nfac * (z * QJ  - delta(J,0) )  
+    IJ2 = nfac * (J*z* QJ + QJm1) /(J+1) 
+    IJ3 = nfac * sqrt(J/(J+1)) * (z* QJ - QJm1) 
+
+    if pigamma
+        QJ = QJm1 = 0.0 
+        for i=1:length(ws)
+            t = ts[i]
+            q2 = x2 + y2 -2.0*x*y*t
+            denom = (mpi2 +q2)
+            pj = Legendre(J,t) 
+            QJ += pj * q2s[i] * ws[i] / denom 
+            if J > 0 
+                QJm1 += Legendre(J-1,t) * q2s[i] * ws[i] / denom
+            end
+        end
+        QJ *= x * y
+        QJm1 *= x * y
+        IJ0 = nfac * QJ
+        QJ_ = 0.0 
+        for i=1:length(ws)
+            t = ts[i]
+            q2 = x2 + y2 -2.0*x*y*t
+            denom = mpi2 +q2
+            pj = Legendre(J,t) 
+            QJ_ += ts[i]* pj * q2s[i] * ws[i] / denom            
+        end
+        QJ_ *= x * y
+        IJ1 = nfac * QJ_
+        IJ2 = nfac * ( J * QJ_ + QJm1)/ (J+1) 
+        IJ3 = nfac * sqrt(J/(J+1)) * (QJ_ - QJm1)
+    end
+
     #Eq. (B28)
     v1 = opfs[1] * IJ0 + opfs[2] *IJ1
     v2 = opfs[3] * IJ0 + opfs[4] *IJ2
@@ -103,6 +145,7 @@ function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigam
     v34 = -sqrt(J*(J+1)) * (v3-v4)
     v56 =  sqrt(J*(J+1)) * (v5+v6)
     d2j1 = 1.0/(2*J+1)
+
     if nterm == 1
         phase = ifelse(pnrank==2,-1.0,1.0)
         tVs[1] = additive_sum(additive,tVs[1],v1 *phase)
@@ -119,11 +162,11 @@ function cib_lsj_opep(fac_in,opfs,x,y,mpi2,nterm,J,pnrank,ts,ws,tVs,QLdict,pigam
         tVs[1] = additive_sum(additive,tVs[1],ttis * v1)
         tVs[2] = additive_sum(additive,tVs[2],ttit * v2)
         tVs[3] = additive_sum(additive,tVs[3],d2j1 * ((J+1)* (ttis*v3) + J*(ttis*v4)-(ttis*v56)))
-        tVs[4] = additive_sum(additive,tVs[4],d2j1 * ( J*(v3*ttis) + (J+1)*(ttis*v4) +(ttis*v56)))
+        tVs[4] = additive_sum(additive,tVs[4],d2j1 * ttis * ( J*v3 + (J+1)*v4 +v56) )
         tVs[5] = additive_sum(additive,tVs[5],-d2j1 * ((ttis*v34)-(J+1)*(ttis*v5)+J*(ttis*v6)))
         tVs[6] = additive_sum(additive,tVs[6],-d2j1 * ((ttis*v34)+J*(ttis*v5)-(J+1)*(ttis*v6)))
     end
-    return nothing 
+     return nothing 
 end
 
 function additive_sum(TF::Bool,retv,inv)
@@ -206,7 +249,7 @@ end
 """
     tpe(chiEFTobj,to::TimerOutput)
 
-calc. two-pion exchange terms up to N3LO(EM) or N4LO(EMN)
+Function to calculate two-pion exchange terms up to N3LO(EM) or N4LO(EMN)
 
 The power conting schemes for EM/EMN are different;
 The ``1/M_N`` correction terms appear at NNLO in EM and at N4LO in EMN.
@@ -485,7 +528,7 @@ function Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=
         else
             f_N3LO_Vs = gA4 / (32.0 * pi^2 * Fpi4)
             f_N3LO_2l_Vs = -gA2 * r_d145 /(32.0*pi^2 *Fpi4)            
-            # There is type in EM review (D.11) 5/8 -> 3/8.
+            # There is typo in EM review (D.11) 5/8 -> 3/8.
             # See also N. Kaiser, Phys. Rev. C 65 (2002) 017001.
             tmp_s += Lq * (k2 + 3.0*q2/8.0 + nd_mpi4 /w2) *f_N3LO_Vs
             tmp_s += w2 * Lq * f_N3LO_2l_Vs
@@ -533,7 +576,7 @@ function Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false,useMa
         f_N3LO_a_Ws = c4^2 / (96.0*pi^2 *Fpi4)
         tmp_s += Lq * w2 * f_N3LO_a_Ws
         f_N3LO_b_Ws = - c4 / (192.0*pi^2 *Fpi4)
-        tmp_s += Lq * ( gA2 *(16.0*nd_mpi2 + 7.0 * q2) -w2) * f_N3LO_b_Ws
+        tmp_s += Lq * ( gA2 *(16.0*nd_mpi2 + 7.0 * q2) -w2) * f_N3LO_b_Ws #ci/MN
         f_N3LO_c_Ws = 1.0/ (1536.0* pi^2 * Fpi4)
         f_N3LO_2l_Ws= gA4 / (2048.0 * pi^2 * Fpi6)
         if EMN
@@ -603,7 +646,7 @@ function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=f
         tmp_s += Lq *( brak6 * f_N3LO_f6_Vc)
         ### 2-loop corrections
         if EMN 
-           obj = LoopObjects.n3lo; ImV = obj.ImVc; tmp_s += Integral_ImV(obj.mudomain,q2,obj,ImV)
+            obj = LoopObjects.n3lo; ImV = obj.ImVc; tmp_s += Integral_ImV(obj.mudomain,q2,obj,ImV)
         else
             ## EM eq.(D.9)
             Mm2cor = Lq *(2.0*nd_mpi2^4 / w^4 + 8.0*nd_mpi2^3 / w2 -q2^2 -2.0*nd_mpi2^2 ) + nd_mpi2^3 /(2.0 *w2)
@@ -712,7 +755,7 @@ function Vls_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=false)
     end
     if  chi_order >= 3
         f_N3LO_a_Vls = c2 *gA2 /(8.0* pi^2 * Fpi4)
-        tmp_s += f_N3LO_a_Vls * w2 * Lq
+        tmp_s += f_N3LO_a_Vls * w2 * Lq 
         f_N3LO_b_Vls = gA4 /(4.0* pi^2 * Fpi4)
         if !EMN
             tmp_s += f_N3LO_b_Vls * Lq * (11.0/32.0 * q2 + nd_mpi4 / w2)
@@ -734,7 +777,7 @@ function Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=false)
     if  chi_order >= 3
         f_N3LO_a_Wls = -c4 /(48.0*pi^2 * Fpi4)
         f_N3LO_b_Wls = 1.0 /(256.0*pi^2 * Fpi4) 
-        tmp_s += f_N3LO_a_Wls*Lq * (gA2 *(8.0*nd_mpi2 + 5.0*q2) + w2)
+        tmp_s += f_N3LO_a_Wls*Lq * (gA2 *(8.0*nd_mpi2 + 5.0*q2) + w2) #ci/MN 
         if !EMN
             tmp_s += f_N3LO_b_Wls*Lq * (16.0*gA2 *(nd_mpi2 + 3.0/8.0 *q2)
                      + 4.0/3.0 * gA4 *(4.0*nd_mpi4 /w2 -11.0/4.0 * q2 -9.0*nd_mpi2) -w2)

@@ -245,3 +245,50 @@ function dict_emn500n4lo()
     prep_valsidxs_dLECs!(vals,idxs,dLECs)
     return LECs(vals,idxs,dLECs)
 end
+
+function dict_nnlosat()
+    vals = Float64[ ]
+    idxs=Dict{String,Int64}()
+    dLECs=Dict{String,Float64}() 
+    ## LO con  10^4 GeV^-2
+    c_pp = -0.15814938
+    c_pn = -0.15982245
+    c_nn = -0.15915027
+    dLECs["C0_1S0"]  = c_pn
+    dLECs["C0_3S1"]  = -0.17767436
+    dLECs["C_CSB"] = 0.5 *(c_pp - c_nn)
+    dLECs["C_CIB"] = 0.5 * ( 0.5*(c_pp + c_nn) - c_pn)
+    ## NLO con 10^4 GeV^-4
+    dLECs["C2_3S1"]  = 1.00289267
+    dLECs["C2_3P0"]  = 1.39836559
+    dLECs["C2_1P1"]  = 0.55595877 
+    dLECs["C2_3P1"]  = -1.13609526
+    dLECs["C2_1S0"]  = 2.53936779
+    dLECs["C2_3SD1"] = 0.60071605
+    dLECs["C2_3P2"]  = -0.80230030
+
+    ## For pion exchange contribution
+    ## NNLO GeV^-1
+    dLECs["c1_NNLO"] = -1.12152120
+    dLECs["c2_NNLO"] =  0.0
+    dLECs["c3_NNLO"] = -3.92500586
+    dLECs["c4_NNLO"] =  3.76568716
+    ## for density-dependent NN, c1,c3,c4 can be different from genuine NN part
+    dLECs["ct1_NNLO"] = 0.0
+    dLECs["ct3_NNLO"] = 0.0 
+    dLECs["ct4_NNLO"] = 0.0
+
+    dLECs["cD"] = 0.0
+    dLECs["cE"] = 0.0
+
+    ## N3LO GeV^-2
+    dLECs["d12"] = 0.00
+    dLECs["d3"] =  0.00
+    dLECs["d5"] =  0.00
+    dLECs["d145"] = 0.00
+    ## N4LO GeV^-3
+    dLECs["e14"] = 0.00
+    dLECs["e17"] = 0.00
+    prep_valsidxs_dLECs!(vals,idxs,dLECs)
+    return LECs(vals,idxs,dLECs)
+end

@@ -41,7 +41,7 @@ struct ket_abJ
     J::Int64
 end
 
-function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
+function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork;verbose=false)
     lp = length(p_sps)
     lpm = length(m_p_sps)
     m_sps = vcat(m_p_sps,msps_n)
@@ -122,16 +122,13 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs
                 SPE_b = allSPEs[sps_b]
                 e1b = ifelse(a==c && b==d,SPE_a+SPE_b,0.0)
                 mat[idx_bra,idx_ket] = mat[idx_ket,idx_bra] = e1b + tbme_M
-                if a == 7 && b ==8
-                    println("abcd <$a $b|V|$c $d>J=$Jket =$tbme => tbme_M $tbme_M CG1 $CG1 CG2 $CG2")
-                end
                 println(io, @sprintf("%5i",qbit_a),@sprintf("%5i",qbit_b),
                         @sprintf("%5i",qbit_c),@sprintf("%5i",qbit_d), @sprintf("%5i",Jket), @sprintf("%15.6f",tbme_M))               
             end
         end
-        if true && pnrank == 2 # Li6
-            #for J = 0:10
-            for J = 2:3
+        if verbose # Li6
+            Jmin = 0; Jmax = 2
+            for J = Jmin:Jmax
                 idx = idxs[J+1]
                 if length(idx) == 0; continue; end
                 submat = mat[idx,idx]

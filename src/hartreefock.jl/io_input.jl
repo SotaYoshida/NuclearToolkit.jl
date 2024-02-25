@@ -263,7 +263,6 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            #push!(p_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
             push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
@@ -271,7 +270,6 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            #push!(n_sps,SingleParticleState(n,l,j,tz,0.0,false,false,false))
             push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
@@ -393,7 +391,6 @@ function store_1b2b(sps,dicts1b::Dict1b,dicts,binfo)
         end
     end
     ### store two-body part  dictMonopole is used in IMSRG
-    #dictTBMEs = [ Dict{Vector{Int64},Float64}( ) for pnrank=1:3]
     dictTBMEs = [ Dict{Vector{Int64},Vector{Float64}}( ) for pnrank=1:3]
     dictMonopole = [ Dict{Vector{Int64},valDictMonopole}( ) for pnrank=1:3]
     for pnrank=1:3

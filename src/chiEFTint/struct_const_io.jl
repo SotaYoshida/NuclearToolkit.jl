@@ -32,8 +32,7 @@ const nuclist = [
 
 delta(a::Int64,b::Int64) = ifelse(a==b,1.0,0.0)
 delta(a::Float64,b::Float64) = ifelse(a==b,1.0,0.0)
-hat(a::Int64) = sqrt(2.0*a+1.0)
-hat(a::Float64) = sqrt(2.0*a+1.0)
+hat(a) = sqrt(2.0*a+1.0)
 hahat(a::Int64) = 2.0*a+1.0
 
 function chara_SLJ(S,L,Lp,J) 
@@ -143,7 +142,9 @@ mutable struct chiEFTparams
     tbme_fmt::String
     fn_tbme::String
     pottype::String
-    LambdaSFR::Float64   
+    LambdaSFR::Float64  
+    Lambda_cutoff::Float64
+    n_reg::Int64
     target_nlj::Vector{Vector{Int64}}
     v_chi_order::Int64
     n_mesh_P::Int64
@@ -237,8 +238,10 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
     BetaCM = 0.0 
     kF = 1.35
     LambdaSFR = 0.0
+    Lambda_cutoff = Lambchi
+    n_reg = 3
     params = chiEFTparams(n_mesh,pmax_fm,emax,Nnmax,chi_order,calc_NN,calc_3N,coulomb,calc_EperA,
-                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,
+                          hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,Lambda_cutoff,n_reg,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
         println("Since $fn_params is not found, the default parameters will be used.")
@@ -278,6 +281,11 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if occursin("emn",params.pottype)
        params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
     end
+    if params.pottype == "nnlosat"
+        params.LambdaSFR = 700.0
+        params.Lambda_cutoff = 450.0
+        params.n_reg = 3
+     end
     if @isdefined(BetaCM); params.BetaCM = BetaCM; end
     if params.pottype =="emn500n4lo" && params.chi_order>4
         params.chi_order=4
@@ -286,6 +294,10 @@ function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
     if (params.pottype =="emn500n3lo" || params.pottype =="em500n3lo") && params.chi_order > 3
         println("chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
         params.chi_order=3
+    end
+    if (params.pottype =="nnlosat") && params.chi_order > 2
+        println("chi_order must be == 2for pottype=nnlosat, chi_order=2 will be used")
+        params.chi_order=2
     end
     tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
     params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
@@ -486,7 +498,7 @@ function write_tbme(params::chiEFTparams,io,ndim,izs,Jtot,vv,vv_2n3n,nljsnt,nljd
     return nothing
 end
 
-function select_io(MPIcomm::Bool,optimizer::String,nucs;use_stdout=false,fn="")
+function select_io(MPIcomm::Bool,optimizer::String,nucs;use_stdout=true,fn="")
     io = stdout
     if MPIcomm
         @assert optimizer == "MCMC" "when using MPI for make_chiEFTint function, optimizer should be \"MCMC\""
@@ -494,12 +506,15 @@ function select_io(MPIcomm::Bool,optimizer::String,nucs;use_stdout=false,fn="")
         MPI.Init()
         myrank = MPI.Comm_rank(MPI.COMM_WORLD)
         io = open("./mpilog_rank$(myrank).dat","w")
-    elseif fn !=""
-        io = open(fn,"w")
-    else
-        io = open("logfile.dat","w")
+        return io
     end
-    if use_stdout; io = stdout; end
+    if !use_stdout        
+        if fn !=""
+            io = open(fn,"w")
+        else
+            io = open("logfile.dat","w")
+        end
+    end
     return io
 end
 

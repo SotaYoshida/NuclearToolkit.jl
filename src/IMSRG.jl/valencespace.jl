@@ -1,4 +1,3 @@
-
 """
     check_valence_space(HFobj,valencespace)
 check validity of specified valence space
@@ -10,7 +9,7 @@ function check_valence_space(HFobj,valencespace)
     elseif typeof(valencespace)== String
         check_major_valencespace(valencespace,HFobj,v)
     else
-        check_str_valencespace(valencespace,HFobj,v)
+        check_array_valencespace(valencespace,HFobj,v)
     end
     return v
 end
@@ -61,13 +60,13 @@ function check_major_valencespace(str::String,HFobj,v)
 end
 
 """
-    check_str_valencespace(valencespace::Vector{Vector{Int64}},HFobj,v)
+    check_array_valencespace(valencespace::Vector{Vector{Int64}},HFobj,v)
 
 check valence space and overwrtie SingleParticleState.v/q
 
-specified by or Vector{Int} (e.g., [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]])
+specified by array of sps (e.g., [[0,1,1,-1],[0,1,3,-1], [0,1,1,1],[0,1,3,1]])
 """
-function check_str_valencespace(valencespace::Vector{Vector{Int64}},HFobj,v)
+function check_array_valencespace(valencespace::Vector{Vector{Int64}},HFobj,v)
     sps = HFobj.modelspace.sps
     for target in valencespace
         for (i,o) in enumerate(sps)

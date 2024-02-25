@@ -3,7 +3,9 @@ module NuclearToolkit
 using AssociatedLegendrePolynomials
 using Arpack
 using Base.Threads
+using CodecZlib
 using Combinatorics
+using DocStringExtensions
 using FLoops
 using Glob
 using HDF5
@@ -14,6 +16,7 @@ using LinearAlgebra
 using Measures
 using MKL # for intel machine
 using MPI
+using Parsers
 using Plots
 using Printf
 using Random
@@ -40,8 +43,10 @@ include("chiEFTint/threebody_JacobiHO.jl")
 include("chiEFTint/threebody_lab.jl")
 include("chiEFTint/matter.jl")
 include("chiEFTint/nn_sampling.jl")
+include("chiEFTint/read_me3j.jl")
 export make_chiEFTint
 export nn_IMSRG_sampling
+export test_me3j
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")

@@ -96,7 +96,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         addHCM1b!(Hamil,HCM,A)
         addHCM1b!(Hamil,TCM)
         @timeit to "HF" begin 
-            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,Object_3NF=Object_3NF,io=io,E0cm=E0cm) 
+            HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,Object_3NF,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
            IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;delete_Ops=delete_Ops,fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
@@ -120,8 +120,10 @@ end
     hf_main_mem(chiEFTobj,nucs,dict_TM,dWS,to;verbose=false,Operators=String[],valencespace="",corenuc="",ref="core")    
 "without I/O" version of `hf_main`
 """
-function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbose=false,Operators=String[],valencespace="",corenuc="",ref="core",io=stdout) 
-    emax = chiEFTobj.params.emax
+function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;
+                     verbose=false,Operators=String[],valencespace="",corenuc="",ref="core",io=stdout,
+                     e1max_file=0, e2max_file=0, e3max_file=0, e3max=0, fn_3nf="")
+    emax = emax_calc = chiEFTobj.params.emax
     hw = chiEFTobj.params.hw
     sntf = chiEFTobj.params.fn_tbme   
     nuc = def_nuc(nucs[1],ref,corenuc)
@@ -132,6 +134,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbo
     dicts = make_dicts_formem(nuc,dicts1b,dict_TM,sps,hw)
     Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
     dictTBMEs = dictsnt.dictTBMEs
+    Object_3NF = main_read_me3j(fn_3nf, emax_calc, e1max_file, e2max_file, e3max, e3max_file, sps, dWS, to)
     MatOp = Matrix{Float64}[]
     if "Rp2" in Operators
         MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
@@ -146,7 +149,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;verbo
             update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts)
             dictTBMEs = dictsnt.dictTBMEs
         end      
-        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;verbose=verbose,io=io)
+        HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,Object_3NF,to;verbose=verbose,io=io)
         if "Rp2" in Operators
             Op_Rp2 = InitOp(Chan1b,Chan2bD.Chan2b)
             eval_rch_hfmbpt(binfo,Chan1b,Chan2bD,HFobj,Op_Rp2,dWS,MatOp,to;io=io)
@@ -719,8 +722,8 @@ This function returns object with HamiltonianNormalOrdered (HNO) struct type, wh
 - `fp/fn::Matrix{Float64}` one-body int.
 - `Gamma:: Vector{Matrix{Float64}}` two-body int.
 """
-function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,to;
-                      Object_3NF = "", itnum=300,verbose=false,HFtol=1.e-14,io=stdout,E0cm=0.0)                      
+function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,Object_3NF,to;
+                      itnum=300,verbose=false,HFtol=1.e-14,io=stdout,E0cm=0.0)                      
     Chan2b = Chan2bD.Chan2b; dict_2b_ch = Chan2bD.dict_ch_JPT
     dim1b = div(length(sps),2)
     mat1b = zeros(Float64,dim1b,dim1b)

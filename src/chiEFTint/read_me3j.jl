@@ -29,12 +29,11 @@ struct Obj_3BME
 end
 
 function main_read_me3j(fn_3nf, e1max, e1max_file, e2max_file, e3max, e3max_file, sps_snt, dWS, to) 
-    println("ModelSpace: {e1max $e1max e3max $e3max}  File: {e1max $e1max_file e2max $e2max_file e3max $e3max_file}")
-
     sps_3b = get_modelspace(e1max, e1max_file, e2max_file, e3max, e3max_file)
     if fn_3nf == "" 
         return Obj_3BME(false, sps_3b, Dict{UInt64,Int64}(),Dict{Int,Int}(), Dict{Int,Int}(), [0.0], Dict{UInt64,Float64}())
     end      
+    println("ModelSpace: {e1max $e1max e3max $e3max}  File: {e1max $e1max_file e2max $e2max_file e3max $e3max_file}")
 
     @timeit to "Read" begin
         println("Reading 3nf... \n$fn_3nf")

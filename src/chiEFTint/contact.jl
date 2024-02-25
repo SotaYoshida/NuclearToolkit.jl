@@ -1,7 +1,7 @@
 """
     LO(chiEFTobj,to)    
 
-Calculate Leading Order (LO), `Q^0`` contact term.
+Calculate Leading Order (LO), ``Q^0`` contact term.
 """
 function LO(chiEFTobj,to)    
     xr = chiEFTobj.xr
@@ -53,6 +53,7 @@ function NLO(chiEFTobj,to;n_regulator=2)
     funcs = [fxxpyy,fxy,fxy,fxy,fxxpyy,fx2,fy2,fxy] #fx2
     llpSJ_s = [ [0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],
                 [0,0,0,0],[0,2,1,1],[2,0,1,1],[1,1,1,2]] #
+
     for pnrank = 1:3
         for n=1:8            
             LEC = tLECs[n] * fac
@@ -60,6 +61,8 @@ function NLO(chiEFTobj,to;n_regulator=2)
             l,lp,S,J = llpSJ_s[n]
             if pnrank%2 == 1 && (l+S+1) % 2 != 1;continue;end
             if occursin("emn500",chiEFTobj.params.pottype) && n==4
+                n_reg = 3
+            elseif chiEFTobj.params.pottype == "nnlosat"
                 n_reg = 3
             else
                 n_reg = n_regulator

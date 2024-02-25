@@ -2,7 +2,7 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://SotaYoshida.github.io/NuclearToolkit.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://SotaYoshida.github.io/NuclearToolkit.jl/dev)
-[![Build Status](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Build Status](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml/badge.svg?branch=dev)](https://github.com/SotaYoshida/NuclearToolkit.jl/actions/workflows/CI.yml?branch=dev)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.04694/status.svg)](https://doi.org/10.21105/joss.04694)
 <img src="https://github.com/SotaYoshida/NuclearToolkit.jl/blob/main/docs/src/assets/logo_full.png" width=60%>
 

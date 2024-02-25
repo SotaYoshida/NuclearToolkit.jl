@@ -203,8 +203,6 @@ function get_non0omega_idxs(HFobj::HamiltonianNormalOrdered,Omega::Operator,Chan
             for j = 1:nket
                 if i <= j
                     hit += 1
-                    #     ppidx = get(HFobj.modelspace.spaces.pp,ch,Int64[])
-                    #     hhidx = get(HFobj.modelspace.spaces.hh,ch,Int64[])                    
                     hitnon0 += 1
                     dict_idx_op_to_flatvec[[ch,i,j]] = hitnon0
                     dict_idx_flatvec_to_op[hitnon0] = [ch,i,j]
@@ -329,25 +327,45 @@ function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
     println("norm(Y-Yapprox,Inf) = ", @sprintf("%10.4e",norm(Y - Yapprox,Inf)), " Fro. ", @sprintf("%10.4e",norm(Y - Yapprox,2)))
 end
 
+function check_stationarity(z, z_k, z_pred,  Atilde, itnum=1000)
+    tf = true
+    z .= z_pred
+    z_k .= z_pred
+    norms = zeros(Float64,itnum)
+    for it = 1:itnum        
+        BLAS.gemv!('N', 1.0, Atilde, z, 0.0, z_k)
+        norms[it] = norm(z_k - z_pred)
+    end
+    println("norms $norms")
+    return tf
+end
+
+"""
+function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
+
+Function to perform the DMD extrapolation.
+The time evolution (IMSRG flow) of original data `x` is approximated by the time evolution of 
+`z` in the latent space, and then the approximated data `x'` is written to a HDF5 file.
+"""
 function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
     @assert length(s_pred) == length(fn_exact) "s_pred and fn_exact must have the same length"
     if length(s_pred) > 0
         r = size(U_r)[2]
-        x1_r = BLAS.gemv('T', 1.0, U_r, x_start)
-        x_k = zeros(Float64,r)
-        x_new = zeros(Float64,r) .+ x1_r
+        z1_r = BLAS.gemv('T', 1.0, U_r, x_start)
+        z_k = zeros(Float64,r)
+        z_new = zeros(Float64,r) .+ z1_r
         for ith = 1:length(s_pred)
             s_target = s_pred[ith]
-            x_k .= 0.0
-            x_new .= x1_r
+            z_k .= 0.0
+            z_new .= z1_r
             s = s_end
             while true
-                x_k .= x_new
-                BLAS.gemv!('N', 1.0, Atilde, x_k, 0.0, x_new)
+                z_k .= z_new
+                BLAS.gemv!('N', 1.0, Atilde, z_k, 0.0, z_new)
                 s += ds
                 if s >= s_target; break; end
             end
-            x_pred = BLAS.gemv('N', 1.0, U_r, x_k)
+            x_pred = BLAS.gemv('N', 1.0, U_r, z_k)
             E_imsrg = 0.0
             if isfile(fn_exact[ith])
                 fvec_inf = read_fvec_hdf5(fn_exact[ith])
@@ -359,6 +377,7 @@ function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc,
             end
             write_dmdvec_hdf5(x_pred,s,E_imsrg,nuc,inttype,emax,oupdir)
         end
+        check_stationarity(z1_r, z_k, z_new, Atilde)
     end
     return nothing
 end

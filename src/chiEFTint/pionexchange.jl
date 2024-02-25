@@ -15,6 +15,12 @@ function OPEP(chiEFTobj,to;pigamma=true)
     opfs = zeros(Float64,8)
     mpi0 = mpis[2]; mpi02 = mpi0^2
     mpipm = mpis[1]; mpipm2 = mpipm^2
+    Lambda_cutoff = chiEFTobj.params.Lambda_cutoff
+    n_reg = 4
+    if chiEFTobj.params.pottype == "nnlosat"
+        n_reg = 3
+        pigamma = false
+    end
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
         MN = Ms[pnrank];dwn = 1.0/MN
@@ -32,7 +38,7 @@ function OPEP(chiEFTobj,to;pigamma=true)
                     y = xr[j]; ydwn = y*dwn;sq_ydwn= ydwn^2
                     ey = sqrt(1.0+sq_ydwn)
                     nfac = 1.0 / (xdwn * ydwn)
-                    ree =  1.0 /sqrt(ex*ey) *freg(x,y,4)
+                    ree =  1.0 /sqrt(ex*ey) *freg(x,y,n_reg;Lambchi=Lambda_cutoff)
                     f_sq!(opfs,xdwn,ydwn)
                     t_fc = fff  *hc3 * nfac * ree
                     tVs .= 0.0
@@ -615,7 +621,7 @@ function Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=f
     if chi_order >= 2                   
         f_NNLO_Vc = 3.0 * gA2 / (16.0 * pi * Fpi4)    
         if EMN
-            tmp_s += - ( 2.0 * nd_mpi2 * (2.0*c1 -c3) -q2*c3) * tw2Aq * f_NNLO_Vc 
+            tmp_s += - ( 2.0 * nd_mpi2 * (2.0*c1 -c3) -q2*c3) * tw2Aq * f_NNLO_Vc  #Eq. (4.13)
             if chi_order >= 3                
                 factor = f_NNLO_Vc *gA2 * 2/16.0
                 term1 = nd_mpi^5 / (2 * w2)
@@ -818,6 +824,13 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
     nd_mpi2 = nd_mpi^2
     n_mesh = length(xr)
     usingSFR = ifelse(LamSFR_nd!=0.0,true,false)
+    Lambda_TPE = params.Lambda_cutoff
+    n_reg_TPE = 2 
+    powercounting_EMN = usingSFR
+    if params.pottype == "nnlosat"
+        n_reg_TPE=3
+        powercounting_EMN = false
+    end
     @inbounds @threads for V_i= 1:n_mesh
         x = xr[V_i]; xdwn = x*dwn; xdwn2 = xdwn^2; ex = sqrt(1.0+xdwn2)  
         tid = threadid()        
@@ -826,13 +839,14 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
         target = tmpsum[tid]
         tVs = tVs_para[tid]
         f_T,f_SS,f_C,f_LS,f_SL = opfs_para[tid]
+        
         @inbounds for V_j = 1:n_mesh
             y = xr[V_j]; ydwn = y*dwn; ydwn2=ydwn^2; ey = sqrt(1.0+ydwn2)
             f_sq!(f_T,xdwn,ydwn);f_ls!(f_LS,xdwn,ydwn);f_sl!(f_SL,xdwn,ydwn)
             
             k2=0.5*(xdwn2 + ydwn2)
             ree = 1.0 /sqrt(ex*ey)
-            fc = fff * hc3 * ree * freg(x,y,2)
+            fc = fff * hc3 * ree * freg(x,y,n_reg_TPE;Lambchi=Lambda_TPE)
             for i in eachindex(gis); gis[i] .= 0.0; end #gis [1:7][1:9] 
             @inbounds for n in eachindex(ts)
                 tpj = @view pjs_para[tid][n,:] 
@@ -842,31 +856,31 @@ function tpe_for_givenJT(chiEFTobj,LoopObjects,Fpi2,tmpLECs,
                 Lq,Aq = calc_LqAq(w,q,nd_mpi,usingSFR,LamSFR_nd)
        
                 ## Tensor term: Vt
-                tmp_s = Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vt_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[1])
                 ## Tensor term: Wt
-                tmp_s = Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2,tllsj;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Wt_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2,tllsj;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[2])
                 ## sigma-sigma term: Vs
-                tmp_s = Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vs_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,r_d145,Fpi2;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[3])
                 ## sigma-sigma term: Ws
-                tmp_s = Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Ws_term(chi_order,LoopObjects,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[4])
                 ## Central term: Vc
-                tmp_s = Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Vc_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c1,c2,c3,Fpi2,LoopObjects;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[5])
                 ## Central term: Wc
-                tmp_s = Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=usingSFR,calc_TPE_separately=calc_TPE_sep)
+                tmp_s = Wc_term(chi_order,LoopObjects,w,tw2,q2,k2,Lq,Aq,nd_mpi,c4,r_d12,r_d3,r_d5,Fpi2;EMN=powercounting_EMN,calc_TPE_separately=calc_TPE_sep)
                 axpy!(tmp_s*int_w,tpj,target[6])
                 ## LS term: Vls
-                tmp_s = Vls_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=usingSFR)
+                tmp_s = Vls_term(chi_order,w,tw2,q2,Lq,Aq,nd_mpi,c2,Fpi2;EMN=powercounting_EMN)
                 axpy!(tmp_s*int_w,tpj,target[7])
                 ## LS term: Wls
-                tmp_s = Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=usingSFR)
+                tmp_s = Wls_term(chi_order,w,q2,Lq,Aq,nd_mpi,c4,Fpi2;EMN=powercounting_EMN)
                 axpy!(tmp_s*int_w,tpj,target[8])
                 ## sigma-L term: Vsl
-                tmp_s = Vsl_term(chi_order,Lq,Fpi2;EMN=usingSFR)
+                tmp_s = Vsl_term(chi_order,Lq,Fpi2;EMN=powercounting_EMN)
                 axpy!(tmp_s*int_w,tpj,target[9])        
                 if !calc_TPE_sep            
                     n4lo_tpe_integral!(LoopObjects,q2,int_w,tpj,target)

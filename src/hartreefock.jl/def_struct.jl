@@ -331,6 +331,7 @@ struct `dWS2n`, Wigner symbols used in PreCalcHOB
 struct dWS2n
     dtri::Dict{Int64,Float64}
     dcgm0::Dict{Int64,Float64}
+    dcg_spin::Dict{UInt64,Float64}
     d6j_int::Dict{UInt64,Float64}
     d6j_lj::Dict{UInt64,Float64}    
     d9j_lsj::Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}

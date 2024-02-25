@@ -86,7 +86,6 @@ function construct_chiEFTobj(do2n3ncalib,itnum,optimizer,MPIcomm,io,to;fn_params
     opfs = [ zeros(Float64,11) for i=1:5]#T,SS,C,LS,SL terms 
     f_ss!(opfs[2]);f_c!(opfs[3])
     ## prep. Gauss point for integrals
-    ts, ws = Gauss_Legendre(-1,1,40)
     ts, ws = Gauss_Legendre(-1,1,96)
     ## prep. for TBMEs        
     infos,izs_ab,nTBME = make_sp_state(params;io=io)
@@ -426,7 +425,7 @@ end
 """
     read_LECs(pottype)
 
-read LECs for a specified potential type, `em500n3lo`,`em500n3lo`,`emn500n4lo`.
+read LECs for a specified potential type, `em500n3lo`,`em500n3lo`,`emn500n4lo`, `nnlosat`.
 """
 function read_LECs(pottype)  
     if pottype =="em500n3lo"
@@ -435,13 +434,15 @@ function read_LECs(pottype)
         return dict_emn500n3lo()
     elseif pottype == "emn500n4lo"
         return dict_emn500n4lo()
+    elseif pottype == "nnlosat" 
+        return dict_nnlosat()
     else
         @error "unknown potype $pottype"       
     end
 end
 
 """
-    calc_Vmom!(pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,n_reg,to;is_3nf=false)    
+    calc_Vmom!(pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,J,pfunc,to;is_3nf=false)    
 
 calc. NN-potential for momentum mesh points
 """
@@ -457,7 +458,7 @@ function calc_Vmom!(params::chiEFTparams,pnrank,V12mom,tdict,xr,LEC,LEC2,l,lp,S,
             y = xr[j]; ey = sqrt(1.0+(dwn.*y)^2)
             ree = 1.0/sqrt(ex*ey)
             if is_3nf;ree=1.0;end
-            fac = pfunc(x,y,LEC,LEC2) * freg(x,y,n_reg) *ree
+            fac = pfunc(x,y,LEC,LEC2) * freg(x,y,n_reg;Lambchi=params.Lambda_cutoff) *ree
             V[i,j] += fac
         end
     end

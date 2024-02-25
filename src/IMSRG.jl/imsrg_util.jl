@@ -22,7 +22,7 @@
 """
 function imsrg_main(binfo::basedat,Chan1b::chan1b,Chan2bD::chan2bD,HFobj::HamiltonianNormalOrdered,dictsnt,dWS,valencespace,Operators,MatOp,to;
                     delete_Ops=false,core_generator_type="atan",valence_generator_type="shell-model-atan",fn_params="optional_parameters.jl",debugmode=0,Hsample=false,restart_from_files=String[])
-
+    if binfo.nuc.corenuc == "" && vsIMSRG; println("core (hole) for VS-IMSRG is not specified."); return nothing;end 
     dictMono = deepcopy(dictsnt.dictMonopole)
     vsIMSRG = ifelse(valencespace!=[]&&valencespace!="",true,false)
     update_core_in_sps!(binfo,HFobj)

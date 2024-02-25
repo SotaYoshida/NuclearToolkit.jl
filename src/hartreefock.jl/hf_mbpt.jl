@@ -68,6 +68,10 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
                 nume = Gam[ib,ik]^2
                 deno = e1b_α[iα] + e1b_α_[iα_] - e1b_β[iβ] - e1b_β_[iβ_]
                 EMP2 += (2*J+1) * nume/deno * nafac
+                # if nume * nafac != 0.0 && α == α_ == 1
+                #     println("ch $ch J $J ib $ib ik $ik a $(α) b $(α_) ij $(β) $(β_)  tbme $(Gam[ib,ik]) eab = $(e1b_α[iα] + e1b_α_[iα_]) eij $( - e1b_β[iβ] - e1b_β_[iβ_]) deno $deno")
+                #     println("sps[beta]", sps[β],"\n")
+                # end
                 if Tz == -2; EMP2_pp +=  (2*J+1) * nume/deno;end
                 if Tz ==  0; EMP2_pn +=  (2*J+1) * nume/deno;end
                 if Tz ==  2; EMP2_nn +=  (2*J+1) * nume/deno;end
@@ -75,8 +79,8 @@ function HF_MBPT2(binfo,modelspace,fp,fn,e1b_p,e1b_n,Chan2b,Gamma;verbose=false,
         end
     end
     if true # verbose
-        println(io,"EMP2 ",@sprintf("%12.5f",EMP2)," 1b ",@sprintf("%9.3f",EMP2_1b),
-                " pp ",@sprintf("%9.3f",EMP2_pp)," pn ",@sprintf("%9.3f",EMP2_pn)," nn ",@sprintf("%9.3f",EMP2_nn))
+        println(io,"EMP2 ",@sprintf("%12.5f",EMP2)," 1b ",@sprintf("%10.5f",EMP2_1b),
+                " pp ",@sprintf("%10.5f",EMP2_pp)," pn ",@sprintf("%10.5f",EMP2_pn)," nn ",@sprintf("%10.5f",EMP2_nn))
     end
     return EMP2
 end

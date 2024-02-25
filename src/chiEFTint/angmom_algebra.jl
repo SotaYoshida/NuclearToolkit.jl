@@ -50,7 +50,7 @@ end
 """
     TMtrans(chiEFTobj::ChiralEFTobject,dWS,to;writesnt=true)
 
-Function to carry out Talmi-Mochinsky transformation for NN interaction in HO space and to write out an sinput file.
+Function to carry out Talmi-Moshinsky transformation for NN interaction in HO space and to write out an sinput file.
 """
 function TMtrans(chiEFTobj::ChiralEFTobject,dWS,to;writesnt=true)
     V12ab = Vrel(chiEFTobj,to)
@@ -318,7 +318,7 @@ To calc. generalized harmonic oscillator brackets (HOBs), ``<<n_l\\ell_l,n_r\\el
 - [1] B.Buck& A.C.merchant, Nucl.Phys. A600 (1996) 387-402
 - [2] G.P.Kamuntavicius et al., Nucl.Phys. A695 (2001) 191-201
 """
-function HObracket_d6j(nl, ll, nr, lr, n1, l1, n2, l2, Lam, d::Float64, dtri, dcgm0, d6j, to)
+function HObracket_d6j(nl, ll, nr, lr, n1, l1, n2, l2, Lam, d::Float64, dtri, dcgm0, d6j)
     r = 0.0
     ee = 2*nl + ll
     er = 2*nr + lr
@@ -682,6 +682,15 @@ function get_nkey6(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64):
 end
 
 """
+Unlike other wigner symbols, constructing CG coefficients enconter the case with negative indices.
+One way to avoid this is to use the following function to get hash key for the CG coefficients.
+This function asssume all `j` is >= -3
+"""
+function get_nkey6_shift(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::UInt64    
+    return  (UInt64(j1+3) << 50) + (UInt64(j2+3) << 40) +(UInt64(j3+3) << 30) +  (UInt64(j4+3) << 20) + (UInt64(j5+3) << 10) +  UInt64(j6+3)
+end
+
+"""
     get_nkey_from_abcdarr(tkey;ofst=1000)
 
 To get integer key from an Int array (with length greater than equal 4)
@@ -772,7 +781,7 @@ Function to get *canonical* order of 6j-symbol arguments:
 ```math
 \\left\\{ \\begin{matrix} j_1 & j_3  & j_5 \\\\ j_2 & j_4 & j_6\\end{matrix} \\right\\} 
 ```
-
+This may not bring speed up though...
 The canonical order is defined as follows:
 - Since the 6j-symbol is invariant under permutation of any two columns, we can always re-order the columns such that ``j_1+j_2 \\leq j_3+j_4 \\leq j_5+j_6``.
 - If sum of two columns are equal, we re-order columns based on `j_col_score`, using the minimum j value of the two columns.
@@ -802,6 +811,17 @@ function get_canonical_order_6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int6
         end
     end
     return o
+end
+
+function unhash_key6j(i::UInt64)
+    a, b, c, d, e, f = 0, 0, 0, 0, 0, 0
+    a = Int(i >> 50)
+    b = Int((i >> 40) & 0x3FF)
+    c = Int((i >> 30) & 0x3FF)
+    d = Int((i >> 20) & 0x3FF)
+    e = Int((i >> 10) & 0x3FF)
+    f = Int(i & 0x3FF)
+    return a, b, c, d, e, f
 end
 
 function get_key6j_sym(j1::Int64,j3::Int64,j5::Int64,j2::Int64,j4::Int64,j6::Int64)::UInt64
@@ -838,13 +858,10 @@ function get_key6j_sym(j1::Int64,j3::Int64,j5::Int64,j2::Int64,j4::Int64,j6::Int
             return get_nkey6(tj1,tj3,tj5,tj2,tj4,tj6)
         end
         if (tj5 < tj6 && tint == 1) || (tj5 > tj6 && tint == 2)            
-            #tj1,tj2=tj2,tj1; tj3,tj4=tj4,tj3
             return get_nkey6(tj2,tj4,tj5,tj1,tj3,tj6)
         elseif (tj3 < tj4 && tint == 1) || ( tj3 > tj4 && tint == 2)
-            #tj1,tj2=tj2,tj1;tj5,tj6=tj6,tj5
             return get_nkey6(tj2,tj3,tj6,tj1,tj4,tj5)
         elseif (tj1 < tj2 && tint == 1) || (tj1 > tj2 && tint == 2)
-            #tj3,tj4=tj4,tj3;tj5,tj6=tj6,tj5
             return get_nkey6(tj1,tj4,tj6,tj2,tj3,tj5)
         end
     end
@@ -897,9 +914,9 @@ function call_d9j_lsj(j1,j2,j3,j4,j5,j6,j7,j8,j9,d9j)
 end
 
 """
-Function to construct `dWS2n` struct.
+Function to construct `dWS2n` struct, CG-coefficients and Wigner symbols for the given parameters.
 """
-function prep_dWS2n(params,to;emax_calc=0)
+function prep_dWS2n(params,to;emax_calc=0, no_need_9j_HOB=false)
     emax = ifelse(emax_calc!=0,emax_calc,params.emax)
     e2max = 2 * emax
     Nnmax = params.Nnmax
@@ -907,20 +924,24 @@ function prep_dWS2n(params,to;emax_calc=0)
     lmax = max(e2max,Nnmax,jmax) * 2
     dtri = prep_dtri(lmax+1)
     dcgm0 = prep_dcgm0(lmax)
+    dcg_spin = prep_dcg_spin()
     @timeit to "d6j_int" d6j_int = prep_d6j_int(emax,jmax,to)
     @timeit to "d6j_lj" d6j_lj  = prep_d6j_lj(jmax)
-    @timeit to "d9j" d9j_lsj = prep_d9j_lsj(jmax,lmax)
-    @timeit to "HOB" dictHOB = prep_dictHOB(e2max,dtri,dcgm0,d6j_int,to)    
+    @timeit to "d9j" d9j_lsj = prep_d9j_lsj(jmax,lmax,no_need_9j_HOB)
+    @timeit to "HOB" dictHOB = prep_dictHOB(e2max,dtri,dcgm0,d6j_int,no_need_9j_HOB)
     println("size of dWS (jmax $jmax lmax $lmax e2max $e2max Nnmax $Nnmax):\n",
             show_size_inMB("   dtri",dtri), show_size_inMB("  dcgm0",dcgm0),
             show_size_inMB("d6j_int",d6j_int),show_size_inMB(" d6j_lj",d6j_lj),"\n",
             show_size_inMB("d9j_lsj",d9j_lsj),show_size_inMB("dictHOB",dictHOB))  
-    return dWS2n(dtri,dcgm0,d6j_int,d6j_lj,d9j_lsj,dictHOB)
+    return dWS2n(dtri,dcgm0,dcg_spin,d6j_int,d6j_lj,d9j_lsj,dictHOB)
 end
 
 #{la 1/2 ja;lb 1/2 jb;L S J}
-function prep_d9j_lsj(jmax2,Jmax)
+function prep_d9j_lsj(jmax2,Jmax,no_need_9j_HOB)
     d9j_lsj = Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}()
+    if no_need_9j_HOB
+        return d9j_lsj
+    end
     for J = 0:2:Jmax
         for S = 0:2:2
             for L = abs(J-S):2:J+S
@@ -943,8 +964,11 @@ function prep_d9j_lsj(jmax2,Jmax)
     return d9j_lsj
 end
 
-function prep_dictHOB(e2max,dtri,dcgm0,d6j_int,to)
+function prep_dictHOB(e2max,dtri,dcgm0,d6j_int,no_need_9j_HOB)
     dictHOB = Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}()
+    if no_need_9j_HOB
+        return dictHOB
+    end
     for Lam = 0:e2max
         dictHOB[Lam] = Dict{Int64,Dict{Int64,Float64}}()
     end
@@ -964,7 +988,7 @@ function prep_dictHOB(e2max,dtri,dcgm0,d6j_int,to)
                                 for Lam = max(abs(l-L),abs(lp-Lp)):min(l+L,lp+Lp)
                                     key1, key2 = get_HOB_nlkey(n, l, N, L, np, lp, Np, Lp)
                                     if !haskey(dictHOB[Lam],key1); dictHOB[Lam][key1] = Dict{Int64,Float64}();end
-                                    tHOB = HObracket_d6j(n, l, N, L, np, lp, Np, Lp, Lam, 1.0, dtri, dcgm0, d6j_int, to)
+                                    tHOB = HObracket_d6j(n, l, N, L, np, lp, Np, Lp, Lam, 1.0, dtri, dcgm0, d6j_int)
                                     dictHOB[Lam][key1][key2] = tHOB * (-1)^(l+Lp)
                                 end
                             end
@@ -1001,8 +1025,6 @@ function prep_d6j_int(emax,jmax_in,to)
                         for J = abs(J23-j1):2:J23+j1
                             if !tri_check(J/2,J12/2,j3/2); continue;end
                             if !(j1+j3<=j2+J<=J12+J23); continue;end
-                            #tj1, tj2, tj3, tj4, tj5, tj6 = get_key6j_sym(j1,j2,J12,j3,J,J23)
-                            #d6j_int[get_nkey6(tj1,tj2,tj3,tj4,tj5,tj6)] = wigner6j(Float64,j1/2,j2/2,J12/2,j3/2,J/2,J23/2)
                             nkey = get_key6j_sym(j1,j2,J12,j3,J,J23)
                             d6j_int[nkey] = wigner6j(Float64,j1/2,j2/2,J12/2,j3/2,J/2,J23/2)
                         end
@@ -1072,6 +1094,44 @@ function prep_dcgm0(lmax)
         end
     end
     return dcgm0
+end
+
+"""
+
+Function to prepare CG coefficient for recoupling of spin (isospin).
+The resultant dictionary is used for e.g. to use Three-body matrix elements. Note that the all indices are doubled.
+"""
+function prep_dcg_spin()
+    dcg_spin = Dict{UInt64,Float64}()
+    s_a = s_b = 1
+    for sz_a = -1:2:1
+        for sz_b = -1:2:1
+            for Sab = 0:1
+                Sabzmin = ifelse(Sab==0,0,-1)
+                for Sab_z = Sabzmin:Sab
+                    nkey = get_nkey6_shift(s_a,sz_a,s_b,sz_b,Sab*2,Sab_z*2)
+                    dcg_spin[nkey] = clebschgordan(Float64,s_a/2,sz_a/2,s_b/2,sz_b/2,Sab,Sab_z)
+                end
+            end
+        end
+    end
+    s_c = 1
+    for S_ab = 0:1
+        for S_ab_z = -S_ab:S_ab
+            for s_c_z = -1:2:1
+                S3min = 1
+                S3max = ifelse(S_ab==0,1,3)
+                S3z = S_ab_z*2 + s_c_z
+                for S3 = S3min:2:S3max
+                    for S3z = -S3:2:S3
+                        nkey = get_nkey6_shift(S_ab*2,S_ab_z*2,s_c,s_c_z,S3,S3z)
+                        dcg_spin[nkey] = clebschgordan(Float64,S_ab,S_ab_z,s_c/2,s_c_z/2,S3/2,S3z/2)
+                    end
+                 end
+            end
+        end
+    end
+    return dcg_spin
 end
 
 """
@@ -1285,7 +1345,7 @@ function const_d9j_HOB_3NF(N3max,J12max,dJ3max,dtri,dcgm0,to;mode="3NF")
                                             for Lam = max(abs(l-L),abs(lp-Lp)):min(l+L,lp+Lp)
                                                 key1, key2 = get_HOB_nlkey(n, l, N, L, np, lp, Np, Lp)
                                                 if !haskey(dictHOB[Lam],key1); dictHOB[Lam][key1] = Dict{Int64,Float64}();end    
-                                                tHOB = HObracket_d6j(n, l, N, L, np, lp, Np, Lp, Lam, 1.0/3.0, dtri, dcgm0, d6j_int, to)
+                                                tHOB = HObracket_d6j(n, l, N, L, np, lp, Np, Lp, Lam, 1.0/3.0, dtri, dcgm0, d6j_int)
                                                 dictHOB[Lam][key1][key2] = tHOB
                                                 hitHOB += 1
                                             end
@@ -1356,12 +1416,6 @@ end
 
 function get_dictHOB(n12, l12, n3, l3, n45, l45, n6, l6, lambda, dictHOB)
     key1,key2 = get_HOB_nlkey(n12,l12,n3,l3,n45,l45,n6,l6)
-    # try
-    #     return dictHOB[lambda][key1][key2]
-    # catch
-    #     println("HOB: Lam $lambda nls $n12 $l12 $n3 $l3, $n45 $l45 $n6 $l6")
-    #     println("key1 $key1 key2 $key2")
-    # end
     return dictHOB[lambda][key1][key2]
 end
 

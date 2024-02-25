@@ -16,6 +16,7 @@ Pages = ["chiEFTint/main_chiEFTint.jl",
          "chiEFTint/renorm.jl",
          "chiEFTint/valence.jl",         
          "chiEFTint/eff3nf.jl",
+	     "chiEFTint/read_me3j.jl",
          "chiEFTint/dict_LECs.jl"
 ]
 ``` 

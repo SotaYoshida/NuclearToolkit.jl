@@ -4,9 +4,9 @@ using Test
 using Printf
 
 @testset "NuclearToolkit.jl" begin
-    pwd()
-    run(`ls test`)
-    
+    println("pwd: ", pwd())
+    run(`ls *`)
+
     include("chiEFTint_test.jl")
     include("HFMBPT_IMSRG_test.jl")
     include("ShellModel_test.jl")

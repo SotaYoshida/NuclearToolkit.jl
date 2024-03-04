@@ -21,19 +21,19 @@
         end
         @testset "snt & snt.bin must give identical results" begin
             tsntf = replace(sntf,".snt.bin" => ".snt")
-            HFobj2 = hf_main(nucs,tsntf,hw,emax;return_obj=true)
+            HFobj2 = hf_main(nucs,tsntf,hw,emax;return_obj=true,fn_params="parameters/optional_parameters.jl")
             Es2 = [HFobj2.E0, HFobj2.EMP2, HFobj2.EMP3]    
             @test ((HFobj1.E0-HFobj2.E0)^2 + (HFobj1.EMP2-HFobj2.EMP2)^2 + (HFobj1.EMP3-HFobj2.EMP3)^2) < 1.e-6
         end
     end
     Eref = -4.05225276 
     @testset "IMSRG results under bare EM500,hw20,e2,nmesh50" begin
-        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,return_obj=true)
+        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,return_obj=true,fn_params="parameters/optional_parameters.jl")
         Es = IMSRGobj.H.zerobody[1]
         @test abs(Eref-Es[1]) < 1.e-6
     end
     @testset "VSIMSRG results under bare EM500,hw20,e2,nmesh50" begin
-        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,return_obj=true)
+        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,corenuc=core,ref="nuc",valencespace=vspace,return_obj=true,fn_params="parameters/optional_parameters.jl")
         Es = IMSRGobj.H.zerobody[1]
         @test abs(Eref - Es[1]) < 1.e-6
     end
@@ -43,7 +43,7 @@
         sntf = "tbme_emn500n4lo_2n3n_srg10.0hw20emax2.snt.bin"
         hw = 20
         emax = 2
-        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,Operators=["Rp2"],return_obj=true)
+        IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,Operators=["Rp2"],return_obj=true,fn_params="parameters/optional_parameters.jl")
         Rp2_ref = 1.559825^2
         @test abs(IMSRGobj.ExpectationValues["Rp2"] - Rp2_ref)^2 < 1.e-6
     end

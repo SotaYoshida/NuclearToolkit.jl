@@ -32,6 +32,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - name: "Run tests"
         run: |
+            export JULIA_PROJECT=@.
             julia --project -e 'import Pkg; Pkg.test()'
         # env:
         #   JULIA_NUM_THREADS: 2

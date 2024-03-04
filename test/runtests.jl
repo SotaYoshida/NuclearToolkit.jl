@@ -5,7 +5,7 @@ using Printf
 
 @testset "NuclearToolkit.jl" begin
     println("pwd: ", pwd())
-    println("readdir() ",readdir())
+    println("readdir() ",readdir("interaction_file"))
 
     include("chiEFTint_test.jl")
     include("HFMBPT_IMSRG_test.jl")

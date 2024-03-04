@@ -40,7 +40,7 @@ function main_read_me3j(fn_3nf, e1max, e1max_file, e2max_file, e3max, e3max_file
         @timeit to "count_nreads_File" dict_idxThBME = count_nreads(sps_3b,"File",to)
         @timeit to "count_me3jgz" count_ME_file = count_me3jgz(sps_3b)
         println("count_ME (File) $count_ME_file")
-        @timeit to "read_me3jgz" ThBME = read_me3jgz(fn_3nf, count_ME_file)
+        @timeit to "read_me3jgz" ThBME = read_me3jgz(fn_3nf, count_ME_file, to)
     end
 
     @timeit to "alloc/store" begin
@@ -67,13 +67,13 @@ $(SIGNATURES)
 Function to read me3j.gz using GZip. The values are stored in a vector ThBME.
 The ordering of `ThBME` is not considered here.
 """
-function read_me3jgz(fn,count_ME_file; verbose=false)
+function read_me3jgz(fn,count_ME_file, to; verbose=false)
     isfile(fn) || error("File not found: $fn")
     size_ME = count_ME_file*8/1024^3
     @assert size_ME < 0.9 * (Sys.total_memory() / 2^20 /1024) "# of ThBME=$(size_ME) is beyond available memory"
     ThBME = zeros(Float64,count_ME_file)    
     stream = GzipDecompressorStream(open(fn))
-    for (idx,line) in enumerate(eachline(stream))
+    @inbounds for (idx,line) in enumerate(eachline(stream))
         idx_i = 1 + (idx-2)*10
         idx_f = idx_i + 9
         subsize = 10
@@ -85,7 +85,8 @@ function read_me3jgz(fn,count_ME_file; verbose=false)
             subsize = count_ME_file - idx_i + 1
         end
         for i = 1:subsize
-            ThBME[idx_i+i-1] = Parsers.parse(Float64, line[16*(i-1)+1:16*i])
+            tl = @view line[16*(i-1)+1:16*i]
+            ThBME[idx_i+i-1] = Parsers.parse(Float64, tl)
         end
     end
     close(stream)

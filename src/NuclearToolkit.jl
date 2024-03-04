@@ -46,7 +46,7 @@ include("chiEFTint/nn_sampling.jl")
 include("chiEFTint/read_me3j.jl")
 export make_chiEFTint
 export nn_IMSRG_sampling
-export test_me3j
+export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")

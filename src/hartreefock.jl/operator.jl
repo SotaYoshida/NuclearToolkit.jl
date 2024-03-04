@@ -814,6 +814,8 @@ function eval_rch_imsrg(binfo,Chan1b,Chan2bD,HFobj,IMSRGobj,PandyaObj,dWS,d6j_de
         Rch2 = Rpp + Rp2 + N/Z *Rn2 + DF
         Rch = sqrt(Rch2)
         println("IMSRG point proton radius ",@sprintf("%12.6f", sqrt(Rpp))," charge radius ",@sprintf("%12.6f", Rch))
+        IMSRGobj.ExpectationValues["Rp2"] = Rpp
+        IMSRGobj.ExpectationValues["Rch"] = Rch
     end
     return tmpOp
 end

@@ -176,37 +176,37 @@ function main_trans_msnt(fn,target_nuc,target_Js=[];similar_to_prevwork=false)
     trans_snt_msnt(fn,Anum,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork)
 end
 
-function svd_li6(Rvecs)
-    println("svd_li6 function is called. This is only used for Li6 on the p-shell space.")
-    dict_sps = Dict(1=>[3,3],2=>[1,1],3=>[1,4],4=>[4,1],5=>[4,4],
-                    6=>[2,2],7=>[2,5],8=>[5,2],9=>[5,5],10=>[6,6])
-    nsps = 6
-    Mat = zeros(Float64,nsps,nsps)
-    for n = 1:length(Rvecs)
-        Rvec = Rvecs[n]
-        println("n $n")
-        for i = 1:length(Rvec)
-            idxs = dict_sps[i]
-            Mat[idxs[1],idxs[2]] = Rvec[i]
-        end
-        for j = 1:nsps
-            print_vec("",Mat[j,:];long=true)
-        end
-        SVD = LinearAlgebra.svd(Mat)
-        U = SVD.U; Sig = Diagonal(SVD.S); Vt = SVD.Vt; V = Vt'
-        println("U")
-        for j = 1:nsps
-            print_vec("",U[j,:];long=true)
-        end 
-        println("Sig")
-        for j = 1:nsps
-            print_vec("",Sig[j,:];long=true)
-        end 
-        println("V")
-        for j = 1:nsps
-            print_vec("",V[j,:];long=true)
-        end 
-        println("")
-        Mat .= 0.0
-    end
-end
+# function svd_li6(Rvecs)
+#     println("svd_li6 function is called. This is only used for Li6 on the p-shell space.")
+#     dict_sps = Dict(1=>[3,3],2=>[1,1],3=>[1,4],4=>[4,1],5=>[4,4],
+#                     6=>[2,2],7=>[2,5],8=>[5,2],9=>[5,5],10=>[6,6])
+#     nsps = 6
+#     Mat = zeros(Float64,nsps,nsps)
+#     for n = 1:length(Rvecs)
+#         Rvec = Rvecs[n]
+#         println("n $n")
+#         for i = 1:length(Rvec)
+#             idxs = dict_sps[i]
+#             Mat[idxs[1],idxs[2]] = Rvec[i]
+#         end
+#         for j = 1:nsps
+#             print_vec("",Mat[j,:];long=true)
+#         end
+#         SVD = LinearAlgebra.svd(Mat)
+#         U = SVD.U; Sig = Diagonal(SVD.S); Vt = SVD.Vt; V = Vt'
+#         println("U")
+#         for j = 1:nsps
+#             print_vec("",U[j,:];long=true)
+#         end 
+#         println("Sig")
+#         for j = 1:nsps
+#             print_vec("",Sig[j,:];long=true)
+#         end 
+#         println("V")
+#         for j = 1:nsps
+#             print_vec("",V[j,:];long=true)
+#         end 
+#         println("")
+#         Mat .= 0.0
+#     end
+# end

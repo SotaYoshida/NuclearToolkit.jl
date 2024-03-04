@@ -108,7 +108,8 @@ function get_ket_JacobiHO(n,l,s,j,t,N,L,J,dJ3,dT3)
     return ket_JacobiHO(n,l,s,j,t,N,L,J,dJ3,dT3,e1,e2,Eket)
 end
 
-function test3NF(;param_str="dev",target_LECs=["c1_NNLO","c3_NNLO","c4_NNLO","cD","cE"],fn_params="optional_parameters.jl")
+function test3NF(;param_str="dev",target_LECs=["c1_NNLO","c3_NNLO","c4_NNLO","cD","cE"],fn_params="optional_parameters.jl",
+                is_show=false)
     to = TimerOutput()
     io =  select_io(false,"",[])
     paramsNN = init_chiEFTparams(;io=io,fn_params=fn_params)
@@ -121,7 +122,9 @@ function test3NF(;param_str="dev",target_LECs=["c1_NNLO","c3_NNLO","c4_NNLO","cD
     else
         @error "main_basis=$main_basis is not supported"
     end
-    show(to, allocations = true,compact = false);println("")
+    if is_show 
+        show(to, allocations = true,compact = false);println("")
+    end
 end
 
 function make_3b_mesh_mats(pmax3,Np,Nq,Nangle)

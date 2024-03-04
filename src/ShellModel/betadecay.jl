@@ -402,7 +402,7 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
             fFF = f_0 + f_1 + f_2
             thalf = K/fFF
             logft = log10(fis[2]*thalf) 
-            if false #verbose                
+            if verbose                
                 println("Energy $tkey Ex.",@sprintf("%8.3f",tkey-daughter.Egs)," J2",@sprintf("%4i",J2),ffobj.prty)
                 println("M0s,M0t,M0s'", @sprintf("%12.4e", ffobj.M0rs),@sprintf("%12.4e", ffobj.M0sp),@sprintf("%12.4e", ffobj.M0rsd))
                 println("x, u, xi'y  ", @sprintf("%12.4e", x),@sprintf("%12.4e", u),@sprintf("%12.4e", xidy))

@@ -46,7 +46,7 @@ end
 
 """
 main_sm(sntf,target_nuc,num_ev,target_J;
-        save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-8,
+        save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
         in_wf="",mdimmode=false,calc_moment=false, visualize_occ=false, gfactors=[1.0,0.0,5.586,-3.826],effcharge=[1.5,0.5])
 
 Digonalize the model-space Hamiltonian 
@@ -77,9 +77,10 @@ Digonalize the model-space Hamiltonian
 - `truncation_scheme==""` option to specify a truncation scheme, "jocc" and "pn-pair" is supported and you can use multiple schemes by separating them with camma like "jocc,pn-pair".
 - `truncated_jocc=Dict{String,Vector{Int64}}()` option to specify the truncation scheme for each orbit, e.g. Dict("p0p1"=>[1],"n0p3"=>[2,3]) means that the occupation number for proton 0p1 is truncated upto 1, and for neutron 0p3 min=2 and max=3"
 """
-function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=100,ls=20,tol=1.e-8,
+function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
                  in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
-                 gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}())
+                 gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}(),
+                 debugmode=false)
 
     to = TimerOutput()
     Anum = parse(Int64, match(reg,target_nuc).match)
@@ -107,7 +108,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot;truncation_scheme=truncation_scheme,truncated_jocc=truncated_jocc)
 
     lblock=length(pbits)
-    mdim = tdims[end]; if mdim==0;exit();end
+    mdim = tdims[end]; if mdim==0; println("Aborted due to the mdim=0");return true;end
     num_ev = min(num_ev,mdim)
     mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ)
     if mdimmode; return nothing;end
@@ -125,7 +126,6 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
         ## storing one-body jumps for pn 2b interaction
         bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,pbits,nbits,Mps,delMs,bVpn,Vpn)
         bVpn=nothing
-        #Hamil_util = HamilUtil(bis,bfs,pp_2bjump,nn_2bjump,p_NiNfs,n_NiNfs)
         ## distribute task
         block_tasks = make_distribute(num_task)
     end
@@ -171,7 +171,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
                          pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                          p_NiNfs,n_NiNfs,Mps,delMs,Vpn,tdims,
                          eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-                         num_ev,num_history,lm,ls_sub,en,tol,to,doubleLanczos)
+                         num_ev,num_history,lm,ls_sub,en,tol,to;doubleLanczos=doubleLanczos,debugmode=debugmode)
         else #Thick Restart (double) Lanczos: TRL
             vks = [ zeros(Float64,mdim) for i=1:lm]
             uks = [ zeros(Float64,mdim) for i=1:ls]
@@ -185,7 +185,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
                        pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                        p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
                        eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-                       tdims,num_ev,num_history,lm,ls,en,tol,to,doubleLanczos)
+                       tdims,num_ev,num_history,lm,ls,en,tol,to;doubleLanczos=doubleLanczos,debugmode=debugmode)
         end
     end
 
@@ -216,9 +216,6 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
 
     if print_evec
         print("\n")
-        # for (nth,Rv) in enumerate(Rvecs)
-        #     print_vec("nth = "*@sprintf("%4i",nth),Rv;long=true)
-        # end
         if target_nuc == "Li6"
             svd_li6(Rvecs)
         end
@@ -897,30 +894,6 @@ function getZNA(target_el,Anum,cp,cn)
     vp = Z - cp; vn = N - cn
     return Z,N,vp,vn
 end
-function ThickRestart(vks,uks,Tmat,lm,ls)
-    vals,vecs = eigen(@views Tmat[1:lm-1,1:lm-1])
-    beta = Tmat[lm-1,lm]
-    Tmat .= 0.0
-    @inbounds for k = 1:ls
-        Tmat[k,k] = vals[k]
-    end
-    @inbounds for (k,uk) in enumerate(uks)
-        tmp = beta .* vecs[lm-1,k]
-        Tmat[ls+1,k] = tmp; Tmat[k,ls+1] = tmp
-        uk .= 0.0
-        for j=1:lm-1
-            axpy!(vecs[j,k],vks[j],uk)
-        end
-    end
-    @inbounds for (k,uk) in enumerate(uks)
-        vks[k] .= uk .* (1.0 /sqrt(dot(uk,uk)))
-    end
-    vks[ls+1] .= vks[lm]
-    for k = ls+2:lm
-        vks[k] .= 0.0
-    end
-    return nothing
-end
 
 function ThickRestart_J(vks,uks,Tmat,lm,ls,eval_jj,Jtol)
     vals,vecs = eigen(@views Tmat[1:lm-1,1:lm-1])
@@ -929,7 +902,7 @@ function ThickRestart_J(vks,uks,Tmat,lm,ls,eval_jj,Jtol)
     Tmat .= 0.0
     Tmat[1,1] = vals[k]
     uk=uks[1]
-    tmp = beta .* vecs[lm-1,k]
+    tmp = beta * vecs[lm-1,k]
     Tmat[ls+1,k] = tmp; Tmat[k,ls+1] = tmp
     uk .= 0.0
     @inbounds for j=1:lm-1
@@ -937,14 +910,14 @@ function ThickRestart_J(vks,uks,Tmat,lm,ls,eval_jj,Jtol)
     end
     vks[1] .= uk .* (1.0/sqrt(dot(uk,uk)))
     vks[2] .= vks[lm]
-    @inbounds for k = ls+2:length(vks)
+    for k = ls+2:length(vks)
         vks[k] .= 0.0
     end
     return nothing
 end
 
 function initialize_wf(v1,method,tJ,mdim)
-    #Random.seed!(123)
+    Random.seed!(1234)
     if method=="rand" || tJ == -1
         v1 .= randn(mdim,)
         v1 ./= sqrt(dot(v1,v1))
@@ -955,7 +928,7 @@ function initialize_wf(v1,method,tJ,mdim)
 end
 
 function initialize_bl_wav(mdim,q,vks)
-    Random.seed!(123)
+    Random.seed!(1234)
     for i=1:q
         v = @views vks[i,:]
         v .= randn(mdim,)
@@ -1010,7 +983,7 @@ function read_appwav(inpf,mdim,V,q,verbose=false,is_block=false)
 end
 
 function ReORTH(it,vtarget,vks)
-    @inbounds for l = it:-1:1
+    for l = it:-1:1
         v = vks[l]
         alpha = dot(v,vtarget)
         axpy!(-alpha,v,vtarget)
@@ -1019,7 +992,6 @@ function ReORTH(it,vtarget,vks)
 end
 
 function Check_Orthogonality(it::Int,vks,en)
-    print_vec("it = $it",en[1])
     svks = @views vks[1:it+1]
     for i = 1:it+1
         for j = i:it+1
@@ -1323,9 +1295,8 @@ end
 
 function mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ=-1)
     s0 = @sprintf "%6s %14s %10s %10s" target_nuc "Z,N=($Z,$N)" "c($cp,$cn)" "v($vp,$vn)"
-    if tJ != -1; s0 * " 2J=$tJ ";end
+    if tJ != -1; s0 * " 2J = " * @sprintf("%3i", tJ);end
     s1 = @sprintf "%s %12i %s %5.2f %s " "  mdim:" mdim "(" log10(mdim) ")"
-    #println(s0,s1)
     print(s0,s1)
 end
 

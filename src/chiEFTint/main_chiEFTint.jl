@@ -16,7 +16,9 @@ The function is exported and can be simply called make_chiEFTint() in your scrip
 - `fn_params::String` path to file specifying the optional parameters
 - `write_vmom::Bool` to write out in vmom partial wave channels
 """
-function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",write_vmom=false,do_svd=false,do2n3ncalib=false)
+function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="",MPIcomm=false,
+                        corenuc="",ref="nucl",Operators=[],fn_params="optional_parameters.jl",
+                        write_vmom=false,do_svd=false,do2n3ncalib=false,deuteron_check=false)
     to = TimerOutput()    
     if (optimizer!="" && nucs != []) || MPIcomm; do2n3ncalib=true; writesnt=false; end
     io = select_io(MPIcomm,optimizer,nucs)
@@ -31,15 +33,16 @@ function make_chiEFTint(;is_show=false,itnum=1,writesnt=true,nucs=[],optimizer="
     else
         println("E(2H): bare = ",@sprintf("%9.6f", BE_d_bare))        
     end
-    HFdata = prepHFdata(nucs,ref,["E"],corenuc)
+    if deuteron_check; return (BE_d_bare + 2.224)^2 < 1.e-6; end
 
+    HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     if do_svd; target_LSJ = [[0,0,0,0],[0,2,1,1],[1,1,1,0],[2,2,0,2]]; svd_vmom(chiEFTobj,target_LSJ); end
 
     if write_vmom
         target_LSJ = [[0,0,1,1],[1,1,1,0],[1,1,0,1],[1,1,1,1],[0,0,0,0],[0,2,1,1],[3,3,1,3]]
         write_onshell_vmom(chiEFTobj,2,target_LSJ;label="pn"); write_onshell_vmom(chiEFTobj,3,target_LSJ;label="nn")
-        #momplot(chiEFTobj,2,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
-        #momplot(chiEFTobj,3,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
+        momplot(chiEFTobj,2,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
+        momplot(chiEFTobj,3,target_LSJ; fnlabel=ifelse(chiEFTobj.params.srg,"srg","bare"))
     end
 
     if do2n3ncalib #calibrate 2n3n LECs by HFMBPT

@@ -30,10 +30,8 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      #- uses: julia-actions/julia-runtest@v1
       - name: "Run tests"
         run: |
-            cp -r test/* .
             julia --project -e 'import Pkg; Pkg.test()'
         # env:
         #   JULIA_NUM_THREADS: 2

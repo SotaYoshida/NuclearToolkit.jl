@@ -30,7 +30,9 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - name: "Run tests"
-        run: julia --project -e 'import Pkg; Pkg.test()'
+        run: |
+            cp -r test/* .
+            julia --project -e 'import Pkg; Pkg.test()'
   build:
     runs-on: ubuntu-latest
     strategy:

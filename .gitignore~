@@ -23,8 +23,8 @@ src/.DS_Store
 docs/.DS_Store
 
 # potential files and Omega generated through IMSRG flows
-tbme*.snt
-tbme*.snt.bin
+*.snt
+*.snt.bin
 /snts
 /flowOmega
 logfile.dat

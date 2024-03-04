@@ -30,11 +30,13 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          JULIA_NUM_THREADS: 2
-        if: ${{ matrix.payload == 'serial' }}
-        continue-on-error: ${{ matrix.version == 'nightly' }}
+      - name: "Run tests"
+        run: |
+            julia --project -e 'import Pkg; Pkg.test()'
+        # env:
+        #   JULIA_NUM_THREADS: 2
+        # if: ${{ matrix.payload == 'serial' }}
+        # continue-on-error: ${{ matrix.version == 'nightly' }}
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -63,35 +65,6 @@ jobs:
           export PATH=$PATH:/home/runner/.julia/bin
           mpiexecjl -n 4 julia --depwarn=yes --project=@. ./test/mpirun_test.jl	  
 
-  # build2:    
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       include:
-  #         - {version: '1.8',   os: ubuntu-latest}
-  #   name: Run sample_script.jl
-  #   steps:     
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 0 
-  #     - uses: julia-actions/setup-julia@v1
-  #       with:
-  #         version: ${{ matrix.version }}
-  #         arch: x64
-  #     - uses: julia-actions/cache@v1
-  #     - uses: julia-actions/julia-buildpkg@v1 
-  #     - run: | 
-  #         git_hash=$(git rev-parse --short "$GITHUB_SHA")
-  #         echo git_hash $git_hash     
-  #         echo running on branch ${GITHUB_REF##*/}    
-  #         echo git_hash:[$git_hash]  > ./example/log_sample_script.txt
-  #         julia --project="@." -t 4 ./example/sample_script.jl >> ./example/log_sample_script.txt
-  #         git add example/log_sample_script.txt
-      # - name: commit changed logfile
-      #   uses: stefanzweifel/git-auto-commit-action@v4.2.0
-      #   with:
-      #     commit_message: Update log_sample_script.txt  
   docs:
     name: Documentation
     runs-on: ubuntu-latest

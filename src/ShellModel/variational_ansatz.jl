@@ -124,12 +124,9 @@ function main_vmc(psi_exact,eigenvals,tdims,msps_p,msps_n,
         print_vec("",psi_svd[i,:])
     end
    
-
-
     # SVD of Hflat
     #M0idxs = get_M0idxs(pbits,nbits,msps_p,msps_n)
     #svd_mat(Hflat,M0idxs)
-
     
     # Check the energies by direct diagonalization of Hflat
     num_ev = length(eigenvals)

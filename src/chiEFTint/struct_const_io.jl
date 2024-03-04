@@ -216,7 +216,7 @@ constructor of chiEFTparams, see `chiEFTparams` mutable struct for more details.
 function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1,io=stdout)
     n_mesh = 50
     pmax_fm = 5.0
-    emax = 4
+    emax = 2
     Nnmax= 20
     chi_order = 3
     calc_NN = true
@@ -247,6 +247,7 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
         println("Since $fn_params is not found, the default parameters will be used.")
         println("You can specify the parameters with optional argument, fn_params like make_chiEFTint(;fn_params=\"PATH_TO_YOUR_FILE\").")
     else
+        println("option in $fn_params will be used.")
         read_chiEFT_parameter!(fn_params,params;io=io)
     end
     return params
@@ -795,15 +796,14 @@ function momplot_from_file(pnrank,tx)
     heatmap!(fig[2], x_b, x_b, V_b,
             xlabel=latexstring("p \\ \\mathrm{fm}^{-1}"), 
             ylabel=latexstring("p' \\   \\mathrm{fm}^{-1}"), 
-            c = :jet, grid=:true, clims=(cmin,cmax))
+            c = :viridis, grid=:true, clims=(cmin,cmax))
     heatmap!(fig[3], x_s, x_s, V_s,
             xlabel=latexstring("p \\ \\mathrm{fm}^{-1}"), 
             ylabel=latexstring("p' \\   \\mathrm{fm}^{-1}"), 
-            c = :jet, grid=:true, clims=(cmin,cmax))
+            c = :viridis, grid=:true, clims=(cmin,cmax))
     pntext = cpnrank*":"
     annotate!(fig[2], 3.5, 4.5, 
               pntext*latex_pw(tx), halign = :left, valign = :bottom, c=:white)
-    #savefig(fig, "vmom_bare_vs_SRG_chiEFT_"*tx*"_"*cpnrank*".pdf")
     savefig(fig, "vmom_bare_vs_SRG_chiEFT_"*tx*"_"*cpnrank*".png")
     return nothing
 end

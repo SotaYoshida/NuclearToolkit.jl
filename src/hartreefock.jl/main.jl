@@ -39,7 +39,8 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     chiEFTparams = init_chiEFTparams(;io=nothing)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "prep dWS2n" begin
-        no_need_9j_HOB = ifelse("Rp2" in Operators, false, true)
+        need = "Rp2" in Operators || chiEFTparams.BetaCM != 0.0
+        no_need_9j_HOB = !need
         dWS = prep_dWS2n(chiEFTparams,to;emax_calc=max(emax_calc,e1max_file),no_need_9j_HOB=no_need_9j_HOB)
     end
     @timeit to "read NNint" begin
@@ -511,14 +512,17 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
     use3NF = Object_3NF.use3BME
     dim_v3 = ifelse(use3NF, maxnpq, 1)
     V3NOs = [ zeros(Float64,dim_v3,dim_v3) for i =1:nthreads()]
+
     @threads for ch = 1:nchan
         tid = threadid()
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J; kets = tmp.kets
         npq = length(kets)
-        D = @view Ds[tid][1:npq,1:npq]; # D .= 0.0
+        D = @view Ds[tid][1:npq,1:npq]
         dim_v3 = ifelse(use3NF, npq, 1)
-        V3NO = @view V3NOs[tid][1:dim_v3,1:dim_v3]; V3NO .= 0.0
+        v3mat = V3NOs[tid]
+        V3NO = @view v3mat[1:dim_v3,1:dim_v3]
+        V3NO .= 0.0
         v = V2[ch]
         for ib = 1:npq
             i,j = kets[ib]            
@@ -564,11 +568,10 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
                     if ea + e2bra > E3max; continue; end
                     for b = 1:l_sps
                         ob = sps[b]
-                        jb2 = ob.j
                         eb = 2 * ob.n + ob.l
-
-                        if oa.l != ob.l || ja2 != jb2 || oa.tz != ob.tz ; continue; end
-                        if e2ket + eb > E3max; continue; end
+                        if e2ket + eb > E3max; continue; end    
+                        if rho[a,b] == 0.0; continue; end
+                        #if oa.l != ob.l || ja2 != jb2 || oa.tz != ob.tz ; continue; end # equiv to rhoab =0
 
                         J3min = abs(2*J - ja2)
                         J3max = 2*J + ja2
@@ -588,7 +591,8 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
         Gam = Gamma[ch]
         tM  = @views M[threadid()][1:npq,1:npq]
         if use3NF
-            BLAS.gemm!('N','N',1.0,v+V3NO,D,0.0,tM)
+            axpy!(1.0,v,V3NO)
+            BLAS.gemm!('N','N',1.0,V3NO,D,0.0,tM)
             BLAS.gemm!('T','N',1.0,D,tM,0.0,Gam)
         else
             BLAS.gemm!('N','N',1.0,v,D,0.0,tM)
@@ -701,7 +705,8 @@ function getHNO(binfo,tHFdata,E0,p_sps,n_sps,occ_p,occ_n,h_p,h_n,rho,
     E = tmp[1]
     E[1] = E0+EMP2+EMP3; E[2] = Eexp
     H0 = Operator([E0],[fp,fn],Gamma,[true],[false])
-    return HamiltonianNormalOrdered(H0,E0,EMP2,EMP3,Cp,Cn,e1b_p,e1b_n,modelspace)
+    ExpectationValues = Dict{String,Float64}( "E_HF" => E0, "EMP2" => EMP2, "EMP3" => EMP3)
+    return HamiltonianNormalOrdered(H0,E0,EMP2,EMP3,Cp,Cn,e1b_p,e1b_n,modelspace,ExpectationValues)
 end
 
 function get_rho!(rho, rho_p,rho_n)

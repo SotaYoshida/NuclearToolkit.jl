@@ -341,13 +341,13 @@ function check_stationarity(z, z_k, z_pred,  Atilde, itnum=1000)
 end
 
 """
-function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
+function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir; verbose=false)
 
 Function to perform the DMD extrapolation.
 The time evolution (IMSRG flow) of original data `x` is approximated by the time evolution of 
 `z` in the latent space, and then the approximated data `x'` is written to a HDF5 file.
 """
-function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
+function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir; verbose=false)
     @assert length(s_pred) == length(fn_exact) "s_pred and fn_exact must have the same length"
     if length(s_pred) > 0
         r = size(U_r)[2]
@@ -377,7 +377,9 @@ function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc,
             end
             write_dmdvec_hdf5(x_pred,s,E_imsrg,nuc,inttype,emax,oupdir)
         end
-        check_stationarity(z1_r, z_k, z_new, Atilde)
+        if verbose
+            check_stationarity(z1_r, z_k, z_new, Atilde)
+        end
     end
     return nothing
 end
@@ -387,7 +389,7 @@ function write_dmdvec_hdf5(vec_in,s,E_imsrg,nuc,inttype,emax,oupdir)
     vec[1] = s
     vec[2] = E_imsrg
     vec[3:end] .= vec_in
-    fname = oupdir*"omega_dmdvec_$(inttype)_e$(emax)_$(nuc)_s"*strip(@sprintf("%6.2f",s))*".h5"
+    fname = oupdir*"omega_dmdvec"*ifelse(inttype=="","","_"*inttype)*"_e$(emax)_$(nuc)_s"*strip(@sprintf("%6.2f",s))*".h5"
     io = h5open(fname,"w")
     write(io,"vec",vec)
     close(io)

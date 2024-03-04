@@ -66,8 +66,7 @@ function read_wf_from_info(wfinfos,mdim,vs,wpath)
         inpf,nth,TDidx = tmp
         if wpath != "./" && wpath != ""
             tn = split(inpf,"/")
-            ln =length(tn)
-            inpf = wpath*tn[ln-1]*"/"*tn[ln]
+            inpf = wpath* ifelse(wpath[end]=="/","","/") * tn[end]
         end
         io = open(inpf,"r")
         num_ev = read(io,Int32)
@@ -75,7 +74,6 @@ function read_wf_from_info(wfinfos,mdim,vs,wpath)
         vals = [read(io,Float64) for i = 1:num_ev]
         ojs = [read(io,Int32) for i=1:num_ev]    
         Css = [ [read(io,Float64) for i=1:mdim] for j=1:num_ev]
-        #println("TDidx $TDidx nth $nth")
         vs[TDidx] .= Css[nth]
         close(io)
     end
@@ -106,7 +104,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 path_to_samplewav="",calc_moment=true,
                 save_wav = false,tdmatdir="./tdmat/",
                 gfactors = [1.0,0.0,5.586,-3.826],
-                effcharge=[1.5,0.5])
+                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true)
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
@@ -157,13 +155,14 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 vks = [ zeros(Float64,mdim) for i=1:lm]
                 uks = [ zeros(Float64,mdim) for i=1:ls]                
                 initialize_wf(vks[1],"rand",tJ,mdim)
+
                 @timeit to "Lanczos" elit = TRL(vks,uks,Tmat,itmin,
                                                 pbits,nbits,jocc_p,jocc_n,SPEs,
                                                 pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                                                 p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
                                                 eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
                                                 tdims,num_ev,num_history,lm,ls,en,
-                                                tol,to,true)
+                                                tol,to;doubleLanczos=doublelanczos,debugmode=debugmode)
                 Rvecs = @views uks[1:num_ev]               
                 vals,vecs = eigen(@views Tmat[1:elit*q,1:elit*q])
                 @inbounds for (nth,Rvec) in enumerate(Rvecs)
@@ -363,11 +362,12 @@ function solveEC(Hs,target_nuc,tJNs;
     sumV=[]
     wfinfos=[]
     lTD = 0    
+    
     for (jidx,tmp) in enumerate(tJNs)
         tJ,num_ev_target = tmp
+        vals = zeros(Float64,num_ev_target)
         Mtot = tJ
-        pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,
-                                                      n_sps,msps_n,mz_n,vn,Mtot)
+        pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot)
         mdim = tdims[end]        
         @timeit to "read TDmat" begin
             inpf = tdmatpath*target_nuc*"_J"*string(tJ)*".dat"
@@ -411,8 +411,8 @@ function solveEC(Hs,target_nuc,tJNs;
                 @timeit to "Gen. Eigen" begin
                     mul!(tMat,Linv,Hmat)
                     mul!(tildH,Linv',tMat)                                
-                    #vals,vecs = real.(Arpack.eigs(tildH,nev=num_ev_target,which=:SR,tol=1.e-8, maxiter=300))
-                    vals = real.(eigsolve(tildH,num_ev_target,:SR;tol=1.e-8, maxiter=300)[1])[1:num_ev_target]
+                    vals,vecs = Arpack.eigs(tildH,nev=num_ev_target,which=:SR,tol=1.e-8, maxiter=300)
+                    vals = real.(vals)
                     println("vals $vals ln $(length(vals)) num_ev_target $num_ev_target")
                     if verbose
                         print_vec("$target_nuc 2J=$tJ  En(EC)",vals)
@@ -420,31 +420,30 @@ function solveEC(Hs,target_nuc,tJNs;
                 end                
                 push!(sumV,[sntf,tJ,vals])
             end
-        end
-            
-        ## write out approx. wav.
-        if write_appwav
-            wfinfos = read_wfinfos("./tdmat/wfinfos_"*target_nuc*"_J"*string(tJ)*".dat")
-            @timeit to "read sample wavs." begin
-                vs = [zeros(Float64,mdim) for i=1:Dim]
-                read_wf_from_info(wfinfos,mdim,vs,wpath)
-            end
-            @timeit to "make .appwav" begin                        
-                Rvecs = [ zeros(Float64,mdim) for i=1:length(vals)]
-                for nth = 1:length(vals)
-                    for k = 1:length(vs)
-                        @. Rvecs[nth] += vecs[k,nth] * vs[k]
-                    end
-                    Rvecs[nth] ./= sqrt(sum(Rvecs[nth].^2))
+            ## write out approx. wav. for only the first Hamiltonian
+            if write_appwav && sntidx == 1
+                wfinfos = read_wfinfos("./tdmat/wfinfos_"*target_nuc*"_J"*string(tJ)*".dat")
+                @timeit to "read sample wavs." begin
+                    vs = [zeros(Float64,mdim) for i=1:Dim]
+                    read_wf_from_info(wfinfos,mdim,vs,wpath)
                 end
-            end            
-            @timeit to "write .appwav" begin
-                csnt = split(split(sntf, "/")[end],".")[1]
-                wavname = "./appwavs/"*target_nuc*"_"*csnt*"_j"*string(tJ)*".appwav"
-                Jlist = [tJ for i=1:length(vals)]
-                writeRitzvecs(mdim,Mtot,vals,Jlist,Rvecs,wavname)
-            end
-        end                
+                @timeit to "make .appwav" begin                        
+                    Rvecs = [ zeros(Float64,mdim) for i=1:length(vals)]
+                    for nth = 1:length(vals)
+                        for k = 1:length(vs)
+                            @. Rvecs[nth] += vecs[k,nth] * vs[k]
+                        end
+                        Rvecs[nth] ./= sqrt(sum(Rvecs[nth].^2))
+                    end
+                end            
+                @timeit to "write .appwav" begin
+                    csnt = split(split(sntf, "/")[end],".")[1]
+                    wavname = "./appwavs/"*target_nuc*"_"*csnt*"_j"*string(tJ)*".appwav"
+                    Jlist = [tJ for i=1:length(vals)]
+                    writeRitzvecs(mdim,Mtot,vals,Jlist,Rvecs,wavname)
+                end
+            end     
+        end
     end
     if length(Hs) > 1 && exact_logf != "" 
         @timeit to "scatter plot" plot_EC_scatter(target_nuc,Hs,sumV,tJNs,Dims,exlines)
@@ -584,7 +583,6 @@ function solveEC_UQ(Hs,target_nuc,tJNs,Erefs,errors;
     #            "std: ", @sprintf("%10.4f ", std([iThetas[i][n] for i =1:Ns])))
     #end
     println(tx)    
-    #plot_MCMC_PT(iThetas,Ts,llhs,tJNs,Ens,Erefs)   
     write_history(iThetas,Ts,llhs,tJNs,Ens)   
     show_TimerOutput_results(to)
     println("")
@@ -628,58 +626,6 @@ function write_history(iThetas,Ts,llhs,tJNs,Ens)
         write(io,Ens[i])
     end
     close(io)
-end
-
-function plot_from_history(Hs,target_nuc,tJNs,Erefs,Eexact,intf;path="./history/")
-    sntf = Hs[1]
-    Anum = parse(Int64, match(reg,target_nuc).match)
-    tmp = readsnt(sntf,Anum)
-    p_sps = tmp[8]; n_sps = tmp[9]
-    label_T1,label_T0 = make_int(p_sps,n_sps)
-    SPEs,V1s,V0s = readVint(intf,label_T1,label_T0)
-    ln_int = length(SPEs) +length(V1s)+length(V0s)
-    Vint = zeros(Float64,ln_int)
-    evalVint!(Vint,SPEs,V1s,V0s)
-    
-    num_states = sum([tmp[2] for tmp in tJNs])   
-    inpf= path*"PTlog_Theta_lowestT.dat"
-    io = open(inpf,"r")
-    nr = read(io,Int64)
-    Ns = read(io,Int64)
-    Np = read(io,Int64)    
-    Thetas = Vector{Float64}[ ] 
-    for i=1:Ns
-        push!(Thetas,[read(io,Float64) for i=1:Np])
-    end
-    close(io)   
-    inpf= path*"PTlog_llhs.dat"
-    io=open(inpf,"r")
-    nr = read(io,Int64)
-    Ns = read(io,Int64)
-    Ts = [read(io,Float64) for i=1:nr]   
-    llhs = Vector{Float64}[ ] 
-    for i=1:nr
-        push!(llhs,[read(io,Float64) for i=1:Ns])
-    end
-    close(io)
-
-    AllEns = []
-    paths = ["./history_run1/","./history_run2/","./history_run3/"]
-    for path in paths
-        inpf= path*"PTlog_Ens.dat"
-        io = open(inpf,"r")
-        nr = read(io,Int64)
-        Ns = read(io,Int64)
-        Ens = Vector{Float64}[ ] 
-        for i=1:num_states
-            push!(Ens,[read(io,Float64) for i = 1:Ns])
-        end
-        close(io)
-        push!(AllEns,copy(Ens))
-    end
-    #Thetas,llhs,Ens
-    #println("nr $nr Ns $Ns Np $Np Numstates $num_states Ts $Ts")
-    plot_MCMC_PT(Thetas,Ts,llhs,tJNs,AllEns,Erefs,Eexact,Vint)
 end
 
 function intMCMC(itnum_MCMC,burnin,var_M,iThetas,Theta,c_Theta,Vint,Vopt,
@@ -1047,118 +993,6 @@ end
 
 function ngauss(x,mu,varV)
     return 1.0/(sqrt(2*pi*varV)) * exp( - 0.5* (x-mu)^2 / varV )
-end
-
-function plot_MCMC_PT(iThetas,Ts,llhs,tJNs,AllEns,Erefs,Eexact,Vint)
-    plt=pyimport("matplotlib.pyplot")
-    cm=pyimport("matplotlib.cm")
-    patches=pyimport("matplotlib.patches")
-    ## loglikelihood
-    nr = length(Ts)
-    fig = plt.figure(figsize=(10,6))
-    ax = fig.add_subplot(111)
-    ax.set_xlabel("MC step")
-    ax.set_ylabel("loglikelihood")
-    #ax.set_ylim(-50,0)
-    for i = 1:nr
-        ax.plot(llhs[i].*Ts[i],alpha=0.6,lw=0.5,
-                label="T="*string(Ts[i]),rasterized=true,zorder=-i)
-    end
-    #ax.legend()
-    plt.savefig("./pic/PT_MCMC_llhs.pdf",bbox_iinches="tight",pad_inches=0.0)
-    plt.close()
-    
-    ## theta plot
-    fig = plt.figure(figsize=(10,4))
-    ax = fig.add_subplot(111)
-    ax.set_xlabel("MC step")
-    ax.set_ylabel("SPEs&TBMEs (MeV, .int fmt.)")
-    Ns = length(iThetas)
-    for i = 1:length(iThetas[1])        
-        ax.plot([ iThetas[n][i] for n=1:Ns],alpha=0.5,lw=0.1,rasterized=true)
-    end
-    plt.savefig("./pic/PT_MCMC_thetas.pdf",bbox_iinches="tight",pad_inches=0.0)
-    plt.close()
-    fig = plt.figure(figsize=(14,6))
-    axs = [ fig.add_subplot(6,11,i) for i =1:66]
-    Ns = length(iThetas)
-    tbin = 20
-    varV= 1.0/10.0
-    for i = 1:length(iThetas[1])
-        mu = Vint[i];  sigma = sqrt(varV)
-        tbin = round(mu-5*sigma):0.1:round(mu+5*sigma)
-        axs[i].hist([iThetas[n][i] for n=1:Ns],bins=tbin,density=true,color="darkgreen",alpha=0.8)
-        xr = Vint[i]-5*sqrt(varV):0.01:Vint[i]+5*sqrt(varV)
-        yr = ngauss.(xr,Vint[i],varV)
-        axs[i].plot(xr,yr,linestyle="dashed",color="k")
-        axs[i].tick_params(labelleft=false,left=false)
-        axs[i].scatter(Vint[i],0,marker="o",color="k",zorder=300)
-        axs[i].text(0.03, 0.77,latexstring("n=")*@sprintf("%2i",i),
-                    transform=axs[i].transAxes)
-    end
-
-    fig.subplots_adjust(wspace=0.0,hspace=0.5)
-    plt.savefig("./pic/PT_MCMC_thetas_hist.pdf",bbox_iinches="tight",pad_inches=0.0)
-    plt.close()
-    
-    ### Energy dist. (histgram)
-    ln = sum([tmp[2] for tmp in tJNs])
-    fig = plt.figure(figsize=(14,6))
-    axs = [ fig.add_subplot(3,4,i) for i =1:ln]
-    mu = 0.0; sigma=0.0
-    cols=["red","blue","green"]
-    for i = 1:ln
-        for n = 1:length(AllEns)
-            if n==1
-                mu = mean(AllEns[n][i]);sigma = std(AllEns[n][i])
-                axs[i].set_xlim(mu-5*sigma, mu+5*sigma)
-                axs[i].tick_params(labelleft=false,left=false)
-                #println("axs[i].get_xscale ",axs[i].get_xscale)
-                tbin = round(mu-5*sigma):0.5:round(mu+5*sigma)
-            end
-            #println("para mu: ",mean(AllEns[n][i]),
-            #        " std: ", std(AllEns[n][i])," size:" , length(AllEns[n][i]))            
-            axs[i].hist(AllEns[n][i],bins=tbin,density=true,edgecolor=cols[n],facecolor="None",
-                        alpha=0.6,zorder=300+10*n)
-        end
-        is, ie = axs[i].get_ylim()
-        xstep = 3.0
-        axs[i].xaxis.set_ticks(tbin[1]+xstep:xstep:tbin[end]-xstep)
-    end
-    count = 0
-    for (jidx,tmp) in enumerate(tJNs)
-        for i=1:tmp[2]
-            count += 1
-            cJ = tJNs[jidx][1]
-            if cJ % 2 == 0
-                cJ = latexstring( string(div(cJ,2))*"_{"*string(i)*"}")
-            else                
-                cJ = latexstring( string(cJ)*"/2_{"*string(i)*"}")       
-            end
-            tl="";if count==1; tl = "Exp.";end
-            tlO="";if count==2; tlO = "USDB";end
-            axs[count].scatter(Erefs[jidx][i],0.0,marker="o",color="k",label=tl,zorder=500)
-            axs[count].scatter(Eexact[jidx][i],0.0,marker="x",color="r",label=tlO,zorder=600)
-            axs[count].text(0.1, 0.8,latexstring("J=")*cJ,
-                            transform=axs[count].transAxes)
-        end
-    end
-    axs[1].legend(loc="upper right")
-    axs[2].legend(loc="upper right")
-    fig.subplots_adjust(wspace=0.0)
-    plt.savefig("./pic/PT_MCMC_hist.pdf",bbox_iinches="tight",pad_inches=0.0)
-    plt.close()
-    # count = 0
-    # for (jidx,tmp) in enumerate(tJNs)
-    #     for i=1:tmp[2]
-    #         count += 1
-    #         tx = "E(EC,MCMC) mean: " * @sprintf("%10.4f ", mean(Ens[1][count]))
-    #         tx *= " std: "*@sprintf("%10.4f ", std(Ens[count]))
-    #         tx *= " Eexp. "*@sprintf("%10.4f ",Erefs[jidx][i])
-    #         println(tx)
-    #     end
-    # end
-    return nothing
 end
 
 struct Tridx

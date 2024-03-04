@@ -265,7 +265,7 @@ struct Operator
 end
 
 """
-struct `HamiltonianNormalOrdered`
+struct `HamiltonianNormalOrdered` mainly called `HFobj` in the code.
 # Fields
 - `H::Operator` Hamiltonian operator
 - `E0::Float64` NO0B of H
@@ -287,6 +287,7 @@ struct HamiltonianNormalOrdered
     e1b_p::Vector{Float64}
     e1b_n::Vector{Float64}
     modelspace::ModelSpace
+    ExpectationValues::Dict{String,Float64}
 end
 
 """
@@ -309,7 +310,7 @@ mutable struct `IMSRGobject`
 mutable struct IMSRGobject
     H0::Operator
     H::Operator
-    s::Vector{Float64} # [s,ds]
+    s::Vector{Float64}
     smax::Float64
     dsmax::Float64
     maxnormOmega::Float64
@@ -320,6 +321,7 @@ mutable struct IMSRGobject
     denominatorDelta::Float64
     n_written_omega::Vector{Int64}
     Ncomm::Vector{Int64}
+    ExpectationValues::Dict{String,Float64}
 end
 
 """

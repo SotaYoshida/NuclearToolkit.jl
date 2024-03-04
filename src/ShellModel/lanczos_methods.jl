@@ -1,9 +1,8 @@
-function TRL(vks,uks,Tmat,k,
-             pbits,nbits,jocc_p,jocc_n,
+function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
              SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
              p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
              eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-             tdims,num_ev,num_history,lm,ls,en,tol,to,doubleLanczos=false,checkorth=false)
+             tdims,num_ev,num_history,lm,ls,en,tol,to;doubleLanczos=false,checkorth=true,debugmode=true)
              
     mdim = tdims[end]
     TF=[false]
@@ -13,52 +12,77 @@ function TRL(vks,uks,Tmat,k,
     Jvret = [zeros(Float64,mdim)]
     Jmat = zeros(Float64,lnJ,lnJ)
     Jvs[1] .= vks[1]
-    Jtol = 1.e-6
+    Jtol = 1.e-7
     JTF = [false];beta_J = 1.0
+    
+    ###
+    num_restart = 0
+    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    ###
+
     if doubleLanczos
-        Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,
-                 Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
+        Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
         vks[1] .= Jvs[1]
-        for i=1:lnJ;Jvs[i] .=0.0;end
+        vks[1] .*= 1.0 / sqrt(dot(vks[1],vks[1]))
     end
+
     elit = 1
     while TF[1]==false
         for it = k:lm-1
             vk =vks[it]; vkp1 =vks[it+1]
             @timeit to "operate H" begin
-                operate_H!(vks[it],vks[it+1],
-                           pbits,nbits,
-                           jocc_p,jocc_n,SPEs,
-                           pp_2bjump,nn_2bjump,
-                           tdims,bis,bfs,block_tasks,
+                operate_H!(vk, vkp1, pbits,nbits,jocc_p,jocc_n,SPEs,
+                           pp_2bjump,nn_2bjump,tdims,bis,bfs,block_tasks,
                            p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to)
             end
-            talpha =  dot(vk,vkp1)
+            if debugmode
+                Hvs[it] .= vkp1
+            end
+            talpha = dot(vk,vkp1)
             Tmat[it,it] = talpha
-            diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)            
+            diagonalize_T!(it,num_ev,Tmat,en,num_history,TF,tol)   
             if it == mdim; TF[1]=true;end
             if TF[1];elit=it;break;end
             svks = @views vks[1:it]
             @timeit to "ReORTH" ReORTH(it,vkp1,svks)
+            if debugmode
+                HvRs[it] .= vkp1
+            end
             tbeta = sqrt(dot(vkp1,vkp1))
             vkp1 .*= 1.0/tbeta
-            if checkorth; Check_Orthogonality(it,vks,en); end
+            #if checkorth; Check_Orthogonality(it,vks,en); end
+            if debugmode
+                print_vec("En TRL $it ",en[1])
+                println("   beta $tbeta")
+            end
             Tmat[it+1,it] = tbeta; Tmat[it,it+1] = tbeta
+
             if doubleLanczos
                 if tbeta < Jtol;TF[1]=true;elit=it;break;end
                 @timeit to "JJ lanczos" begin
                     for i = 2:length(Jvs);Jvs[i] .=0.0;end
                     Jmat .= 0.0;JTF[1] = false
                     Jvs[1] .= vkp1
+                    if debugmode; Jvlog_before[it] .= vkp1; end ##
                     Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
                     vkp1 .= Jvs[1]                            
+                    if debugmode; Jvlog_after[it] .= vkp1; end ##
                     if TF[1];elit=it;break;end
-                end
+                end  
+                #println("  beta $tbeta beta_inJ $beta_in_J")
+                sv = @view vks[1:it]
+                ReORTH(it,vkp1,sv)    
+                vkp1 .*= 1.0 / sqrt(dot(vkp1,vkp1))
             end
         end
         if TF[1] == false
             @timeit to "Restart" begin
-                ThickRestart(vks,uks,Tmat,lm,ls)
+                num_restart += 1
+                if debugmode; write_wf_hdf5(vks, Hvs, HvRs,Tmat,Jvlog_before, Jvlog_after, "JJ_TR_res$(num_restart).h5", false); end
+                ThickRestart(vks,uks,Tmat,lm,ls,debugmode)
             end
         end
         k = ls+1
@@ -66,28 +90,52 @@ function TRL(vks,uks,Tmat,k,
     return elit
 end
 
-function Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,
-                  pbits,nbits,tdims,eval_jj,
+function write_wf_hdf5(vks,Hvs,HvRs,Tmat,Jv_bef, Jv_aft, fname::String, is_block)
+    # for debug
+    io = h5open(fname, "w") 
+    mdim = length(vks[1])
+    write(io,"len", length(vks))
+    write(io,"mdim", mdim)
+    for i = 1:length(vks)
+        write(io, "Hvs_$i", Hvs[i][:])
+        write(io,"HvRs_$i", HvRs[i][:])
+    end
+    write(io, "Tmat",Tmat)
+    for i = 1:length(Jv_bef)
+        write(io, "Jv_bef_$i", Jv_bef[i])
+    end
+    for i = 1:length(Jv_aft)
+        write(io, "Jv_aft_$i", Jv_aft[i])
+    end
+    close(io)
+    return nothing
+end
+
+function Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,
                   Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
     mdim = tdims[end]                 
     lnJ = length(Jvs)
     eljit=1; k = 1; inow=k
+    beta = 0.0
     while JTF[1] == false
         for it = k:lnJ-1
             inow = it
             vk = Jvs[it]; vkp1 = Jvs[it+1]
-            operate_J!(vk,vkp1,pbits,nbits,tdims,
-                       Jidxs,oPP,oNN,oPNu,oPNd,beta_J)
+            operate_J!(vk,vkp1,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd,beta_J)
             axpy!(eval_jj,vk,vkp1)## vkp1 .+= eval_jj .* vk  
             Jmat[it,it] = dot(vk,vkp1)
             teval = eigvals(@views Jmat[1:it,1:it])[1]
+            #println("JJ it ", @sprintf("%3i",it), " eval ", @sprintf("%12.8f",teval))
             if abs(teval-eval_jj) < Jtol
                 eljit=it;JTF[1] = true;break                
             end
-            if JTF[1];eljit=it;break;end
-            ReORTH(it,vkp1,Jvs)
+
+            svs = @views Jvs[1:it]
+            ReORTH(it,vkp1,svs)
+            
             beta = sqrt(dot(vkp1,vkp1))
-            if beta < 1.e-4;eljit=it;TF[1]=true;JTF[1]=true;break;end
+            println("    betaJ $beta")
+            #if beta < 1.e-4;eljit=it;TF[1]=true;JTF[1]=true;break;end
             vkp1 .*= 1.0/beta
             Jmat[it+1,it] = beta; Jmat[it,it+1] = beta
             eljit = it
@@ -101,10 +149,6 @@ function Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,
         ThickRestart_J(Jvs,Jvret,Jmat,eljit+1,1,eval_jj,Jtol)
     end
     return nothing
-end
-
-function get_mscheme_idx()::Int64
-
 end
 
 function operate_H!(wf,twf,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,tdims,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to=nothing) 
@@ -214,14 +258,69 @@ function diagonalize_T!(k::Int64,num_ev::Int64,Tmat,en::Array{Array{Float64,1}},
     return nothing
 end
 
+function ThickRestart(vks,uks,Tmat,lm,ls,debugmode=false,make_sure=true)
+    vals,vecs = eigen(@views Tmat[1:lm-1,1:lm-1])
+    Tmat_before = ifelse(debugmode,copy(Tmat),[0.0])
+    beta = Tmat[lm-1,lm]
+    Tmat .= 0.0
+    @inbounds for k = 1:ls
+        Tmat[k,k] = vals[k]
+    end
+    @inbounds for (k,uk) in enumerate(uks)
+        tmp = beta .* vecs[lm-1,k]
+        Tmat[ls+1,k] = tmp; Tmat[k,ls+1] = tmp
+        uk .= 0.0
+        for j=1:lm-1
+            axpy!(vecs[j,k],vks[j],uk)
+        end
+    end
+    @inbounds for (k,uk) in enumerate(uks)
+        if make_sure && k > 1
+            svs = @view uks[1:k-1]
+            ReORTH(k-1,uk,svs)
+        end
+        vks[k] .= uk .* (1.0 /sqrt(dot(uk,uk)))
+    end
+    vks[ls+1] .= vks[lm]
+    if make_sure
+        svs = @view vks[1:ls]
+        ReORTH(ls,vks[ls+1],svs)
+    end
+    for k = ls+2:lm
+        vks[k] .= 0.0
+    end
+    # if debugmode 
+    #     io = h5open("restart.hdf5", "w") 
+    #     write(io,"lm", lm)
+    #     write(io,"ls", ls)
+    #     write(io, "beta", beta)
+    #     write(io,"vals", vals)
+    #     write(io,"vecs", vecs)
+    #     for i = 1:ls    
+    #         write(io, "uks_$i", uks[i])
+    #     end
+    #     write(io, "Tmat_before", Tmat_before)
+    #     write(io, "Tmat", Tmat)
+    #     close(io)
+    # end
+    return nothing
+end
+
+"""
+Thick-Restart Block Lanczos method
+"""
 function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
                pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
                p_NiNfs,n_NiNfs,Mps,delMs,Vpn,tdims,
                eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-               num_ev,num_history,lm,ls_sub,en,tol,to,
-               doubleLanczos=false)    
+               num_ev,num_history,lm,ls_sub,en,tol,to;
+               doubleLanczos=false,verbose=false,debugmode=false)
     ls = q*ls_sub   
     mdim = tdims[end]
+    if doubleLanczos && mdim < 100
+        @warn "Block Lanczos with J projection is not stable for small systems.\nUse TRL (is_block=false) instead."
+    end
+    
     TF=[false]
     elit = 1
     inow = 1; itmin = 1; itmax = div(lm,q)-1
@@ -230,13 +329,20 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
     R  = zeros(Float64,q,q)
     Beta_J = zeros(Float64,q,q)
 
-    lnJ = 20 # maximum([q*4,10])
+    lnJ = 20 
     Jvs = [zeros(Float64,q,mdim) for i=1:lnJ]
     Jvret = [zeros(Float64,q,mdim) ]
     Jmat = zeros(Float64,lnJ*q,lnJ*q)
-    JTF = [false];Jtol=1.e-6
+    JTF = [false]
+    Jtol = 1.e-7
     U = zeros(Float64,mdim,lnJ*q)
     Mat = zeros(Float64,mdim,q)
+
+    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+
     if doubleLanczos
         @timeit to "JJ lanczos" begin
             Jvs[1] .= vks[1]
@@ -246,6 +352,7 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
             V = vks[1]
         end
     end
+    num_restart = 0
     while TF[1]==false
         for it = itmin:itmax
             inow = it
@@ -256,39 +363,57 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
                               jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,
                               tdims,bis,bfs,block_tasks,
                               p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to)
-            end            
-            BLAS.gemm!('N','T',1.0,V,HV,0.0,R) ##mul!(R,V,HV')
+            end     
+            if debugmode      
+                Hvs[it] .= HV[1,:]
+            end
+            BLAS.gemm!('N','T',1.0,V,HV,0.0,R) 
             if issymmetric(R) == false
                 @inbounds for i=1:q;for j=i:q
                     R[i,j] = R[j,i]
                 end;end
             end
+
             @views Tmat[q*it-q+1:q*it,q*it-q+1:q*it] .= R
             diagonalize_T!(it*q,num_ev,Tmat,en,num_history,TF,tol)
-            #print_vec("En TR(d)BL $it ",en[1])          
+            if debugmode
+                print_vec("En TRBL $it ",en[1])   
+            end        
             BLAS.gemm!('N','N',-1.0,R,V,1.0,HV)#mul!(HV,R,V,-1.0,1.0)
             s_vks = @views vks[1:it-1]
-            @timeit to "ReORTH" bl_ReORTH(q,it,mdim,s_vks,HV,Vt,R)            
+            @timeit to "ReORTH" bl_ReORTH(q,it,mdim,s_vks,HV,Vt,R)
+            if debugmode
+                HvRs[it] .= HV[1,:]
+            end
             bl_QR!(HV',Beta_H,mdim,q)#myQR!(HV',Beta_H,mdim,q)
+            
             if doubleLanczos
                 tnorm = norm(Diagonal(Beta_H),Inf)
                 if tnorm < Jtol
-                    println("Hbn norm $tnorm");TF[1]=true;elit=it;break
+                    if verbose; println("Hbn norm $tnorm");end
+                    TF[1]=true;elit=it;break
                 end            
                 @timeit to "JJ lanczos" begin
                     for i=2:lnJ; Jvs[i] .= 0.0; end
                     JTF[1] = false; Jmat .= 0.0;Jvs[1] .= HV
                     Vt .= 0.0; R .= 0.0
+                    if debugmode; Jvlog_before[it] .= Jvs[1][1,:]; end
                     bl_JJ_Lanczos(q,Jvs,Jmat,Vt,R,Beta_J,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,Jidxs,oPP,oNN,oPNu,oPNd,to,Beta_H,U,Mat)
                     HV .= Jvs[1]; Beta_J .=0.0
+                    if debugmode; Jvlog_after[it] .= Jvs[1][1,:]; end
                 end
+            end
+            if debugmode
+                println("    R $R betaH $Beta_H diff $(R-Beta_H)")
             end
             add_bl_T!(q,it,Tmat,Beta_H)
             if TF[1];elit = it;break;end            
         end
         if TF[1] == false
             @timeit to "bl_Restart" begin
-                bl_ThickRestart(q,vks,uks,Beta_H,Tmat,inow,ls_sub,mdim,Vt)
+                num_restart += 1
+                if debugmode; write_wf_hdf5(vks,Hvs,HvRs,Tmat,Jvlog_before, Jvlog_after,"JJ_TRBL_res$(num_restart).h5",debugmode); end
+                bl_ThickRestart(q,vks,uks,Beta_H,Tmat,inow,ls_sub,mdim,Vt,debugmode)
             end
             itmin = ls_sub + 1
         end        
@@ -420,7 +545,6 @@ function bl_operate_H!(q,wf,twf,pbits,nbits,jocc_p,jocc_n,
             end
         end
         #end
-        #@timeit to "1b" begin
         ### one-body operator
         @inbounds for pidx = 1:l_Np
             tMi = offset + pidx*l_Nn
@@ -433,10 +557,8 @@ function bl_operate_H!(q,wf,twf,pbits,nbits,jocc_p,jocc_n,
                 @inbounds for b=1:q
                     w_f[b] += coeff * w_i[b]
                 end
-
             end
         end
-        #end
     end
     return nothing
 end
@@ -454,11 +576,7 @@ function Jcompress(q,vks,Tmat,inow,ls_sub,mdim,R,bnout,U,Mat,Beta_J;use_LAPACK=f
         M = @views Tmat[1:lm,1:lm]       
         vals,vecs = eigen(M) # eigen(Symmetric(M,:L))
     end
-    # x = maximum([ 1.0-sum(vecs[1:lm,i].^2) for i=1:ls])
-    # if x > 1.e-6
-    #     println("WARNING: JJ block norm diff. in jj_refine ", x)
-    # end
-    
+   
     tv = @views vecs[1:ls,1:ls]
     BLAS.gemm!('T','N',1.0,tv,bnout,0.0,R)# mul!(R,tv,bnout)  
     bnout .= R
@@ -476,21 +594,73 @@ function Jcompress(q,vks,Tmat,inow,ls_sub,mdim,R,bnout,U,Mat,Beta_J;use_LAPACK=f
     tv = @views vecs[1:lm,1:ls]
     BLAS.gemm!('T','T',1.0,tv,tU,0.0,vks[1])
     Beta_J .= @views vecs[1:ls,1:ls]   
-    
-    #println("V1 compressed ",vks[1][1,:])
-    #println("V2 compressed ",vks[1][2,:])
+
     return nothing
 end
 
-function bl_ThickRestart(q,vks,uks,R,Tmat,inow,ls_sub,mdim,Vt)
+function like_bl_ThickRestart(vks,uks,Tmat,lm,ls,debugmode)
+    q = 1
+    ls_sub = div(ls,q)
+    mdim = size(vks[1])
+    R = beta = Tmat[lm-1,lm]
+    vals,vecs = eigen(@views Tmat[1:lm-1,1:lm-1])
+    Tmat .= 0.0
+
+    for k = 1:ls; Tmat[k,k] = vals[k]; end
+    tv = @views vecs[lm-1,1:ls]
+    r = R .* tv 
+
+    Tmat[ls+1,1:ls] .= r
+    Tmat[1:ls,ls+1] .= r
+
+    for k = 1:ls 
+        uk = uks[k] #.= 0.0
+        uk .= 0.0
+        for j=1:lm-1
+            vk = vks[j]
+            fac = vecs[j,k]
+            uk .+= fac .* vk
+        end
+    end
+    for i = 1:ls
+        vks[i] .= uks[i]
+        println("norm vks[$i] $(norm(vks[i]))")
+    end
+    vks[ls+1] .= vks[lm]
+    for i= ls_sub+2:length(vks)
+        vks[i] .= 0.0
+    end
+    for i=2:ls+1
+        v = vks[i]
+        for j = i-1:-1:1
+            fac = dot(vks[j],v)
+            v .-= fac .* vks[j]
+        end
+        w = sqrt(dot(v,v))
+        v .*= 1.0/w
+        println(" => norm vks[$i] $(norm(vks[i]))")
+    end
+    return nothing 
+end
+
+function bl_ThickRestart(q,vks,uks,R,Tmat,inow,ls_sub,mdim,Vt,debug_mode)
     lm = q*inow
     ls = q*ls_sub
     r = zeros(Float64,q,ls)
     vals,vecs = eigen(@views Tmat[1:lm,1:lm])
+    Tmat_before = copy(Tmat)
+
+    println("βm1 ",Tmat[lm-1,lm], " ", Tmat[lm-2,lm-1])
+
     Tmat .= 0.0    
     for k = 1:ls; Tmat[k,k] = vals[k]; end
     tv = @views vecs[lm-q+1:lm,1:ls]    
     mul!(r,R,tv) #BLAS.gemm!('N','N',1.0,R,tv,0.0,r)
+    
+    println("R = beta? $R")
+    println("r in blockRestart $r")
+    println("tv $tv")
+
     Tmat[ls+1:ls+q,1:ls] .= r
     Tmat[1:ls,ls+1:ls+q] .= r'
     for bi = 1:ls_sub
@@ -504,9 +674,8 @@ function bl_ThickRestart(q,vks,uks,R,Tmat,inow,ls_sub,mdim,Vt)
                     v = @views vk[bj,:]
                     idx = q*(j-1) +bj
                     fac = vecs[idx,k]
-                    @inbounds for m=1:mdim
-                        uk[b,m] += fac * v[m]
-                    end
+                    @views u_vv = @views uk[b,:]
+                    axpy!(fac, v, u_vv)
                 end
             end
         end
@@ -529,6 +698,19 @@ function bl_ThickRestart(q,vks,uks,R,Tmat,inow,ls_sub,mdim,Vt)
             bl_QR!(V',R,mdim,q)
         end
     end
+    # if debug_mode 
+    #     io = h5open("restart_blocck.hdf5", "w") 
+    #     write(io,"lm", lm)
+    #     write(io,"ls", ls)
+    #     write(io,"vals", vals)
+    #     write(io,"vecs", vecs)
+    #     for i = 1:ls
+    #         write(io, "uks_$i", uks[i][1,:])
+    #     end
+    #     write(io, "Tmat_before", Tmat_before)
+    #     write(io, "Tmat", Tmat)
+    #     close(io)
+    # end
     return nothing
 end
 
@@ -542,18 +724,17 @@ function bl_JJ_Lanczos(q,Jvs,Jmat,Vt,R,Beta_J,JTF,Jtol,Jvret,pbits,nbits,tdims,e
         for it = itmin:itmax
             inow = it            
             V = Jvs[it]; JV = Jvs[it+1]
-            bl_operate_J!(q,V,JV,pbits,nbits,tdims,
-                          Jidxs,oPP,oNN,oPNu,oPNd)
+            bl_operate_J!(q,V,JV,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
             axpy!(eval_jj,V,JV)##JV .+= eval_jj .* V            
             BLAS.gemm!('N','T',1.0,V,JV,0.0,R)
             @inbounds for j=1:q;for i=1:j
-                R[j,i] = R[i,j]
+                 R[j,i] = R[i,j]
             end;end
             @views Jmat[q*it-q+1:q*it,q*it-q+1:q*it] .= R            
             tJmat = @views Jmat[1:it*q,1:it*q]
 
             jeval = eigvals(tJmat)[1:q]
-            if verbose; print_vec("$it jeval=> ",jeval);end
+            if verbose; print_vec("$it jeval=> ",jeval;long=true);end
             if jeval[1] - eval_jj < -Jtol
                 if verbose;println("neg JJ @$it jeval");end
                 JTF[1] = true;break
@@ -563,12 +744,12 @@ function bl_JJ_Lanczos(q,Jvs,Jmat,Vt,R,Beta_J,JTF,Jtol,Jvret,pbits,nbits,tdims,e
                 JTF[1] = true;break
             end
             BLAS.gemm!('N','N',-1.0,R,V,1.0,JV) #mul!(JV,R,V,-1.0,1.0)
-            s_vs = @views Jvs[1:it-1]
+            s_vs = @views Jvs[1:it-1]          
             bl_ReORTH(q,it,mdim,s_vs,JV,Vt,R)
             bl_QR!(JV',Beta_J,mdim,q)
 
             tnorm = norm(Diagonal(Beta_J),Inf)
-            add_bl_T!(q,it,Jmat,Beta_J)
+            add_bl_T!(q,it,Jmat,Beta_J)            
             if tnorm < Jtol
                 println("Jbn norm $tnorm")
                 JTF[1]=true;break
@@ -577,13 +758,11 @@ function bl_JJ_Lanczos(q,Jvs,Jmat,Vt,R,Beta_J,JTF,Jtol,Jvret,pbits,nbits,tdims,e
         if rescount == 20;println("JJ not converged");return nothing;end
         if JTF[1]==false
             tJmat = @views Jmat[1:inow*q,1:inow*q]
-            bl_ThickRestart(q,Jvs,Jvret,Beta_J,Jmat,
-                            inow,1,mdim,Vt)
+            bl_ThickRestart(q,Jvs,Jvret,Beta_J,Jmat,inow,1,mdim,Vt,false)
             itmin = 2;rescount += 1
         end
     end
     if inow > itmin
-        #@timeit to "Restart"
         Jcompress(q,Jvs,Jmat,inow,1,mdim,R,bnout,U,Mat,Beta_J)
     end
     return nothing

@@ -30,7 +30,9 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      #- uses: julia-actions/julia-runtest@v1
+      - name: "Run tests"
+        run: julia --project -e 'import Pkg; Pkg.test()'
         env:
           JULIA_NUM_THREADS: 2
         if: ${{ matrix.payload == 'serial' }}

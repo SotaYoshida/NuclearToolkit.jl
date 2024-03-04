@@ -1,3 +1,4 @@
+option in optional_parameters.jl will be used.
 --- chiEFTparameters used ---
 n_mesh = 50
 pmax_fm = 5.0
@@ -31,6 +32,7 @@ size of dWS (jmax 9 lmax 40 e2max 8 Nnmax 20):
 # of sp states 15
 # of channels 2bstate 55 #TBME = 34320
 E(2H): bare = -2.224578 srg = -2.224578 Diff.1.484e-10
+option in optional_parameters.jl will be used.
 size of dWS (jmax 9 lmax 40 e2max 8 Nnmax 20):
      dtri    4.46 MB    dcgm0    1.11 MB  d6j_int    1.11 MB   d6j_lj    0.28 MB
   d9j_lsj    1.76 MB  dictHOB    0.44 MB

@@ -33,10 +33,10 @@ jobs:
       #- uses: julia-actions/julia-runtest@v1
       - name: "Run tests"
         run: julia --project -e 'import Pkg; Pkg.test()'
-        env:
-          JULIA_NUM_THREADS: 2
-        if: ${{ matrix.payload == 'serial' }}
-        continue-on-error: ${{ matrix.version == 'nightly' }}
+        # env:
+        #   JULIA_NUM_THREADS: 2
+        # if: ${{ matrix.payload == 'serial' }}
+        # continue-on-error: ${{ matrix.version == 'nightly' }}
   build:
     runs-on: ubuntu-latest
     strategy:

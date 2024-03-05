@@ -57,7 +57,7 @@ end
     @test prepEC(Hs,target_nuc,num_ev,num_ECsample,targetJ,mode;path_to_samplewav=spath,save_wav=true) == nothing
 
     println("make TDmat...")
-    num_ECsamples = length(Hs)
+    num_ECsample = length(Hs)
     mode = "TD"
     @test prepEC(Hs,target_nuc,num_ev,num_ECsample,targetJ,mode;path_to_samplewav=spath) == nothing
 

@@ -100,11 +100,11 @@ function readRvecs!(mdim,inpf,tJ,vecs,wfinfos;num=100)
 end
 
 function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
-                num_history=3,lm=400,ls=15,tol=1.e-9,q=1,
+                num_history=3,lm=100,ls=15,tol=1.e-9,q=1,
                 path_to_samplewav="",calc_moment=true,
                 save_wav = false,tdmatdir="./tdmat/",
                 gfactors = [1.0,0.0,5.586,-3.826],
-                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true,is_show=false)
+                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true)
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)

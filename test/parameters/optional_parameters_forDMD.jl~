@@ -10,7 +10,7 @@ chi_order = 3; pottype="em500n3lo"
 
 ### --- IMSRG ---
 smax = 500.0
-dsmax = 0.5
+dsmax = 0.25
 denominatorDelta=0.0
 BetaCM = 0.0
 magnusmethod="NS"

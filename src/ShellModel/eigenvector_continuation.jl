@@ -100,11 +100,11 @@ function readRvecs!(mdim,inpf,tJ,vecs,wfinfos;num=100)
 end
 
 function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
-                num_history=3,lm=100,ls=15,tol=1.e-9,q=1,
+                num_history=3,lm=400,ls=15,tol=1.e-9,q=1,
                 path_to_samplewav="",calc_moment=true,
                 save_wav = false,tdmatdir="./tdmat/",
                 gfactors = [1.0,0.0,5.586,-3.826],
-                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true)
+                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true,is_show=false)
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
@@ -292,7 +292,9 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
             close(io)
         end
     end
-    show_TimerOutput_results(to)
+    if is_show
+        show_TimerOutput_results(to)
+    end
     return nothing
 end
 
@@ -448,7 +450,9 @@ function solveEC(Hs,target_nuc,tJNs;
     if length(Hs) > 1 && exact_logf != "" 
         @timeit to "scatter plot" plot_EC_scatter(target_nuc,Hs,sumV,tJNs,Dims,exlines)
     end
-    show_TimerOutput_results(to)
+    if is_show
+        show_TimerOutput_results(to)
+    end
     return nothing
 end
 
@@ -583,8 +587,10 @@ function solveEC_UQ(Hs,target_nuc,tJNs,Erefs,errors;
     #            "std: ", @sprintf("%10.4f ", std([iThetas[i][n] for i =1:Ns])))
     #end
     println(tx)    
-    write_history(iThetas,Ts,llhs,tJNs,Ens)   
-    show_TimerOutput_results(to)
+    write_history(iThetas,Ts,llhs,tJNs,Ens)
+    if is_show
+        show_TimerOutput_results(to)
+    end
     println("")
     return nothing
 end

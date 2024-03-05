@@ -51,7 +51,7 @@
     @testset "testing DMD" begin      
         nuc = "He4"; emax = 2; hw = 20
         s_pred = [30.0, 50.0]
-        ds = 0.25; smin = 15.0
+        ds = 0.5; smin = 15.0
         # generating Omega 
         sntf = "tbme_emn500n4lo_2n3n_srg10.0hw20emax2.snt.bin"
         pid = getpid()

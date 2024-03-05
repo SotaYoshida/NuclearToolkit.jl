@@ -134,7 +134,6 @@ function Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,
             ReORTH(it,vkp1,svs)
             
             beta = sqrt(dot(vkp1,vkp1))
-            println("    betaJ $beta")
             #if beta < 1.e-4;eljit=it;TF[1]=true;JTF[1]=true;break;end
             vkp1 .*= 1.0/beta
             Jmat[it+1,it] = beta; Jmat[it,it+1] = beta

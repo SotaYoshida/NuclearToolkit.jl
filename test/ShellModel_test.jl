@@ -38,7 +38,7 @@
 end
 
 @testset  "Testing EC on shell model" begin
-    target_nuc = "O18"
+    target_nuc = "O20"
     num_ev = 3
     targetJ = 0
     sntpath = "interaction_file/random_snts/"
@@ -57,7 +57,7 @@ end
     @test prepEC(Hs,target_nuc,num_ev,num_ECsample,targetJ,mode;path_to_samplewav=spath,save_wav=true) == nothing
 
     println("make TDmat...")
-    num_ECsamples = length(Hs)
+    num_ECsample = length(Hs)
     mode = "TD"
     @test prepEC(Hs,target_nuc,num_ev,num_ECsample,targetJ,mode;path_to_samplewav=spath) == nothing
 

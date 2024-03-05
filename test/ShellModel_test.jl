@@ -38,7 +38,7 @@
 end
 
 @testset  "Testing EC on shell model" begin
-    target_nuc = "O18"
+    target_nuc = "O20"
     num_ev = 3
     targetJ = 0
     sntpath = "interaction_file/random_snts/"

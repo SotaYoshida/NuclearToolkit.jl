@@ -711,7 +711,11 @@ function print_vec(s,v,io=stdout;ine=false,long=false)
     s *= " "
     for i = 1:length(v)
         if ine
-            s *= @sprintf "%9.1e" v[i]
+            if long 
+                s *= @sprintf "%11.3e" v[i]
+            else
+                s *= @sprintf "%9.1e" v[i]
+            end
         else
             if long
                 s *= @sprintf "%15.8f" v[i]

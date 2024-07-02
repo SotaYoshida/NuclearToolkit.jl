@@ -1,13 +1,13 @@
 """
-The main API for VMC (w/ pairwise ansatz).
+The main API for pairwise truncations.
 """
-function main_vmc(psi_exact,eigenvals,tdims,msps_p,msps_n,
+function main_pairwise_truncation(truncation_scheme,psi_exact,eigenvals,tdims,msps_p,msps_n,
                   pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
                   Jidxs,oPP,oNN,oPNu,oPNd)
+    num_ev = length(eigenvals)
     state_idx = 1
     psi_gs = psi_exact[state_idx]
     mdim = tdims[end]
-    @assert mdim <= 300 "vmc function is now valid for mdim <= 300"
 
     # Make block w.f. for the ground state
     psi_block = [ zeros(Float64,length(pbits[bi]),length(nbits[bi])) for bi = 1:length(pbits)]
@@ -16,7 +16,14 @@ function main_vmc(psi_exact,eigenvals,tdims,msps_p,msps_n,
 
     # Flatten Hamiltonian operator to (mdim,mdim) matrix => Hflat
     Hflat = calc_Hflat(tdims,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn)
-    print_vec("eigvals(Hflat)",eigvals(Hflat))
+
+    if mdim < 100
+        print_vec("eigvals(Hflat)",eigvals(Hflat)[1:min(mdim,num_ev)])
+    else
+        println("using Arpack")
+        evals, evecs = eigs(Hflat;nev=num_ev,which=:SR)
+        print_vec("eigvals(Hflat)[1:$num_ev]",real.(evals))
+    end 
 
     ### low-rank approximation of "many-body wavefunction"
 
@@ -40,98 +47,94 @@ function main_vmc(psi_exact,eigenvals,tdims,msps_p,msps_n,
     # construct product state 
     dict_idxs = prep_product_state(pbits,nbits,msps_p,msps_n) 
  
-    U,S,V = svd(psi_config)
-    print_vec("S:\n",S)
+    # U,S,V = svd(psi_config)
+    # print_vec("S:\n",S)
 
     pbits_flat = vcat(pbits...)
     nbits_flat = vcat(nbits...)
-    println("n_msps $msps_n")
-    println("neutron configs. $nbits_flat")
+    # println("n_msps $msps_n")
+    # println("neutron configs. $nbits_flat")
 
+    # for trank in 1:rank(psi_config)    
+    #     idxs_rank = collect(1:trank)
 
-    for trank in 1:rank(psi_config)    
-        idxs_rank = collect(1:trank)
+    #     # # # for 8Be remove index from Array
+    #     # idxs_rank = Int64[ ]
+    #     # for i = 1:size(V)[2]
+    #     #     #println("abs ", abs.(V'[i,[3,4,5,11,12,13]]), " sum(abs)", sum(abs.(V'[i,[3,4,5,11,12,13]])))
+    #     #     if sum(abs.(V'[i,[3,4,5,11,12,13]])) > 1.e-8; continue;end
+    #     #     push!(idxs_rank,i)
+    #     # end
+    #     # idxs_rank = idxs_rank[1:min(length(idxs_rank),trank)]
+    #     # println("idxs_rank $idxs_rank")
+    #     subC = U[:,idxs_rank]*Diagonal(S[idxs_rank])*V'[idxs_rank,:]
+    #     subpsi = subC  
+    #     subpsi ./= sqrt(sum(subpsi.^2))
 
-        # # # for 8Be remove index from Array
-        # idxs_rank = Int64[ ]
-        # for i = 1:size(V)[2]
-        #     #println("abs ", abs.(V'[i,[3,4,5,11,12,13]]), " sum(abs)", sum(abs.(V'[i,[3,4,5,11,12,13]])))
-        #     if sum(abs.(V'[i,[3,4,5,11,12,13]])) > 1.e-8; continue;end
-        #     push!(idxs_rank,i)
-        # end
-        # idxs_rank = idxs_rank[1:min(length(idxs_rank),trank)]
-        # println("idxs_rank $idxs_rank")
+    #     #print_mat("U",U)
+    #     #print_mat("V^T",V')
 
-        subC = U[:,idxs_rank]*Diagonal(S[idxs_rank])*V'[idxs_rank,:]
+    #     vec_trial = zeros(Float64,mdim)
+    #     p_ofst = n_ofst = 0; flat_idx = 1
+    #     for bi = 1:length(pbits)
+    #         for pidx = 1:length(pbits[bi])
+    #             for nidx = 1:length(nbits[bi])
+    #                 vec_trial[flat_idx] = subpsi[p_ofst+pidx,n_ofst+nidx]
+    #                 flat_idx += 1
+    #             end
+    #         end
+    #         p_ofst += length(pbits[bi])
+    #         n_ofst += length(nbits[bi])
+    #         # println("block $bi\n",psi_block[bi])
+    #         # println("pbits $(pbits[bi])")
+    #         #println("nbits $(nbits[bi])")
+    #     end
+    #     Etri = dot(vec_trial,Hflat*vec_trial)
+    #     num_non0 = sum(abs.(vec_trial) .> 1.e-12)
+    #     println("trank ",@sprintf("%3i",trank)," <H>_trial = ", @sprintf("%10.5f", Etri), "\t # nonzero $num_non0 \t rel. error (%) ", @sprintf("%9.3e", 100*abs((Etri-eigenvals[state_idx])/eigenvals[state_idx])))
 
-
-        subpsi = subC  
-        subpsi ./= sqrt(sum(subpsi.^2))
-
-        #print_mat("U",U)
-        #print_mat("V^T",V')
-
-        vec_trial = zeros(Float64,mdim)
-        p_ofst = n_ofst = 0; flat_idx = 1
-        for bi = 1:length(pbits)
-            for pidx = 1:length(pbits[bi])
-                for nidx = 1:length(nbits[bi])
-                    vec_trial[flat_idx] = subpsi[p_ofst+pidx,n_ofst+nidx]
-                    flat_idx += 1
-                end
-            end
-            p_ofst += length(pbits[bi])
-            n_ofst += length(nbits[bi])
-            # println("block $bi\n",psi_block[bi])
-            # println("pbits $(pbits[bi])")
-            #println("nbits $(nbits[bi])")
-        end
-        Etri = dot(vec_trial,Hflat*vec_trial)
-        num_non0 = sum(abs.(vec_trial) .> 1.e-12)
-        println("trank ",@sprintf("%3i",trank)," <H>_trial = ", @sprintf("%10.5f", Etri), "\t # nonzero $num_non0 \t rel. error (%) ", @sprintf("%9.3e", 100*abs((Etri-eigenvals[state_idx])/eigenvals[state_idx])))
-
-        if trank == rank(psi_config)
-            print_mat("V^T",V')
-            print_mat("subpsi",subpsi)
-            for i = 1:size(V)[2]
-                println(V'[i,:])
-            end
-        end
+    #     if trank == rank(psi_config)
+    #         print_mat("V^T",V')
+    #         print_mat("subpsi",subpsi)
+    #         for i = 1:size(V)[2]
+    #             println(V'[i,:])
+    #         end
+    #     end
        
-    end        
-    return nothing
+    # end        
+    # #return nothing
     
-    psi_svd = zeros(Float64,pdim,ndim)
-    psi_svd .= subC  
-    psi_svd ./= sqrt(sum(psi_svd.^2))
+    # # psi_svd = zeros(Float64,pdim,ndim)
+    # # psi_svd .= subC  
+    # # psi_svd ./= sqrt(sum(psi_svd.^2))
 
-    psi_flat_new = zeros(Float64,mdim)
-    p_ofst = n_ofst = 0 
-    flat_idx = 1
-    for bi = 1:length(pbits) 
-        for pidx = 1:length(pbits[bi])
-            for nidx = 1:length(nbits[bi])
-                psi_flat_new[flat_idx] = psi_config[p_ofst+pidx,n_ofst+nidx] 
-                flat_idx += 1
-            end
-        end
-        p_ofst += length(pbits[bi])
-        n_ofst += length(nbits[bi])
-    end
-    Egs = dot(psi_flat_new,Hflat*psi_flat_new)
-    println("trank = $trank, Egs = $Egs error ",abs(Egs-eigenvals[1]))
-    for i = 1:pdim
-        print_vec("",psi_svd[i,:])
-    end
+    # # psi_flat_new = zeros(Float64,mdim)
+    # # p_ofst = n_ofst = 0 
+    # # flat_idx = 1
+    # # for bi = 1:length(pbits) 
+    # #     for pidx = 1:length(pbits[bi])
+    # #         for nidx = 1:length(nbits[bi])
+    # #             psi_flat_new[flat_idx] = psi_config[p_ofst+pidx,n_ofst+nidx] 
+    # #             flat_idx += 1
+    # #         end
+    # #     end
+    # #     p_ofst += length(pbits[bi])
+    # #     n_ofst += length(nbits[bi])
+    # # end
+    # # Egs = dot(psi_flat_new,Hflat*psi_flat_new)
+    # # println("trank = $trank, Egs = $Egs error ",abs(Egs-eigenvals[1]))
+    # # for i = 1:pdim
+    # #     print_vec("",psi_svd[i,:])
+    # # end
    
     # SVD of Hflat
     #M0idxs = get_M0idxs(pbits,nbits,msps_p,msps_n)
     #svd_mat(Hflat,M0idxs)
     
     # Check the energies by direct diagonalization of Hflat
-    num_ev = length(eigenvals)
-    vals = real.(eigsolve(Hflat,num_ev,:SR)[1])[1:num_ev]
-    @assert norm(vals-eigenvals, Inf) < 1.e-6 "Hflat not giving the same eigenvalues as H"
+    # num_ev = length(eigenvals)
+    # vals = real.(eigsolve(Hflat,num_ev,:SR)[1])[1:num_ev]
+    # @assert norm(vals-eigenvals, Inf) < 1.e-6 "Hflat not giving the same eigenvalues as H"
    
     vtmp = zeros(Float64,mdim)
     operate_J!(psi_gs,vtmp,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
@@ -140,31 +143,132 @@ function main_vmc(psi_exact,eigenvals,tdims,msps_p,msps_n,
     println("<Hflat>_0 = ", dot(psi_gs,Hflat * psi_gs), " <J>_0 = $totalJ")
 
     # Specifying pairwise truncations for VMC
-    # mask_idxs, Midxs = truncated_Midxs_pnpair(pbits,nbits,msps_p,msps_n)
-    # println("pn-pair truncated dim. => $(length(Midxs))")
-    mask_idxs, Midxs = truncated_Midxs_absM(pbits,nbits,msps_p,msps_n)
-    println("pn-pair + jpartner truncated dim. => $(length(Midxs))")
+    mask_idxs = Int64[ ]
+    Midxs = Int64[ ]
+    valid_bits = Vector{Int64}[ ] 
+    if truncation_scheme == "pn-pair" # This will be removed in the future
+        mask_idxs, Midxs = truncated_Midxs_pnpair(pbits,nbits,msps_p,msps_n)
+        println("pn-pair truncated dim. => $(length(Midxs))")
+    end
+    
+    #mask_idxs, Midxs = truncated_Midxs_absM(pbits,nbits,msps_p,msps_n)
+    #println("pn-pair + jpartner truncated dim. => $(length(Midxs))")
+    
     # mask_idxs, Midxs = truncated_Midxs_MpMn0(pbits,nbits,msps_p,msps_n)
-    # println("Mp=Mn=0 configs. dim. => $(length(Midxs))")
+    # println("Mp=Mn=0 truncated dim. => $(length(Midxs))")
+    if truncation_scheme == "nn-pair"
+        mask_idxs, Midxs, valid_bits = truncated_Midxs_Mn0(nbits,msps_n)
+        println("Mn=0 (neutron systems) truncated dim. => $(length(Midxs))")
+    end
 
     # Make trial wavefunction
     psi_trial = copy(psi_gs); psi_trial[mask_idxs] .= 0.0
-
     subH = @view Hflat[Midxs,Midxs]
-    svals, svecs = eigsolve(subH,1,:SR)
+    svals, svecs = eigen(subH)
+
+    println("svals $(svals[1])")
+
+    # # ad hoc masking
+    # for i = 1:size(subH)[1]
+    #     for j = 1:size(subH)[2]
+    #         if i > 2 && j > 2
+    #             subH[i,j] = 0.0
+    #         end
+    #     end
+    # end
+
+    show_matrix("subH",subH)
+    println("Midxs $Midxs")
+    #println("valid_bits $valid_bits")
+    # println("eigen:", eigen(subH))
+
+    # Show the configurations and weights of the wave function
+    ln_pbit = length(msps_p)
+    ln_nbit = length(msps_n)
+    show_configurations_and_weights(SPEs, msps_p, msps_n, svals, svecs, valid_bits, ln_pbit, ln_nbit)
+
     psi_trial[Midxs] .= svecs[1]
     psi2 = dot(psi_trial,psi_trial)
-    #println("psi_trial $psi_trial psi2 $psi2")
     psi_trial ./= (psi2)
 
     # check total angular momentum J 
-    vtmp .= 0.0
-    operate_J!(psi_trial,vtmp,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
-    Jexpec = dot(psi_trial,vtmp)
-    totalJ = J_from_JJ1(Jexpec)
-    println("<H>_tri = ", dot(psi_trial,Hflat * psi_trial), " <J>_tri = $totalJ Jexpec $Jexpec \n")
+    # vtmp .= 0.0
+    # operate_J!(psi_trial,vtmp,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
+    # Jexpec = dot(psi_trial,vtmp)
+    # totalJ = J_from_JJ1(Jexpec)
+    # println("<H>_tri = ", dot(psi_trial,Hflat * psi_trial), " <J>_tri = $totalJ Jexpec $Jexpec \n")
 
     return nothing
+end
+
+function show_matrix(text,mat)
+    println("$text:")
+    for i = 1:size(mat)[1]
+        print_vec("",mat[i,:])
+    end
+    return nothing
+end
+
+"""
+
+Function to show the weights and configurations of the trial wavefunction.
+The `svals`, `svecs` are the eigenvalues and eigenvectors of the truncated Hamiltonian,
+and `masked_bits` are the vectors of something like [0, 65], which may be 0-proton and two neutrons (64+1).
+
+# Optional arguments
+- `n_states_show` : number of states to show (default: 1)
+- `pairwise_fmt`: format of the pairwise configurations (default: true)
+"""
+function show_configurations_and_weights(SPEs, msps_p, msps_n, svals, svecs, masked_bits, ln_pbit, ln_nbit; n_states_show=1, pairwise_fmt=true)
+    for state = 1:n_states_show
+        println("state $state energy = $(svals[state])")
+        vec = svecs[:,state]
+        for idx = 1:length(masked_bits)
+            pbit, nbit = masked_bits[idx]
+            pocc = get_bitarry_from_int(pbit, ln_pbit)
+            nocc = get_bitarry_from_int(nbit, ln_nbit)
+            if pairwise_fmt 
+                pocc_pw = get_pwocc_from_occarray(pocc, msps_p)
+                nocc_pw = get_pwocc_from_occarray(nocc, msps_n)
+                println("proton $pocc_pw neutron $nocc_pw weight $(vec[idx])")
+            else
+                println("proton $pocc neutron $nocc weight $(vec[idx])")
+            end
+        end
+    end
+    return 
+end
+
+function get_pwocc_from_occarray(occ, msps; return_bitstring=true)
+    occ_arr = zeros(Int64, div(length(msps),2))
+    pw_orbit_count = 0
+    for idx = 1:length(occ)
+        n, l, j, tz, m = msps[idx]
+        if m > 0; continue; end
+        pw_orbit_count += 1
+        if occ[idx] == 1
+            partner_idx = 0
+            for idx_ = 1:length(occ)
+                if occ[idx_] == 1
+                    n_, l_, j_, tz_, m_ = msps[idx_]
+                    if n == n_ && l == l_ && j == j_ && tz == tz_ && m == - m_
+                        partner_idx = idx_
+                    end
+                end
+            end
+            @assert partner_idx != 0 "something wrong"
+            occ_arr[pw_orbit_count] = 1
+        end
+    end
+    if return_bitstring
+        occ_str = ""
+        for occ_ in occ_arr
+            occ_str *= string(occ_)
+        end
+        return occ_str
+    else
+        return occ_arr
+    end
 end
 
 """
@@ -332,10 +436,56 @@ function truncated_Midxs_MpMn0(pbits,nbits,msps_p,msps_n)
                 end
             end
         end
-    end
+    end    
     return mask_idxs,Midxs
 end
 
+function truncated_Midxs_Mn0(nbits, msps_n)
+    Midxs = Int64[ ]
+    mask_idxs = Int64[ ]
+    valid_bits = Vector{Int64}[ ]
+    idx = 0 
+    num_nbit = length(msps_n)
+    for block_i = 1:length(nbits)
+        l_Nn = length(nbits[block_i])
+        for nidx = 1:l_Nn
+            idx += 1
+            nbit = nbits[block_i][nidx]
+            occ_vec_n = get_bitarry_from_int(nbit, num_nbit)
+            Mn = 0 
+            tf = 1
+            for (idx_nbit,occ_n) in enumerate(occ_vec_n)
+                n_n,l_n,j_n,tz_n,m_n = msps_n[idx_nbit]
+                if occ_n == 1
+                    hit = false
+                    for (idx_nbit_2,occ_n_2) in enumerate(occ_vec_n)
+                        n_n_2,l_n_2,j_n_2,tz_n_2,m_n_2 = msps_n[idx_nbit_2]
+                        if occ_n_2 == 1 && m_n_2 == -m_n && n_n_2 == n_n && l_n_2 == l_n && j_n_2 == j_n
+                            Mn += m_n
+                            hit = true
+                        end 
+                    end
+                    if !hit; tf *= 0; end                     
+                end
+            end
+            if  tf !=0 && Mn == 0
+                push!(Midxs,idx)
+                push!(valid_bits,[0, nbit])
+            else
+                push!(mask_idxs,idx)
+            end
+        end
+    end    
+    return mask_idxs, Midxs, valid_bits
+end
+
+
+"""
+calc_Hflat(tdims,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn)
+    
+Function to flatten the Hamiltonian operator to a matrix.
+Note that we should modify the one-body term for multi-major shell cases or full-CI cases; Only the diagonal elements are now considered.
+"""
 function calc_Hflat(tdims,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn)
     mdim = tdims[end]
     Hflat = zeros(Float64,mdim,mdim)
@@ -352,10 +502,10 @@ function calc_Hflat(tdims,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis
             tMi = offset + pidx*l_Nn
             for nidx =1:l_Nn
                 Mi = tMi + nidx
-                Hflat[Mi,Mi] += (dot(SPEs[1],jocc_p[bi][pidx])+dot(SPEs[2],jocc_n[bi][nidx]))
+                Hflat[Mi,Mi] += (dot(SPEs[1],jocc_p[bi][pidx])+dot(SPEs[2],jocc_n[bi][nidx]))                
             end
         end
-
+                          
         # 2. two-body term (pp/nn)
         for (pidx,tinfo) in enumerate(pp_2bjump[bi])
             tMi = offset + pidx*l_Nn

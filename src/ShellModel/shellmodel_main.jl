@@ -99,8 +99,8 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     if Anum % 2 != Mtot % 2; println("invalid targetJ $tJ");exit();end
     target_el = replace(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
-    tf_pnpair = ifelse(occursin("pn-pair",truncation_scheme),true,false)
-    if tf_pnpair
+    tf_pairwise_truncation = ifelse(occursin("-pair",truncation_scheme),true,false)
+    if tf_pairwise_truncation
         #if Z!=N; @error "Invalid truncation scheme: pn-pair is not supported for Z != N nuclei"; exit();end
         if is_block; @error "Block Lanczos method is not supported for pn-pair truncation"; exit();end
     end
@@ -113,8 +113,8 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ)
     if mdimmode; return nothing;end
     if visualize_occ; visualize_configurations(msps_p,msps_n,pbits,nbits,mdim); end
-    if tf_pnpair && mdim > 500
-        @warn "pn-pair truncation, constructing H explicitly, is not recommended for large model space."
+    if tf_pairwise_truncation && mdim >= 10^4
+        @warn "For pairwise truncation, constructing H explicitly, is not recommended for large model space."
     end
 
     ##Making bit representation of Hamiltonian operators, and storing them
@@ -252,8 +252,8 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
         println(tx_mom)
     end
 
-    if tf_pnpair
-        main_vmc(Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd)
+    if tf_pairwise_truncation
+        main_pairwise_truncation(truncation_scheme,Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd)
     end
 
     if calc_entropy
@@ -420,6 +420,8 @@ function check_jocc_truncation(tz,m_sps,tocc_j,truncated_jocc,truncation_scheme=
             exit()     
         end
     elseif occursin("pn-pair",truncation_scheme) # it doesn't care pn-pair for now
+        return true
+    elseif occursin("nn-pair",truncation_scheme) 
         return true
     else
         @error "truncation_scheme $truncation_scheme is not defined now!!"

@@ -1,5 +1,5 @@
 """
-struct `nuclei`
+struct `nucleus`
 # Fields
 - `Z::Int64` proton number of the reference nucleus
 - `N::Int64` neutron number of the ref.
@@ -10,7 +10,7 @@ struct `nuclei`
 - `cN::Int64` neutron number of core
 - `corenuc::String` core nucleus (e.g., "He4")
 """  
-struct nuclei
+struct nucleus
     Z::Int64
     N::Int64
     A::Int64
@@ -148,14 +148,14 @@ end
 """
 struct `basedat` contains base infomation of the calculation
 # Fields
-- `nuc::nuclei` information of target/core nucleus 
+- `nuc::nucleus` information of target/core nucleus 
 - `sntf::String` filename/path to input interaction
 - `hw::Int64` hbar omega parameter used to define single particle states
 - `emax::Int64` emax truncation for the entire calculations
 - `ref::String` to specify ref="core" or ref="nucl"
 """
 struct basedat
-    nuc::nuclei
+    nuc::nucleus
     sntf::String
     hw::Int64
     emax::Int64
@@ -163,14 +163,14 @@ struct basedat
 end
 
 """
-struct `hfdata`, used to calculate multiple nuclei in a single runscript
+struct `hfdata`, used to calculate multiple nucleus in a single runscript
 # Fields
-- `nuc::nuclei` information of target/core nucleus
+- `nuc::nucleus` information of target/core nucleus
 - `data::Vector{Vector{Float64}}` will be experimental data from AME2020 (if available)
 - `datatype::Vector{String}` supposed to be ["E"] for now
 """
 mutable struct hfdata
-    nuc::nuclei
+    nuc::nucleus
     data::Vector{Vector{Float64}}
     datatype::Vector{String}
 end

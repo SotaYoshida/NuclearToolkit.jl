@@ -9,7 +9,6 @@ using DocStringExtensions
 using FLoops
 using Glob
 using HDF5
-using KrylovKit
 using LatinHypercubeSampling
 using LaTeXStrings
 using LinearAlgebra

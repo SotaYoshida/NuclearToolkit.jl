@@ -36,12 +36,12 @@ option in optional_parameters.jl will be used.
 size of dWS (jmax 9 lmax 40 e2max 8 Nnmax 20):
      dtri    4.46 MB    dcgm0    1.11 MB  d6j_int    1.11 MB   d6j_lj    0.28 MB
   d9j_lsj    1.76 MB  dictHOB    0.44 MB
-target: O16 Ref. => Z=8 N=8 E:    -130.997774E1b:     337.500000E2b:    -468.497774 E3b        0.000000
-E:  -132.733407  = E1b 363.64899  + E2b -496.38240   (   -55.149 -367.063  -74.170), + E3b   0.00000
+target: O16 Ref. => Z=8 N=8 E:  -132.733407  = E1b 363.64899  + E2b -496.38240   (   -55.149 -367.063  -74.170), + E3b   0.00000
 EMP2    -23.70204 1b   -0.00000 pp   -1.43732 pn  -20.80963 nn   -1.45510
 EMP3      0.37877 pp    -0.110 hh    -1.895 ph     2.384
 E_HF   -132.73341  E_MBPT(3) =    -156.0567  Eexp:     -127.619
 
+optional_parameters.jl is used for IMSRG
 parameters in optional_parameters.jl will be used.
 def-by-run d6j_lj done! 4191
  step:        s             E0   ||Omega_1||   ||Omega_2||     ||Eta_1||     ||Eta_2||    Ncomm.  nwritten

@@ -11,13 +11,13 @@ function get_ZNref(ref::String,Z::Int,N::Int,corenuc::String)
     elseif ref == "nucl"
         nothing
     else
-        println("ref to be 'core', 'nucl', or character");exit()
+        println("ref must be 'core' or 'nucl'");exit()
     end
     return Zr,Nr
 end
 """
     def_nuc(nuc::Vector{Int},ref,corenuc)
-constructor of `nuclei` strict from given `Z`,`N`,`ref`,`corenuc`
+constructor of `nucleus` strict from given `Z`,`N`,`ref`,`corenuc`
 """
 function def_nuc(nuc::Vector{Int},ref::String,corenuc::String)
     Z,N = nuc
@@ -30,11 +30,11 @@ function def_nuc(nuc::Vector{Int},ref::String,corenuc::String)
         Zref = cZ; Nref = cN
     end    
     Aref = Zref + Nref
-    return nuclei(Zref,Nref,A,Aref,el,cnuc,cZ,cN,corenuc)
+    return nucleus(Zref,Nref,A,Aref,el,cnuc,cZ,cN,corenuc)
 end 
 """
     def_nuc(Z,N,ref,corenuc)
-constructor of `nuclei` strict from given `cnuc`,`ref`,`corenuc`
+constructor of `nucleus` strict from given `cnuc`,`ref`,`corenuc`
 """
 function def_nuc(cnuc::String,ref::String,corenuc::String)
     reg = r"[0-9]+"
@@ -53,7 +53,7 @@ function def_nuc(cnuc::String,ref::String,corenuc::String)
         Zref = cZ; Nref = cN
     end    
     Aref = Zref + Nref
-    return nuclei(Zref,Nref,A,Aref,el,cnuc,cZ,cN,corenuc)
+    return nucleus(Zref,Nref,A,Aref,el,cnuc,cZ,cN,corenuc)
 end 
 
 """

@@ -100,7 +100,7 @@ function readRvecs!(mdim,inpf,tJ,vecs,wfinfos;num=100)
 end
 
 function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
-                num_history=3,lm=400,ls=15,tol=1.e-9,q=1,
+                num_history=3,lm=500,ls=30,tol=1.e-8,q=1,
                 path_to_samplewav="",calc_moment=true,
                 save_wav = false,tdmatdir="./tdmat/",
                 gfactors = [1.0,0.0,5.586,-3.826],
@@ -122,8 +122,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)
     msps_p,msps_n,mz_p,mz_n = construct_msps(p_sps,n_sps)
-    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,
-                                                  n_sps,msps_n,mz_n,vn,Mtot)
+    pbits,nbits,jocc_p,jocc_n,Mps,Mns,tdims = occ(p_sps,msps_p,mz_p,vp,n_sps,msps_n,mz_n,vn,Mtot)
     oPP,oNN,oPNu,oPNd = prep_J(tdims,p_sps,n_sps,msps_p,msps_n,
                                pbits,nbits)
     mdim = tdims[end]
@@ -136,7 +135,6 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
                 pp_2bjump,nn_2bjump = prep_Hamil_T1(p_sps,n_sps,msps_p,msps_n,pbits,nbits,labels,TBMEs)   
                 bVpn,Vpn,delMs = prep_Hamil_pn(p_sps,n_sps,msps_p,msps_n,labels[3],TBMEs[3])
-                l_pbit = length(msps_p);l_nbit = length(msps_n)
                 bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,pbits,nbits,Mps,delMs,bVpn,Vpn)
                 bVpn=nothing
                 block_tasks = make_distribute(num_task)
@@ -163,8 +161,9 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                                                 eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
                                                 tdims,num_ev,num_history,lm,ls,en,
                                                 tol,to;doubleLanczos=doublelanczos,debugmode=debugmode)
-                Rvecs = @views uks[1:num_ev]               
-                vals,vecs = eigen(@views Tmat[1:elit*q,1:elit*q])
+                Rvecs = @views uks[1:num_ev]
+                Tsub = @views Tmat[1:elit*q,1:elit*q]
+                vals,vecs = eigen(Tsub)
                 @inbounds for (nth,Rvec) in enumerate(Rvecs)
                     Rvec .= 0.0
                     @inbounds for k=1:length(vals)

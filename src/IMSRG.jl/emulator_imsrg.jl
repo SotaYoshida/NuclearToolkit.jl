@@ -250,7 +250,6 @@ function svd_Op_twobody(s,Op::Operator,Chan2b;verbose=true,max_rank=20)
         SVD = LinearAlgebra.svd(mat)
         if verbose 
             print("ch ",@sprintf("%5i",ch), " JPT=($J,$P,$Tz)\t fullrank ", @sprintf("%5i",fullrank), "/ dim= ",@sprintf("%5i",dim),"  ")
-            #print_vec("singular values", SVD.S)
             tol = 1.e-8
             hit = 0
             dimfull += div(dim*(dim+1),2)
@@ -292,16 +291,41 @@ function constructor_snapshot_matrix(fns)
     return parse(Float64,s_end),X,Y
 end
 
-function get_DMD_operator(X,Y,r)
-    Z = svds(X; nsv=r)[1]
-    U_r, S_r, Vt_r = Z.U, Z.S, Z.Vt
+function call_SVD(X, r, method)
+    if method == "Arpack"
+        Z = svds(X; nsv=r)[1]
+        return Z.U, Z.S, Z.Vt
+    elseif method == "KrylovKit"
+        m, n = size(X)
+        vals, lvecs, rvevs, info  = svdsolve(X, m, r)
+        U_r = zeros(Float64, m, r)
+        S_r = zeros(Float64, r)
+        Vt_r = zeros(Float64, r, n)
+        S_r .= vals[1:r]
+        for i = 1:r
+            U_r[:,i] .= lvecs[i]
+            Vt_r[i,:] .= rvevs[i]
+        end
+        return U_r, S_r, Vt_r
+    else
+        if method != "full"
+            println("$method is not supported! svd in LinearAlgebra is called instead.")
+        end
+        Z = svd(X)
+        if r <= rank(X) 
+            return Z.U[:,1:r], Z.S[1:r], Z.Vt[1:r,:]
+        else
+            return Z.U, Z.S, Z.Vt            
+        end
+    end
+end
 
+function get_DMD_operator(U_r, S_r, Vt_r, Y)
     S_r_inv = diagm( 1.0 ./ S_r)
     Z = BLAS.gemm('T', 'N', 1.0, Vt_r, S_r_inv)
     YZ = BLAS.gemm('N','N',1.0, Y, Z)
     Atilde = BLAS.gemm('T', 'N', 1.0, U_r, YZ)
-
-    return U_r, Atilde
+    return Atilde
 end
 
 function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
@@ -313,8 +337,7 @@ function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
     for k = 1:size(Y)[2]
         x_k .= x_new
         BLAS.gemv!('N', 1.0, Atilde, x_k, 0.0, x_new)
-        Y_latent[:,k] .= x_new
-        
+        Y_latent[:,k] .= x_new        
     end
     Yapprox = BLAS.gemm('N', 'N', 1.0, U_r, Y_latent)
     if verbose 
@@ -325,6 +348,8 @@ function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
         end
     end
     println("norm(Y-Yapprox,Inf) = ", @sprintf("%10.4e",norm(Y - Yapprox,Inf)), " Fro. ", @sprintf("%10.4e",norm(Y - Yapprox,2)))
+    tnorm = max(norm(Y - Yapprox,Inf), norm(Y - Yapprox,2))
+    return tnorm
 end
 
 function check_stationarity(z, z_k, z_pred,  Atilde, itnum=1000)
@@ -359,11 +384,10 @@ function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc,
             z_k .= 0.0
             z_new .= z1_r
             s = s_end
-            while true
+            while s < s_target
                 z_k .= z_new
                 BLAS.gemv!('N', 1.0, Atilde, z_k, 0.0, z_new)
                 s += ds
-                if s >= s_target; break; end
             end
             x_pred = BLAS.gemv('N', 1.0, U_r, z_k)
             E_imsrg = 0.0
@@ -403,6 +427,57 @@ function read_dmdvec_hdf5(fn)
     return vec
 end
 
+function util_SVD(X, Y, r_max, tol_svd, method, allow_fullSVD, to; dont_care_stationarity=false)
+    @assert method == "full" || method == "Arpack" || method == "KrylovKit" "method must be full, KrylovKit, or Arpack"
+    fullrank = rank(X)
+    r_used = min(r_max,fullrank)
+    println("fullrank $fullrank r_used $r_used")
+    if allow_fullSVD || method == "full"
+        @timeit to "full SVD" U,Sigma,Vt = call_SVD(X, r_used, "full")
+        r_used = min(r_max, fullrank, sum(Sigma .> tol_svd))
+        print_vec("checking full Sigma[1:$r_used]...", Sigma[1:r_used];ine=true)
+    end
+    @timeit to "SVD($method)" U_r, S_r, Vt_r = call_SVD(X,r_used,method)
+
+    redright = true
+    u = @view U_r[:,1:r_used]
+    s = @view S_r[1:r_used]
+    vt = @view Vt_r[1:r_used,:]
+    Atilde = get_DMD_operator(u,s,vt,Y)
+    while redright && !dont_care_stationarity 
+        Atilde = get_DMD_operator(u,s,vt,Y)
+        evals_Atilde = eigvals(Atilde)
+        redright = !check_stationarity_Atilde(evals_Atilde)
+        print_vec("checking Sigma...", S_r[1:r_used];ine=true)
+        if redright == false; break; end
+        println("truncation at rank <= $r_used does not give converged results")
+        r_used -= 1
+        @assert r_used > 0 "Aborted because the snapshots don't give converged resutls. Please modify smin/smax of snapshots."
+        u = @view U_r[:,1:r_used]
+        s = @view S_r[1:r_used]
+        vt = @view Vt_r[1:r_used,:]
+    end
+    print_vec("singular values r <= $r_used ", S_r[1:r_used];ine=true)
+    return fullrank, r_used, u, Atilde
+end
+
+function check_packages_SVD(X)
+    r = min(10,rank(X))
+    m, n = size(X)
+    SVD = svd(X)
+    s = SVD.S    
+    s_K = svdsolve(X, m, r)[1]
+    s_A = svds(X; nsv=r)[1].S
+
+    @assert issorted(s,rev=true) "s must be sorted in descending order"
+
+    println("Comparing the singular values by different packages....")
+    print_vec("full SVD (LinearAlgebra)", s[1:r];ine=true)
+    print_vec("trun.SVD (KrylovKit)    ", s_K[1:r];ine=true)
+    print_vec("trun.SVD (Arpack)       ", s_A[1:r];ine=true)
+    return nothing
+end
+
 """
 main API for DMD
 
@@ -418,11 +493,22 @@ main API for DMD
 - `s_pred::Vector{Float64}`: values of `s` for the extrapolation
 - `fn_exact::Vector{String}`: filenames of the exact data for the extrapolation, which must have the same length as `s_pred`
 - `allow_fullSVD::Bool`: if `true`, the full SVD is performed and the rank is determined by `trank` and the tolerance `tol_svd`
-- `tol_svd::Float64`: tolerance for the singular values for the truncated SVD
+- `tol_svd::Float64`: tolerance for the singular values for the truncated SVD, too small value gives noisy behavior
 - `inttype::String`: interaction type, which is used for the filename of the output data
+- `methodSVD::String`: method for the truncated SVD.
+    - `"full"`: full SVD (LinearAlgebra)
+    - `"Arpack"`: truncated SVD svds Arpack.jl
+    - `"KrylovKit"`: truncated SVD using `svdsolve[1]` in KrylovKit.jl, this may be not appropriate for the current problem, so do not use it here.
+- `oupdir::String`: output directory for the emulated dmdvec data
+- `is_show::Bool`: if `true`, the TimerOutput result is shown
+- `debugmode::Bool`: if `true`, the packages for the SVD are checked
+- `dont_care_stationarity::Bool`: if `true`, the stationarity of the Atilde is not checked
 """
-function dmd_main(emax, nuc, fns, trank, smin, ds;s_pred=Float64[],fn_exact=String[],
-                  allow_fullSVD=true,tol_svd=1e-7,inttype="",oupdir="flowOmega/")
+function dmd_main(emax, nuc, fns, r_max, smin, ds;s_pred=Float64[],fn_exact=String[],
+                  allow_fullSVD=true,tol_svd=1e-6,inttype="",
+                  methodSVD="Arpack", oupdir="flowOmega/",is_show=true, debugmode=false,
+                  dont_care_stationarity=true)
+    to = TimerOutput()
     if !isdir("flowOmega")
         println("dir. flowOmega is created!")
         mkdir("flowOmega")
@@ -433,21 +519,55 @@ function dmd_main(emax, nuc, fns, trank, smin, ds;s_pred=Float64[],fn_exact=Stri
     s_end, X,Y = constructor_snapshot_matrix(fns)
     println("Snapshot from smin $smin s_end $s_end ds $ds")
 
-    # truncated SVD using Arpack.jl and construct tilde(A)
-    fullrank = rank(X)
-    r = trank
-    if allow_fullSVD
-        SVD = svd(X)
-        sigma_full = SVD.S
-        r = min(r, fullrank, sum(sigma_full .> tol_svd))
-        println("fullrank $(fullrank) rank $r")
-        print_vec("singular values", sigma_full[1:r];ine=true)
+    if debugmode
+        check_packages_SVD(X)
     end
-    U_r, Atilde = get_DMD_operator(X,Y,r)    
-    check_DMD_norm(X, Y, r, U_r, Atilde)
+    
+    fullrank, r, U_r, Atilde = util_SVD(X, Y, r_max, tol_svd, methodSVD, allow_fullSVD, to; dont_care_stationarity=dont_care_stationarity) 
+    evals_Atilde = eigvals(Atilde)
+    check_stationarity_Atilde(evals_Atilde)
+    plot_Atilde_eigvals(evals_Atilde, emax, nuc, smin, s_end, ds, inttype, fullrank, r)
 
+    if is_show
+        show(to); println()
+    end
     # extrapolation
     extrapolate_DMD(Y[:,end],U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
 
+    return nothing
+end
+
+function check_stationarity_Atilde(evals; tol=1.e-2)
+    tf = all(abs.(evals) .<= 1.0+tol)
+    println("eigenvalues of Atilde ", evals)
+    println("stationary?  may be... ", tf)
+    return tf
+end
+
+function plot_Atilde_eigvals(evals, emax, nuc, smin, s_end, ds, inttype, fullrank, r)
+    if !isdir("pic") 
+        mkdir("pic")
+    end
+    fn = "pic/Atilde_eigvals_e$(emax)_$(nuc)_smin$(smin)_send$(s_end)_ds$(ds)_rank$(r)_of_$(fullrank).pdf"
+    # make figure square
+    p = plot(size=(300,300))
+
+    # draw unit circle
+    θ = LinRange(0,2π,100)
+    plot!(cos.(θ),sin.(θ),lw=2,alpha=0.8,label=:none)
+
+    # plot eigenvalues .<= 1.0
+    inon = evals[findall(abs.(evals) .<= 1.0)]
+    plot!(real(inon),imag(inon),st=:scatter,label=L"|z| \leq 1", alpha=0.8)
+    
+    out = evals[findall(abs.(evals) .> 1.0)]
+    if length(out) > 0
+        plot!(real(out),imag(out),st=:scatter,label=L"|z| > 1",alpha=0.8)
+    end
+
+    xlabel!(L"\mathrm{Re} (z)")
+    ylabel!(L"\mathrm{Im} (z)")
+    savefig(p,fn)
+    
     return nothing
 end

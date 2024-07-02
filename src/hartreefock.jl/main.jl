@@ -510,18 +510,19 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
     Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
     M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
     use3NF = Object_3NF.use3BME
-    dim_v3 = ifelse(use3NF, maxnpq, 1)
-    V3NOs = [ zeros(Float64,dim_v3,dim_v3) for i =1:nthreads()]
+    dim_v3_g = ifelse(use3NF, maxnpq, 1)
+    V3NOs = [ zeros(Float64,dim_v3_g,dim_v3_g) for i =1:nthreads()]
 
     @threads for ch = 1:nchan
         tid = threadid()
         tmp = Chan2b[ch]
         Tz = tmp.Tz; J=tmp.J; kets = tmp.kets
         npq = length(kets)
-        D = @view Ds[tid][1:npq,1:npq]
+        tmpD = Ds[tid]
+        D = @views tmpD[1:npq,1:npq]
         dim_v3 = ifelse(use3NF, npq, 1)
         v3mat = V3NOs[tid]
-        V3NO = @view v3mat[1:dim_v3,1:dim_v3]
+        V3NO = @views v3mat[1:dim_v3,1:dim_v3]
         V3NO .= 0.0
         v = V2[ch]
         for ib = 1:npq
@@ -591,6 +592,7 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
         Gam = Gamma[ch]
         tM  = @views M[threadid()][1:npq,1:npq]
         if use3NF
+            #println("ch $ch dim $npq size(v) $(size(v)) size(V3NO) $(size(V3NO))")
             axpy!(1.0,v,V3NO)
             BLAS.gemm!('N','N',1.0,V3NO,D,0.0,tM)
             BLAS.gemm!('T','N',1.0,D,tM,0.0,Gam)
@@ -758,7 +760,7 @@ function hf_iteration(binfo,tHFdata,sps,Hamil,dictTBMEs,Chan1b,Chan2bD,Gamma,max
     end
     h_p = copy(mat1b); h_n = copy(mat1b)
     update_FockMat!(h_p,p1b,p_sps,h_n,n1b,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,Object_3NF,V3tilde)
-    calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs,V3tilde,Object_3NF;verbose=true)
+    calc_Energy(rho_p,rho_n,p1b,n1b,p_sps,n_sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,EHFs,V3tilde,Object_3NF;verbose=false)
 
     for it = 1:itnum        
         ## diagonalize proton/neutron 1b hamiltonian

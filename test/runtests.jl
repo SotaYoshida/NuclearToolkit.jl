@@ -26,6 +26,7 @@ using Printf
     rm("tbme_em500n3lo_barehw20emax2.snt.bin")
     rm("vsimsrg_p-shell_coreHe4refHe4_He4_hw20e2_Delta0.0.snt")
     rm("flowOmega",recursive=true)
+    rm("pic",recursive=true)
 
 end
 

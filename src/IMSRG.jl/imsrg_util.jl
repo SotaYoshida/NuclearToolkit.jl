@@ -862,7 +862,7 @@ Function to write temporary binary files of Operator matrix elements, when split
 """
 function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Omega::Operator,s::Float64,E0::Float64;Oplabel="Omega")
     if !isdir("flowOmega")  && n_written==0
-        run(`mkdir flowOmega`)
+        mkdir("flowOmega")
     end    
     pid = getpid()
     nw = n_written + 1
@@ -1076,6 +1076,7 @@ function init_IMSRGobject(HFobj,filename;smax=500.0,dsmax=0.5,maxnormOmega=0.25,
         println("Since $filename is not found, the default parameters will be used.")
         return IMSRGobj
     else
+        println("$filename is used for IMSRG")
         read_imsrg_parameter!(filename,IMSRGobj)
         return IMSRGobj
     end

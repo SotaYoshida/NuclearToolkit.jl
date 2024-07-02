@@ -6,7 +6,7 @@ struct ksl_state
 end
 
 struct kshell_nuc
-    nuc::nuclei
+    nuc::nucleus
     sntf::String
     Egs::Float64
     Egs_target::Float64

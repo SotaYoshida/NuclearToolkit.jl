@@ -20,7 +20,6 @@ jobs:
         include:
           - {version: '1.11',   os: ubuntu-latest,  payload: serial}
           - {version: '1.11',   os: macOS-latest,   payload: serial}
-          - {version: '1.11',   os: windows-latest, payload: serial}
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

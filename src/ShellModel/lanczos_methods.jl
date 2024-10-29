@@ -2,8 +2,8 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
              SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,
              p_NiNfs,n_NiNfs,Mps,delMs,Vpn,
              eval_jj,oPP,oNN,oPNu,oPNd,Jidxs,
-             tdims,num_ev,num_history,lm,ls,en,tol,to;doubleLanczos=false,checkorth=true,debugmode=true)
-             
+             tdims,num_ev,num_history,lm,ls,en,tol,to;doubleLanczos=false,checkorth=true,debugmode="")
+    debug = occursin("Lanczos",debugmode)
     mdim = tdims[end]
     TF=[false]
 
@@ -17,10 +17,10 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
     
     ###
     num_restart = 0
-    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
     ###
 
     if doubleLanczos
@@ -38,7 +38,7 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
                            pp_2bjump,nn_2bjump,tdims,bis,bfs,block_tasks,
                            p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to)
             end
-            if debugmode
+            if debug
                 Hvs[it] .= vkp1
             end
             talpha = dot(vk,vkp1)
@@ -48,13 +48,13 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
             if TF[1];elit=it;break;end
             svks = @views vks[1:it]
             @timeit to "ReORTH" ReORTH(it,vkp1,svks)
-            if debugmode
+            if debug
                 HvRs[it] .= vkp1
             end
             tbeta = sqrt(dot(vkp1,vkp1))
             vkp1 .*= 1.0/tbeta
             #if checkorth; Check_Orthogonality(it,vks,en); end
-            if debugmode
+            if debug
                 print_vec("En TRL $it ",en[1])
                 println("   beta $tbeta")
             end
@@ -66,10 +66,10 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
                     for i = 2:length(Jvs);Jvs[i] .=0.0;end
                     Jmat .= 0.0;JTF[1] = false
                     Jvs[1] .= vkp1
-                    if debugmode; Jvlog_before[it] .= vkp1; end ##
+                    if debug; Jvlog_before[it] .= vkp1; end ##
                     Jlanczos(Jvs,Jmat,TF,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,Jidxs,oPP,oNN,oPNu,oPNd,beta_J,to)
                     vkp1 .= Jvs[1]                            
-                    if debugmode; Jvlog_after[it] .= vkp1; end ##
+                    if debug; Jvlog_after[it] .= vkp1; end ##
                     if TF[1];elit=it;break;end
                 end  
                 #println("  beta $tbeta beta_inJ $beta_in_J")
@@ -81,8 +81,8 @@ function TRL(vks,uks,Tmat,k,pbits,nbits,jocc_p,jocc_n,
         if TF[1] == false
             @timeit to "Restart" begin
                 num_restart += 1
-                if debugmode; write_wf_hdf5(vks, Hvs, HvRs,Tmat,Jvlog_before, Jvlog_after, "JJ_TR_res$(num_restart).h5", false); end
-                ThickRestart(vks,uks,Tmat,lm,ls,debugmode)
+                if debug; write_wf_hdf5(vks, Hvs, HvRs,Tmat,Jvlog_before, Jvlog_after, "JJ_TR_res$(num_restart).h5", false); end
+                ThickRestart(vks,uks,Tmat,lm,ls,debug)
             end
         end
         k = ls+1
@@ -257,9 +257,10 @@ function diagonalize_T!(k::Int64,num_ev::Int64,Tmat,en::Array{Array{Float64,1}},
     return nothing
 end
 
-function ThickRestart(vks,uks,Tmat,lm,ls,debugmode=false,make_sure=true)
+function ThickRestart(vks,uks,Tmat,lm,ls,debugmode="",make_sure=true)
     vals,vecs = eigen(@views Tmat[1:lm-1,1:lm-1])
-    Tmat_before = ifelse(debugmode,copy(Tmat),[0.0])
+    debug = occursin("Lanczos",debugmode)
+    Tmat_before = ifelse(debug,copy(Tmat),[0.0])
     beta = Tmat[lm-1,lm]
     Tmat .= 0.0
     @inbounds for k = 1:ls
@@ -316,9 +317,10 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
                doubleLanczos=false,verbose=false,debugmode=false)
     ls = q*ls_sub   
     mdim = tdims[end]
+    debug = occursin("BlockLanczos", debugmode)
     if doubleLanczos && mdim < 100
         @warn "Block Lanczos with J projection is not stable for small systems.\nUse TRL (is_block=false) instead."
-    end
+    end    
     
     TF=[false]
     elit = 1
@@ -337,10 +339,10 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
     U = zeros(Float64,mdim,lnJ*q)
     Mat = zeros(Float64,mdim,q)
 
-    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
-    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debugmode,length(vks),1)]
+    Jvlog_before = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    Jvlog_after = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    Hvs = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
+    HvRs = [ zeros(Float64,mdim) for i = 1:ifelse(debug,length(vks),1)]
 
     if doubleLanczos
         @timeit to "JJ lanczos" begin
@@ -363,7 +365,7 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
                               tdims,bis,bfs,block_tasks,
                               p_NiNfs,n_NiNfs,Vpn,Mps,delMs,to)
             end     
-            if debugmode      
+            if occursin("BlockLanczos",debugmode)
                 Hvs[it] .= HV[1,:]
             end
             BLAS.gemm!('N','T',1.0,V,HV,0.0,R) 
@@ -375,13 +377,13 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
 
             @views Tmat[q*it-q+1:q*it,q*it-q+1:q*it] .= R
             diagonalize_T!(it*q,num_ev,Tmat,en,num_history,TF,tol)
-            if debugmode
+            if occursin("Lanczos",debugmode)
                 print_vec("En TRBL $it ",en[1])   
             end        
             BLAS.gemm!('N','N',-1.0,R,V,1.0,HV)#mul!(HV,R,V,-1.0,1.0)
             s_vks = @views vks[1:it-1]
             @timeit to "ReORTH" bl_ReORTH(q,it,mdim,s_vks,HV,Vt,R)
-            if debugmode
+            if occursin("BlockLanczos",debugmode)
                 HvRs[it] .= HV[1,:]
             end
             bl_QR!(HV',Beta_H,mdim,q)#myQR!(HV',Beta_H,mdim,q)
@@ -396,13 +398,13 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
                     for i=2:lnJ; Jvs[i] .= 0.0; end
                     JTF[1] = false; Jmat .= 0.0;Jvs[1] .= HV
                     Vt .= 0.0; R .= 0.0
-                    if debugmode; Jvlog_before[it] .= Jvs[1][1,:]; end
+                    if occursin("BlockLanczos",debugmode); Jvlog_before[it] .= Jvs[1][1,:]; end
                     bl_JJ_Lanczos(q,Jvs,Jmat,Vt,R,Beta_J,JTF,Jtol,Jvret,pbits,nbits,tdims,eval_jj,Jidxs,oPP,oNN,oPNu,oPNd,to,Beta_H,U,Mat)
                     HV .= Jvs[1]; Beta_J .=0.0
-                    if debugmode; Jvlog_after[it] .= Jvs[1][1,:]; end
+                    if occursin("BlockLanczos",debugmode); Jvlog_after[it] .= Jvs[1][1,:]; end
                 end
             end
-            if debugmode
+            if occursin("BlockLanczos",debugmode)
                 println("    R $R betaH $Beta_H diff $(R-Beta_H)")
             end
             add_bl_T!(q,it,Tmat,Beta_H)
@@ -411,7 +413,7 @@ function TRBL(q,vks,uks,Tmat,Beta_H,pbits,nbits,jocc_p,jocc_n,SPEs,
         if TF[1] == false
             @timeit to "bl_Restart" begin
                 num_restart += 1
-                if debugmode; write_wf_hdf5(vks,Hvs,HvRs,Tmat,Jvlog_before, Jvlog_after,"JJ_TRBL_res$(num_restart).h5",debugmode); end
+                if occursin("BlockLanczos",debugmode); write_wf_hdf5(vks,Hvs,HvRs,Tmat,Jvlog_before, Jvlog_after,"JJ_TRBL_res$(num_restart).h5",debugmode); end
                 bl_ThickRestart(q,vks,uks,Beta_H,Tmat,inow,ls_sub,mdim,Vt,debugmode)
             end
             itmin = ls_sub + 1

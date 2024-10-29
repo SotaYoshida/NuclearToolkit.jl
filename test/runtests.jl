@@ -7,6 +7,7 @@ using Printf
     include("chiEFTint_test.jl")
     include("HFMBPT_IMSRG_test.jl")
     include("ShellModel_test.jl")
+
     rm("tdmat",recursive=true)
     rm("wavsamples",recursive=true)
     rm("appwavs",recursive=true)

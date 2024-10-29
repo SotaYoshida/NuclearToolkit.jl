@@ -384,7 +384,7 @@ function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc,
             z_k .= 0.0
             z_new .= z1_r
             s = s_end
-            while s < s_target
+            while (s < s_target && ds > 0) || (s > s_target && ds < 0)
                 z_k .= z_new
                 BLAS.gemv!('N', 1.0, Atilde, z_k, 0.0, z_new)
                 s += ds
@@ -504,10 +504,10 @@ main API for DMD
 - `debugmode::Bool`: if `true`, the packages for the SVD are checked
 - `dont_care_stationarity::Bool`: if `true`, the stationarity of the Atilde is not checked
 """
-function dmd_main(emax, nuc, fns, r_max, smin, ds;s_pred=Float64[],fn_exact=String[],
+function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],fn_exact=String[],
                   allow_fullSVD=true,tol_svd=1e-6,inttype="",
                   methodSVD="Arpack", oupdir="flowOmega/",is_show=true, debugmode=false,
-                  dont_care_stationarity=true)
+                  dont_care_stationarity=true, rev=false)
     to = TimerOutput()
     if !isdir("flowOmega")
         println("dir. flowOmega is created!")
@@ -526,7 +526,8 @@ function dmd_main(emax, nuc, fns, r_max, smin, ds;s_pred=Float64[],fn_exact=Stri
     fullrank, r, U_r, Atilde = util_SVD(X, Y, r_max, tol_svd, methodSVD, allow_fullSVD, to; dont_care_stationarity=dont_care_stationarity) 
     evals_Atilde = eigvals(Atilde)
     check_stationarity_Atilde(evals_Atilde)
-    plot_Atilde_eigvals(evals_Atilde, emax, nuc, smin, s_end, ds, inttype, fullrank, r)
+    sfirst = ifelse(rev, smax_train, smin)
+    plot_Atilde_eigvals(evals_Atilde, emax, nuc, sfirst, s_end, ds, inttype, fullrank, r)
 
     if is_show
         show(to); println()
@@ -544,11 +545,11 @@ function check_stationarity_Atilde(evals; tol=1.e-2)
     return tf
 end
 
-function plot_Atilde_eigvals(evals, emax, nuc, smin, s_end, ds, inttype, fullrank, r)
+function plot_Atilde_eigvals(evals, emax, nuc, s_first, s_end, ds, inttype, fullrank, r)
     if !isdir("pic") 
         mkdir("pic")
     end
-    fn = "pic/Atilde_eigvals_e$(emax)_$(nuc)_smin$(smin)_send$(s_end)_ds$(ds)_rank$(r)_of_$(fullrank).pdf"
+    fn = "pic/Atilde_eigvals_e$(emax)_$(nuc)_sfirst$(s_first)_send$(s_end)_ds$(ds)_rank$(r)_of_$(fullrank).pdf"
     # make figure square
     p = plot(size=(300,300))
 

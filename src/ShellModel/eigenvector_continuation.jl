@@ -104,7 +104,7 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
                 path_to_samplewav="",calc_moment=true,
                 save_wav = false,tdmatdir="./tdmat/",
                 gfactors = [1.0,0.0,5.586,-3.826],
-                effcharge=[1.5,0.5],debugmode=false,doublelanczos=true,is_show=false)
+                effcharge=[1.5,0.5],debugmode="",doublelanczos=true,is_show=false)
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)

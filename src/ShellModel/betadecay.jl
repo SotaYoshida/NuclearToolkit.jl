@@ -166,10 +166,10 @@ function calc_halflife(daughter::kshell_nuc,GTdata,FFkeys,FFdata;verbose=false)
     approp_hl_total_expQ = get_appropunit(hl_total_expQ)
     approp_hl_total_thoQ = get_appropunit(hl_total_thoQ)
     println("ExpQ: "," hl(GT-only) ",@sprintf("%12.4e",hl_GT_expQ), get_appropunit(hl_GT_expQ),
-            " h1/2[sec] ",@sprintf("%12.4e",hl_total_expQ), approp_hl_total_expQ,
+            " hl(GT+FF)[sec] ",@sprintf("%12.4e",hl_total_expQ), approp_hl_total_expQ,
             " Pn_GT", @sprintf("%9.2f",Pn_GT_expQ)," Pn_tot", @sprintf("%9.2f",Pn_full_expQ) )
     println("ThoQ: "," hl(GT-only) ",@sprintf("%12.4e",hl_GT_thoQ), get_appropunit(hl_GT_thoQ),
-            " h1/2[sec] ",@sprintf("%12.4e",hl_total_thoQ), approp_hl_total_thoQ,
+            " hl(GT+FF)[sec] ",@sprintf("%12.4e",hl_total_thoQ), approp_hl_total_thoQ,
             " Pn_GT", @sprintf("%9.2f",Pn_GT_thoQ)," Pn_tot", @sprintf("%9.2f",Pn_full_thoQ))
     return nothing
 end
@@ -279,7 +279,7 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
     J2 = -1
     prty = ""
     for line in lines
-        if occursin("MTOT ",line)        
+        if occursin("MTOT",line)        
             J2 = parse(Int,split(split(line)[end],",")[1])
         end
         if occursin("parity =",line)

@@ -806,7 +806,7 @@ function get_canonical_order_6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int6
         if cscore_56 <= cscore_34
             o = 321
         elseif cscore_12 <= cscore_56
-            o = 213
+            o  = 213
         else
             o = 231
         end

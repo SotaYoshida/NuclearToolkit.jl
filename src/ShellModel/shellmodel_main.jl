@@ -44,6 +44,14 @@ struct MiMf
     fac::Float64
 end
 
+struct SingleParticleState_Mscheme
+    n::Int64
+    l::Int64
+    j::Int64
+    jz::Int64
+    tz::Int64
+end
+
 """
 main_sm(sntf,target_nuc,num_ev,target_J;
         save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
@@ -76,11 +84,12 @@ Digonalize the model-space Hamiltonian
 - `effcgarge=[1.5,0.5]` effective charges 
 - `truncation_scheme==""` option to specify a truncation scheme, "jocc" and "pn-pair" is supported and you can use multiple schemes by separating them with camma like "jocc,pn-pair".
 - `truncated_jocc=Dict{String,Vector{Int64}}()` option to specify the truncation scheme for each orbit, e.g. Dict("p0p1"=>[1],"n0p3"=>[2,3]) means that the occupation number for proton 0p1 is truncated upto 1, and for neutron 0p3 min=2 and max=3"
+- `debugmode`= "" option to specify debug mode. Lanczos/BlockLanczos are supported
 """
 function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
                  in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
                  gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}(),
-                 debugmode=false)
+                 debugmode="")
 
     to = TimerOutput()
     Anum = parse(Int64, match(reg,target_nuc).match)
@@ -274,7 +283,7 @@ To read interaction file in ".snt" format.
 !!! note
     The current version supports only "properly ordered",like ``a \\leq b,c \\leq d,a \\leq c`` for ``V(abcd;J)``, snt file.
 """
-function readsmsnt(sntf,Anum) 
+function readsmsnt(sntf,Anum;ignore_massop=false) 
     f = open(sntf,"r");tlines = readlines(f);close(f)
     lines = rm_comment(tlines)
     line = lines[1]    
@@ -328,7 +337,7 @@ function readsmsnt(sntf,Anum)
         end
         ## snt file must be "ordered"; a<=b & c=d & a<=c
         TBME = parse(Float64,TBME)
-        if massop == 1; TBME*= (Anum/Aref)^(p);end
+        if massop == 1 && !ignore_massop; TBME*= (Anum/Aref)^(p);end
         if unique([i,j]) != unique([k,l])
             push!(labels[nth],[k,l,i,j,parse(Int,totJ),ith])
             push!(TBMEs[nth],TBME)
@@ -574,7 +583,7 @@ function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}}
         blist=bit2b[]
         Vs=Float64[]
         @inbounds for (i,ME) in enumerate(TBMEs[vrank])
-            a,b,c,d,totJ,dummy = labels[vrank][i]
+            a,b,c,d,totJ,dummy = labels[vrank][i]            
             J2  = 2*totJ
             ja,ma_s,ma_idxs = possible_mz(sps[vrank][a-loff],mstates[vrank])
             jb,mb_s,mb_idxs = possible_mz(sps[vrank][b-loff],mstates[vrank])
@@ -603,11 +612,21 @@ function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}}
                             if ( tl in blist) == false
                                 push!(blist,tl)
                                 push!(Vs, ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2)
+                                # 2024/07/08
+                                if a == c && b == d == 2 && ma == mc == -1  && mb == md == 3
+                                    println("Def: ma,mb = $ma, $mb  mc,md = $mc, $md J $totJ CG = $CG1, $CG2 ME = $ME")                                    
+                                end
+                                #
                                 continue
                             end
                             for kk = 1:length(blist)
                                 if blist[kk] == tl
                                     Vs[kk] += ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2
+                                    # 2024/07/08
+                                    if  a == c && b == d == 2 && ma == -1  && mb == md == 3
+                                        println("Add: ma,mb = $ma, $mb  mc,md = $mc, $md J $totJ CG = $CG1, $CG2 ME = $ME")                                    
+                                    end
+                                    #
                                     break
                                 end
                             end

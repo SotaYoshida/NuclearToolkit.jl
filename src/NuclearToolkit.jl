@@ -43,6 +43,7 @@ include("chiEFTint/threebody_lab.jl")
 include("chiEFTint/matter.jl")
 include("chiEFTint/nn_sampling.jl")
 include("chiEFTint/read_me3j.jl")
+export print_vec
 export make_chiEFTint
 export nn_IMSRG_sampling
 export test3NF
@@ -58,6 +59,7 @@ include("hartreefock.jl/hf_mbpt.jl")
 include("hartreefock.jl/operator.jl")
 export nuclist
 export hf_main
+export def_nuc
 
 ### IMSRG.jl
 include("IMSRG.jl/imsrg_util.jl")
@@ -77,8 +79,9 @@ include("ShellModel/KSHELL.jl")
 include("ShellModel/betadecay.jl")
 include("ShellModel/trans_snt_msnt.jl")
 include("ShellModel/variational_ansatz.jl")
-export read_smsnt
 export main_sm,samplerun_sm # from shellmodel.
+export readsmsnt
+export construct_msps
 export prepEC,solveEC,solveEC_UQ # from eigenvector_continuation.jl
 export transit_main # from transit.jl
 export read_kshell_summary

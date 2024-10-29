@@ -80,7 +80,7 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs
                 nb,lb,jb,tzb,mzb,idx_b = b
                 Tz = tza + tzb
                 for J = abs(div(ja-jb,2)):div(ja+jb,2)
-                    if pnrank % 2 == 1 && J % 2 == 1; continue; end
+                    if pnrank % 2 == 1 && a==b && J % 2 == 1; continue; end
                     push!(kets[pnrank],ket_abJ(ia,ib,J))
                 end
             end
@@ -98,6 +98,7 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs
             ja,ma = m_sps[a][3:2:5]
             jb,mb = m_sps[b][3:2:5]
             Jbra = bra.J
+            if sps_a == sps_b && Jbra % 2 == 1; continue;end
             if ma + mb == Mtot; push!(idxs[Jbra+1],idx_bra);end
             for (idx_ket,ket) in enumerate(kets[pnrank])
                 if idx_bra > idx_ket; continue;end
@@ -112,6 +113,7 @@ function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs
                 Jket = ket.J
                 if ma + mb - mc - md != 0; continue; end                
                 if Jbra != Jket; continue;end
+                if sps_c == sps_d && Jket % 2 == 1; continue;end
                 if abs(ma+mb) > 2*Jket;continue;end
                 tbme = dictTBMEs[ [sps_a,sps_b,sps_c,sps_d,Jket] ]
                 CG1 = clebschgordan(Float64,ja//2,ma//2,jb//2,mb//2, Jket, div(ma+mb,2))
@@ -168,7 +170,7 @@ function main_trans_msnt(fn,target_nuc,target_Js=[];similar_to_prevwork=false)
         tJ=target_Js[1]
         eval_jj = 0.5*tJ*(tJ/2+1)
     end
-    lp,ln,cp,cn,massop,Aref,p,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(fn,Anum)
+    lp,ln,cp,cn,massop,Aref,p,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(fn,Anum;ignore_massop=true)
 
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)

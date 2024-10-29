@@ -51,16 +51,16 @@
     @testset "testing DMD" begin      
         nuc = "He4"; emax = 2; hw = 20
         s_pred = [30.0, 50.0]
-        ds = 0.5; smin = 15.0; smax=20.0
+        ds = 0.5; smin = 15.0
         # generating Omega 
         sntf = "tbme_emn500n4lo_2n3n_srg10.0hw20emax2.snt.bin"
         pid = getpid()
         hf_main([nuc],sntf,hw,emax;doIMSRG=true,Hsample=1,fn_params="parameters/optional_parameters_forDMD.jl")
         fn_exact = [ "flowOmega/omega_vec_$(pid)$(nuc)_s$(strip(@sprintf("%6.2f",s))).h5" for s in s_pred]
-        fns = [ "flowOmega/omega_vec_$(pid)$(nuc)_s$(strip(@sprintf("%6.2f",s))).h5" for s = smin:ds:smax]
+        fns = [ "flowOmega/omega_vec_$(pid)$(nuc)_s$(strip(@sprintf("%6.2f",s))).h5" for s = 15.0:ds:20.0]
         # generating DMD vectors
         trank = 10
-        dmd_main(emax, nuc, fns, trank, smin, smax, ds; s_pred=s_pred, fn_exact=fn_exact)
+        dmd_main(emax, nuc, fns, trank, smin, ds; s_pred=s_pred, fn_exact=fn_exact)
         # restart from DMD
         for s in s_pred
             s_str = strip(@sprintf("%6.2f",s))

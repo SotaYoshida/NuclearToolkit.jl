@@ -530,6 +530,9 @@ function calc_Hflat(tdims,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis
                     @assert Mi <= Mf "Mi > Mf happened in nn2b"
                     Hflat[Mi,Mf] += fac
                     Hflat[Mf,Mi] += fac
+                    if Mi == Mf == 1
+                        println("Mi $Mi Mf $Mf fac $(2*fac) Hflat[Mi,Mf] $(Hflat[Mi,Mf])")
+                    end
                 end
             end
         end

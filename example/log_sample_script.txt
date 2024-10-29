@@ -27,15 +27,15 @@ BetaCM = 0.0
 -----------------------------
 size of dWS (jmax 9 lmax 40 e2max 8 Nnmax 20):
      dtri    4.46 MB    dcgm0    1.11 MB  d6j_int    1.11 MB   d6j_lj    0.28 MB
-  d9j_lsj    1.76 MB  dictHOB    0.44 MB
+  d9j_lsj    1.53 MB  dictHOB    0.41 MB
 # of two-body states 78
 # of sp states 15
 # of channels 2bstate 55 #TBME = 34320
-E(2H): bare = -2.224578 srg = -2.224578 Diff.1.484e-10
+E(2H): bare = -2.224578 srg = -2.224578 Diff.1.486e-10
 option in optional_parameters.jl will be used.
 size of dWS (jmax 9 lmax 40 e2max 8 Nnmax 20):
      dtri    4.46 MB    dcgm0    1.11 MB  d6j_int    1.11 MB   d6j_lj    0.28 MB
-  d9j_lsj    1.76 MB  dictHOB    0.44 MB
+  d9j_lsj    1.53 MB  dictHOB    0.41 MB
 target: O16 Ref. => Z=8 N=8 E:  -132.733407  = E1b 363.64899  + E2b -496.38240   (   -55.149 -367.063  -74.170), + E3b   0.00000
 EMP2    -23.70204 1b   -0.00000 pp   -1.43732 pn  -20.80963 nn   -1.45510
 EMP3      0.37877 pp    -0.110 hh    -1.895 ph     2.384
@@ -320,6 +320,9 @@ Starting VS-IMSRG flow
 Operator:Rp2
    HF point proton radius     2.049642 charge radius     2.211140 => HF+PT     2.229935
 IMSRG point proton radius     2.099363 charge radius     2.257306
-  Mg24    Z,N=(12,12)     c(8,8)     v(4,4)  mdim:        28503 (  4.45 ) J [0.0, 2.0, 2.0, 3.0, 4.0, 4.0, 5.0, 1.0, 6.0, 2.0]
+  Mg24    Z,N=(12,12)     c(8,8)     v(4,4)  mdim:        28503 (  4.45 ) Def: ma,mb = -1, 3  mc,md = -1, 3 J 2 CG = 0.5, 0.5 ME = -0.449692
+Def: ma,mb = -1, 3  mc,md = -1, 3 J 2 CG = -0.7071067811865476, -0.7071067811865476 ME = 0.031828
+Add: ma,mb = -1, 3  mc,md = -1, 3 J 1 CG = -0.8660254037844386, -0.8660254037844386 ME = 0.213977
+J [0.0, 2.0, 2.0, 3.0, 4.0, 4.0, 5.0, 1.0, 6.0, 2.0]
 En.  -108.9515  -107.6036  -105.9415  -104.6864  -104.6366  -103.1245  -101.0649  -100.5969  -100.0279  -100.0125 
 Ex.     0.0000     1.3479     3.0101     4.2651     4.3150     5.8270     7.8866     8.3546     8.9236     8.9391 

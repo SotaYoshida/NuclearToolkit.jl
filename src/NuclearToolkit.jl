@@ -50,6 +50,7 @@ export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")
+export ame2020data
 
 ### HartreeFock.jl
 include("hartreefock.jl/def_struct.jl")

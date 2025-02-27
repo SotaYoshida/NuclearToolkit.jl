@@ -88,6 +88,7 @@ Digonalize the model-space Hamiltonian
 """
 function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
                  in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
+                 show_config=false,
                  gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}(),
                  debugmode="")
 
@@ -125,6 +126,14 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     if tf_pairwise_truncation && mdim >= 10^4
         @warn "For pairwise truncation, constructing H explicitly, is not recommended for large model space."
     end
+
+    for pnrank = 1:3
+        println("pnrank $pnrank:")
+        for (i,ME) in enumerate(TBMEs[pnrank])
+            println(labels[pnrank][i], " ", ME)
+        end
+    end
+    
 
     ##Making bit representation of Hamiltonian operators, and storing them
     @timeit to "prep. 1b&2b-jumps" begin
@@ -262,7 +271,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     end
 
     if tf_pairwise_truncation
-        main_pairwise_truncation(truncation_scheme,Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd)
+        main_pairwise_truncation(truncation_scheme,Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd, show_config)
     end
 
     if calc_entropy
@@ -335,6 +344,7 @@ function readsmsnt(sntf,Anum;ignore_massop=false)
             println("i $i j $j lp $lp")
             println("err");exit()
         end
+        #print("ijkl $i $j $k $l totJ $totJ TBME $TBME \n")
         ## snt file must be "ordered"; a<=b & c=d & a<=c
         TBME = parse(Float64,TBME)
         if massop == 1 && !ignore_massop; TBME*= (Anum/Aref)^(p);end
@@ -428,7 +438,7 @@ function check_jocc_truncation(tz,m_sps,tocc_j,truncated_jocc,truncation_scheme=
             @error "Invalid type of truncated_jocc !!! $(typeof(truncated_jocc)) is not supported!!"   
             exit()     
         end
-    elseif occursin("pn-pair",truncation_scheme) # it doesn't care pn-pair for now
+    elseif occursin("pn-pair",truncation_scheme) 
         return true
     elseif occursin("nn-pair",truncation_scheme) 
         return true
@@ -612,21 +622,11 @@ function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}}
                             if ( tl in blist) == false
                                 push!(blist,tl)
                                 push!(Vs, ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2)
-                                # 2024/07/08
-                                if a == c && b == d == 2 && ma == mc == -1  && mb == md == 3
-                                    println("Def: ma,mb = $ma, $mb  mc,md = $mc, $md J $totJ CG = $CG1, $CG2 ME = $ME")                                    
-                                end
-                                #
                                 continue
                             end
                             for kk = 1:length(blist)
                                 if blist[kk] == tl
                                     Vs[kk] += ME * sqrt( (1.0+deltaf(a,b)) *(1.0+deltaf(c,d)) ) * CG1 * CG2
-                                    # 2024/07/08
-                                    if  a == c && b == d == 2 && ma == -1  && mb == md == 3
-                                        println("Add: ma,mb = $ma, $mb  mc,md = $mc, $md J $totJ CG = $CG1, $CG2 ME = $ME")                                    
-                                    end
-                                    #
                                     break
                                 end
                             end
@@ -639,9 +639,7 @@ function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}}
         V1[vrank] = Vs
     end
     pp_2bjump = prep_2bjumps(msps_p,pbits,bV1[1],V1[1])
-    nn_2bjump = prep_2bjumps(msps_n,nbits,bV1[2],V1[2])
-
-    
+    nn_2bjump = prep_2bjumps(msps_n,nbits,bV1[2],V1[2])   
     return pp_2bjump,nn_2bjump
 end
 
@@ -680,6 +678,7 @@ function prep_Hamil_pn(p_sps::Array{Array{Int64,1}},
 
     @inbounds for (i,ME) in enumerate(TBMEs)
         a,b,c,d,totJ,dummy = labels[i]
+        println("labels[i] $(labels[i]) ME $ME")
         J2  = 2*totJ
         ja,ma_s,ma_idxs = possible_mz(p_sps[a],msps_p)
         jc,mc_s,mc_idxs = possible_mz(p_sps[c],msps_p)
@@ -1231,7 +1230,7 @@ end
 
 function make_distribute(num_task)
     lblock = length(num_task)
-    n = nthreads()
+    n = Threads.maxthreadid()
     r = div(lblock,n)
     tasks = [ num_task[bi][1]*num_task[bi][2] for bi=1:lblock]
     idxs = sortperm(tasks,rev=true)
@@ -1265,7 +1264,7 @@ end
 
 function make_distribute_J(Jtasks)
     lblock = length(Jtasks)
-    n = nthreads()
+    n = Threads.maxthreadid()
     r = div(lblock,n)
     idxs = sortperm(Jtasks,rev=true)
     tmp = [ Int64[ ] for i=1:n]

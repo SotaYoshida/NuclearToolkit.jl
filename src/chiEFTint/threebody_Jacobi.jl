@@ -6,7 +6,7 @@ function Calc_3NF_in_Jacobi_coordinate(params3N,LECs,to)
         vec_freg_nl = ret_fregvec_nonlocal(params3N;npow=2)
         ## Calculate 3NF 
         pqdim = length(params3N.meshpoints.pqs)
-        Mats_pq = [ zeros(Float64,pqdim,pqdim) for i = 1:nthreads()]
+        Mats_pq = [ zeros(Float64,pqdim,pqdim) for i = 1:Threads.maxthreadid()]
         @timeit to "Contact" Jacobi_3NF_Contact(LECs,chan3b,Jacobi_idxs,params3N,Mats_pq,vec_freg_nl)        
     end
 end

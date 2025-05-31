@@ -1080,7 +1080,6 @@ function prepTBTD(tJ,idxs,p_sps,n_sps,msps_p::Array{Array{Int64,1},1},msps_n::Ar
     sps = [p_sps,n_sps]
     loffs = [ 0, length(p_sps)]
     TBTD1 = [ T1ifc[ ] , T1ifc[] ]
-    n = nthreads()
     #@threads
     for vrank =1:2 #pp:1, nn:2
         loff = loffs[vrank]

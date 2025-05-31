@@ -41,7 +41,7 @@ struct ket_abJ
     J::Int64
 end
 
-function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork;verbose=false)
+function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork;verbose=true)
     lp = length(p_sps)
     lpm = length(m_p_sps)
     m_sps = vcat(m_p_sps,msps_n)

@@ -269,14 +269,14 @@ function tpe(chiEFTobj,to)
     ts = chiEFTobj.ts
     dict_pwch = chiEFTobj.dict_pwch
     lsjs = chiEFTobj.lsjs; tllsj = chiEFTobj.tllsj; opfs = chiEFTobj.opfs
-    nthre = nthreads()
+    nthre = Threads.maxthreadid()
     c1_NNLO = LECs["c1_NNLO"];c2_NNLO = LECs["c2_NNLO"];c3_NNLO = LECs["c3_NNLO"];c4_NNLO = LECs["c4_NNLO"]
     d12 = LECs["d12"];d3 = LECs["d3"]; d5 = LECs["d5"]; d145 = LECs["d145"];e14 = LECs["e14"];e17 = LECs["e17"]
     mmpi = sum(mpis)/3.0
     pjs = zeros(Float64,length(ts),7)
     pjs_para = [ deepcopy(pjs) for i=1:nthre]
     
-    tmpsum = [ [zeros(Float64,7) for j=1:9] for i=1:nthreads()]
+    tmpsum = [ [zeros(Float64,7) for j=1:9] for i=1:Threads.maxthreadid()]
     tmpLECs = Dict{String,Float64}()
     tmpLECs["c1"] = tmpLECs["c2"] = tmpLECs["c3"] = tmpLECs["c4"] = 0.0 
     tmpLECs["r_d12"] = tmpLECs["r_d3"] = tmpLECs["r_d5"] = tmpLECs["r_d145"] = 0.0

@@ -55,12 +55,13 @@ export ame2020data
 ### HartreeFock.jl
 include("hartreefock.jl/def_struct.jl")
 include("hartreefock.jl/io_input.jl")
+export basedat, def_nuc
+export readsnt, readsnt_bin
 include("hartreefock.jl/main.jl")
 include("hartreefock.jl/hf_mbpt.jl")
 include("hartreefock.jl/operator.jl")
 export nuclist
 export hf_main
-export def_nuc
 
 ### IMSRG.jl
 include("IMSRG.jl/imsrg_util.jl")
@@ -88,6 +89,9 @@ export transit_main # from transit.jl
 export read_kshell_summary
 export eval_betadecay_from_kshell_log
 export main_trans_msnt
+include("ShellModel/count_dim.jl")
+export count_CIdim
+
 end
 
 

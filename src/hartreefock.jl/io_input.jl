@@ -104,10 +104,10 @@ function rm_nan(array)
 end
 
 """ 
-    readsnt(sntf,binfo,to)
+    readsnt(sntf::string, binfo::basedat)
 Function to read snt file. Note that it is slightly different from `readsnt()` in ShellModel.jl.
 """
-function readsnt(sntf,binfo,to) 
+function readsnt(sntf, binfo::basedat) 
     Anum=binfo.nuc.Aref;hw=binfo.hw;emax_calc = binfo.emax;emax_calc = binfo.emax
     f = open(sntf,"r");tlines = readlines(f);close(f)
     lines = rm_comment(tlines)
@@ -156,7 +156,7 @@ function readsnt(sntf,binfo,to)
         tkey[2] = parse(Int64,cj)
         tkey[3] = parse(Int64,ck)
         tkey[4] = parse(Int64,cl)
-        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to); continue;end
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -247,10 +247,10 @@ function get_lpln_from_emax(emax)
 end
 
 """ 
-    readsnt(sntf,binfo,to)
+    readsnt(sntf::string, binfo::basedat)
 Function to read snt.bin file.
 """
-function readsnt_bin(sntf,binfo,to;use_Float64=false) 
+function readsnt_bin(sntf,binfo::basedat; use_Float64=false, neutron_drop=false) 
     Anum=binfo.nuc.Aref;hw=binfo.hw;emax_calc = binfo.emax
     f = open(sntf,"r")
     lp = read(f,Int); ln = read(f,Int)
@@ -290,7 +290,7 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
         else
             Vjj = Float64(read(f,Float32)); Vjj_2n3n = Float64(read(f,Float32)); Vpp = Float64(read(f,Float32))        
         end
-        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to); continue;end
+        if !check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms); continue;end
         nth = 2
         if tkey[1] % 2 == 1  && tkey[2] % 2 == 1; nth = 1;
         elseif tkey[3] % 2 == 0 && tkey[4] %2 == 0; nth=3;end
@@ -326,7 +326,7 @@ function readsnt_bin(sntf,binfo,to;use_Float64=false)
     return sps,dicts1b,dicts
 end
 
-function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms,to)
+function check_truncated_abcd(tkey,lp,lpn_calc,idxofst,dict_snt2ms)
     tf = true
     for k in eachindex(tkey)
         org_sntidx = tkey[k]
@@ -540,14 +540,13 @@ end
     def_chan2b(binfo,dicts,sps)
 define two-body utils and returns them as `Chan2bD` struct 
 """
-function def_chan2b(binfo,dicts,sps)
+function def_chan2b(binfo::basedat,dicts,sps)
     Anum = binfo.nuc.Aref; emax = binfo.emax
     Jmax = 2*emax+1
     dim1b = div(length(sps),2)
     nchan = 0
     Chan2b = chan2b[ ]
     maxnpq = 0
-    #dict_2b_ch = Dict{Vector{Int64},VdictCh}()
     dict_2b_ch = Dict{UInt64,VdictCh}()
     Gamma = Matrix{Float64}[ ]
     V2b = Matrix{Float64}[ ]
@@ -591,14 +590,10 @@ function def_chan2b(binfo,dicts,sps)
                 push!(Chan2b, chan2b(Tz,prty,J,tuplekets,length(kets)))
                 dim = length(kets)
        
-                # org
-                #push!(Chan2b, chan2b(Tz,prty,J,kets,length(kets)))
-                #dim = length(kets)
                 push!(Gamma,zeros(Float64,dim,dim))
 
                 dkey[1] = Tz; dkey[2]=prty; dkey[3]=J
                 maxnpq = ifelse(dim>maxnpq,dim,maxnpq)
-                #dict_2b_ch[copy(dkey)] = VdictCh(nchan,vdict)
                 dict_2b_ch[get_nkey3_JPT(copy(dkey))] = VdictCh(nchan,vdict)
                 
                 vmat = zeros(Float64,dim,dim)
@@ -647,7 +642,7 @@ end
     update_1b!(binfo,sps,Hamil)
 Update one-body(1b) part of Hamiltonian for different target nuclei
 """
-function update_1b!(binfo,sps,Hamil::Operator)
+function update_1b!(binfo::basedat,sps,Hamil::Operator)
     p1b = Hamil.onebody[1]; n1b = Hamil.onebody[2]
     Anum = binfo.nuc.Aref; hw = binfo.hw
     ### store one-body part
@@ -680,7 +675,7 @@ end
 
 Update two-body(2b) kinetic part for different target nuclei
 """
-function update_2b!(binfo,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
+function update_2b!(binfo::basedat,sps,Hamil,dictTBMEs,Chan2bD,dicts;Hcm=nothing)
     emax = binfo.emax; A = binfo.nuc.A
     V2 = Hamil.twobody
     Chan2b = Chan2bD.Chan2b

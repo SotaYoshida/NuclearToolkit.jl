@@ -48,7 +48,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
         nuc = def_nuc(nucs[1],ref,corenuc)
         binfo = basedat(nuc,sntf,hw,emax_calc,ref)
-        sps,dicts1b,dicts = tfunc(sntf,binfo,to)
+        sps,dicts1b,dicts = tfunc(sntf, binfo)
         A=nuc.A
         BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)

@@ -44,14 +44,6 @@ struct MiMf
     fac::Float64
 end
 
-struct SingleParticleState_Mscheme
-    n::Int64
-    l::Int64
-    j::Int64
-    jz::Int64
-    tz::Int64
-end
-
 """
 main_sm(sntf,target_nuc,num_ev,target_J;
         save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,

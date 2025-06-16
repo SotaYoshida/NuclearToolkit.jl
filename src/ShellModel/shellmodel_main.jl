@@ -1,12 +1,3 @@
-const element = ["H",  "He", "Li", "Be", "B",  "C",  "N",  "O",  "F",  "Ne", "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar", "K",  "Ca",
-                 "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y",  "Zr",
-                 "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",  "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
-                 "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
-                 "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
-                 "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
-
-const reg = r"[0-9]+"
-
 struct bit2b
     a::Int64
     b::Int64
@@ -42,6 +33,23 @@ struct MiMf
     Mi::Int64
     Mf::Int64
     fac::Float64
+end
+
+struct SMobject
+    lp::Int64
+    ln::Int64
+    cp::Int64
+    cn::Int64
+    massop::Int64
+    Aref::Float64
+    p::Float64
+    p_sps::Vector{Vector{Int64}}
+    n_sps::Vector{Vector{Int64}}
+    SPEs::Vector{Vector{Float64}}
+    olabels::Vector{Vector{Int64}}
+    oTBMEs::Vector{Float64}
+    labels::Vector{Vector{Vector{Int64}}}
+    TBMEs::Vector{Vector{Float64}}
 end
 
 """
@@ -80,14 +88,20 @@ Digonalize the model-space Hamiltonian
 """
 function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
                  in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
-                 show_config=false,
                  gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}(),
                  debugmode="")
 
     to = TimerOutput()
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
-    massformula = ifelse(16<=Anum<= 40,2,1)
+    SMobj = readsmsnt(sntf, target_nuc)
+    cp = SMobj.cp; cn = SMobj.cn
+    p_sps = SMobj.p_sps
+    n_sps = SMobj.n_sps
+    SPEs = SMobj.SPEs
+    labels = SMobj.labels
+    TBMEs = SMobj.TBMEs
+
+    massformula = ifelse(16<=Anum<= 40, 2, 1)
     ## massformula=2: J. Blomqvist and A. Molinari, Nucl. Phys. A106, 545 (1968).
     ## we use this for the sd-shell nuclei
     hw, bpar = init_ho_by_mass(Anum,massformula)
@@ -118,14 +132,6 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     if tf_pairwise_truncation && mdim >= 10^4
         @warn "For pairwise truncation, constructing H explicitly, is not recommended for large model space."
     end
-
-    for pnrank = 1:3
-        println("pnrank $pnrank:")
-        for (i,ME) in enumerate(TBMEs[pnrank])
-            println(labels[pnrank][i], " ", ME)
-        end
-    end
-    
 
     ##Making bit representation of Hamiltonian operators, and storing them
     @timeit to "prep. 1b&2b-jumps" begin
@@ -263,7 +269,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
     end
 
     if tf_pairwise_truncation
-        main_pairwise_truncation(truncation_scheme,Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd, show_config)
+        main_pairwise_truncation(truncation_scheme,Rvecs,vals[1:num_ev],tdims,msps_p,msps_n,pbits,nbits,jocc_p,jocc_n,SPEs,pp_2bjump,nn_2bjump,bis,bfs,block_tasks,p_NiNfs,n_NiNfs,Mps,delMs,Vpn,Jidxs,oPP,oNN,oPNu,oPNd)
     end
 
     if calc_entropy
@@ -275,16 +281,21 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
 end
 
 """
-    readsmsnt(sntf,Anum)
+    readsmsnt(sntf, cnuc::String)
 
 To read interaction file in ".snt" format.
 - `sntf`: path to the interaction file
-- `Anum`: mass number (used for "scaling" of TBMEs)
+- `cnuc`: string of the target nucleus, e.g. "12C", "C12", "16O", etc. Integer part will be used as the mass number.
 
 !!! note
     The current version supports only "properly ordered",like ``a \\leq b,c \\leq d,a \\leq c`` for ``V(abcd;J)``, snt file.
 """
-function readsmsnt(sntf,Anum;ignore_massop=false) 
+function readsmsnt(sntf, cnuc::String; ignore_massop=false) 
+    Anum = parse(Int64,match(reg,cnuc).match)
+    if Anum <= 0
+        @error "Invalid nucleus $cnuc, Anum=$Anum"
+        exit()
+    end
     f = open(sntf,"r");tlines = readlines(f);close(f)
     lines = rm_comment(tlines)
     line = lines[1]    
@@ -300,7 +311,7 @@ function readsmsnt(sntf,Anum;ignore_massop=false)
         tp = n_sps[ith-lp] 
         tp[1] = n; tp[2] = l; tp[3] = j; tp[4] = tz
     end
-    nsp,zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
+    nsp, zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
     SPEs = [ [0.0 for i=1:lp],[0.0 for i=1:ln]]
     for i = 1:nsp
         ttxt = rm_nan(split(lines[1+ln+lp+1+i]," "))
@@ -321,7 +332,8 @@ function readsmsnt(sntf,Anum;ignore_massop=false)
     deleteat!(olabels,1)
     TBMEs=[ Float64[] for i =1:3] #pp/nn/pn
     oTBMEs= Float64[]
-    @inbounds for ith = 1:ntbme
+    #println("massop $massop Anum $Anum Aref $Aref p $p"); exit()
+    for ith = 1:ntbme
         tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1+ith], " "))
         i = tmp[1]; j = tmp[2]; k = tmp[3]; l =tmp[4]; totJ = tmp[5]; TBME= tmp[6]
         i = parse(Int,i);j = parse(Int,j);k = parse(Int,k);l = parse(Int,l);
@@ -336,10 +348,9 @@ function readsmsnt(sntf,Anum;ignore_massop=false)
             println("i $i j $j lp $lp")
             println("err");exit()
         end
-        #print("ijkl $i $j $k $l totJ $totJ TBME $TBME \n")
         ## snt file must be "ordered"; a<=b & c=d & a<=c
         TBME = parse(Float64,TBME)
-        if massop == 1 && !ignore_massop; TBME*= (Anum/Aref)^(p);end
+        if massop == 1 && !ignore_massop; TBME *= (Anum/Aref)^(p);end
         if unique([i,j]) != unique([k,l])
             push!(labels[nth],[k,l,i,j,parse(Int,totJ),ith])
             push!(TBMEs[nth],TBME)
@@ -350,7 +361,7 @@ function readsmsnt(sntf,Anum;ignore_massop=false)
         push!(olabels,[i,j,k,l,parse(Int,totJ),ith])
         push!(oTBMEs,TBME)
     end
-    return lp,ln,cp,cn,massop,Aref,p,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs
+    return SMobject(lp,ln,cp,cn,massop,Aref,p,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs)
 end
 
 """
@@ -430,7 +441,7 @@ function check_jocc_truncation(tz,m_sps,tocc_j,truncated_jocc,truncation_scheme=
             @error "Invalid type of truncated_jocc !!! $(typeof(truncated_jocc)) is not supported!!"   
             exit()     
         end
-    elseif occursin("pn-pair",truncation_scheme) 
+    elseif occursin("pn-pair",truncation_scheme) # it doesn't care pn-pair for now
         return true
     elseif occursin("nn-pair",truncation_scheme) 
         return true
@@ -631,7 +642,9 @@ function prep_Hamil_T1(p_sps::Array{Array{Int64,1}},n_sps::Array{Array{Int64,1}}
         V1[vrank] = Vs
     end
     pp_2bjump = prep_2bjumps(msps_p,pbits,bV1[1],V1[1])
-    nn_2bjump = prep_2bjumps(msps_n,nbits,bV1[2],V1[2])   
+    nn_2bjump = prep_2bjumps(msps_n,nbits,bV1[2],V1[2])
+
+    
     return pp_2bjump,nn_2bjump
 end
 
@@ -670,7 +683,6 @@ function prep_Hamil_pn(p_sps::Array{Array{Int64,1}},
 
     @inbounds for (i,ME) in enumerate(TBMEs)
         a,b,c,d,totJ,dummy = labels[i]
-        println("labels[i] $(labels[i]) ME $ME")
         J2  = 2*totJ
         ja,ma_s,ma_idxs = possible_mz(p_sps[a],msps_p)
         jc,mc_s,mc_idxs = possible_mz(p_sps[c],msps_p)
@@ -733,10 +745,6 @@ function bitarr_to_int!(arr::Array{Bool,1},ret)
         ret[2] >>= 1
     end
     return nothing
-end
-
-function deltaf(i::Int64,j::Int64)
-    ifelse(i==j,1.0,0.0)
 end
 
 """
@@ -1222,7 +1230,7 @@ end
 
 function make_distribute(num_task)
     lblock = length(num_task)
-    n = Threads.maxthreadid()
+    n = nthreads()
     r = div(lblock,n)
     tasks = [ num_task[bi][1]*num_task[bi][2] for bi=1:lblock]
     idxs = sortperm(tasks,rev=true)
@@ -1256,7 +1264,7 @@ end
 
 function make_distribute_J(Jtasks)
     lblock = length(Jtasks)
-    n = Threads.maxthreadid()
+    n = nthreads()
     r = div(lblock,n)
     idxs = sortperm(Jtasks,rev=true)
     tmp = [ Int64[ ] for i=1:n]

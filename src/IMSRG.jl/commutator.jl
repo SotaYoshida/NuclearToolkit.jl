@@ -381,7 +381,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
     sps = HFobj.modelspace.sps
     dim1b = size(m1bs[1])[1]
     ch_dict = Chan2bD.dict_ch_idx_from_ket
-    nthre = Threads.maxthreadid()
+    nthre = nthreads()
     for i=1:2*nthre; PandyaObj.copy_1bmat[i] .= 0.0;end
     @inbounds @threads :dynamic for ch in eachindex(x2bs)
         tbc = Chan2b[ch]; nket = tbc.nkets

@@ -563,7 +563,10 @@ function transit_main(sntf,target_nuc,jl2,jr2,in_wfs;num_ev_l=100,num_ev_r=100,q
     
     to = TimerOutput()
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+    SMobj = readsmsnt(sntf, target_nuc)
+    cp = SMobj.cp; cn = SMobj.cn
+    p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+
     hw, bpar = init_ho_by_mass(Anum,1) # mass formula 
     if 16 <= Anum <= 40
         hw, bpar = init_ho_by_mass(Anum,2) # 2: mass formula for sd-shell

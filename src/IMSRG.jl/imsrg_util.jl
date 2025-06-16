@@ -496,12 +496,12 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
             target[tkey] = idx
         end 
     end
-    nthre = Threads.maxthreadid()
+    nthre = nthreads()
     dim1b = length(MS.p_sps)
     copy_1bmat = [ zeros(Float64,dim1b,dim1b) for i=1:2*nthre]
     XYbars =  [ [zeros(Float64,dimmax,dimmax),zeros(Float64,dimmax,dimmax)] for i=1:nthre]
     tMat = [ zeros(Float64,2*dimmax,2*dimmax) for i=1:nthre]
-    keys6j = [zeros(Int64,5) for i=1:Threads.maxthreadid()]
+    keys6j = [zeros(Int64,5) for i=1:nthreads()]
     ## for 221
     mats_nab,mats_nab_bar = prep_nab_bar_matrices(HFobj,Chan2bD)
     ### to prep. 122 util such as intermediate matrix
@@ -697,12 +697,7 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         println("def-by-run d6j_lj done! ", length(keys(d6j_lj)))
     end
     
-    dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,nOmega,Chan2b;debugmode=debugmode)   
-    # writing out util. dict. to see correspondance between idx and ket
-    if debugmode > 0
-        write_dicts_idx_ket(HFobj, binfo, Chan2b, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5)
-    end
-
+    dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5 = get_non0omega_idxs(HFobj,nOmega,Chan2b)
     fvec = get_fvec_from_Op(s, nOmega, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
     set_dictMonopole!(dictMono,HFobj,Hs.twobody)
     func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
@@ -833,6 +828,7 @@ function gather_omega_sofar_write(Hsample, istep, s, fvec, oOmega, nOmega, tmpOp
         aOp1_p_bOp2!(tmpOp,tildeO,1.0,0.0)
     else
         aOp1_p_bOp2!(nOmega,tildeO,1.0,0.0)
+
     end
     get_fvec_from_Op!(s, fvec, tildeO, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op)
     write_fvec_hdf5(binfo,fvec,dict_if_idx_for_hdf5,s,IMSRGobj.H.zerobody[1];label="omega")  

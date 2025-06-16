@@ -22,7 +22,7 @@ function calc_EperA_HF(chiEFTobj,n_below_kF;verbose=false)
     pw_channels = chiEFTobj.pw_channels
     xr_fm = chiEFTobj.xr_fm
     wr = chiEFTobj.wr
-    nthre = Threads.maxthreadid()
+    nthre = nthreads()
     sumarrs = zeros(Float64,nthre)
     @threads for chidx in eachindex(V12mom)
         tV = V12mom[chidx]; tV_2n3n = V12mom_2n3n[chidx]

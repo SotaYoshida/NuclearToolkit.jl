@@ -703,31 +703,6 @@ function write_onshell_vmom(chiEFTobj::ChiralEFTobject,pnrank::Int,target_LSJ;la
 end
 
 """
-    print_vec(s,v;ine=false)
-
-function to print float vectors more readable. This is usuful for debug.
-"""
-function print_vec(s,v,io=stdout;ine=false,long=false)
-    s *= " "
-    for i = 1:length(v)
-        if ine
-            if long 
-                s *= @sprintf "%11.3e" v[i]
-            else
-                s *= @sprintf "%9.1e" v[i]
-            end
-        else
-            if long
-                s *= @sprintf "%15.8f" v[i]
-            else  
-                s *= @sprintf "%10.4f" v[i]
-            end
-    	end
-    end
-    println(io,s)
-end
-
-"""
     momplot(xr,V12mom,tdict,pnrank,llpSJ_s;ctext="",fpath="")
 
 plot nn potential in partial wave over relative momentum space

@@ -151,71 +151,13 @@ function get_fvec_from_Op!(s, vec,Op::Operator,dict_idx_op_to_flatvec, dict_idx_
     return nothing
 end
 
-function write_1b_idx_ket_dict(dict_if_idx_for_hdf5, dict_idx_flatvec_to_op, sps, label, io)
-    array_sps = zeros(Int64,length(sps),5)
-    write(io, "$(label)_dim1b", length(sps))
-    for i = 1:length(sps)
-        array_sps[i,:] .= [sps[i].n, sps[i].l, sps[i].j, sps[i].tz, Int64(sps[i].c[1])]
-    end
-    write(io, "$(label)_sps", array_sps)
-    idx_start, idx_end = dict_if_idx_for_hdf5["$(label)1b"]
-    Dict_1b = Tuple{Int64, Int64}[ ]
-    for idx = idx_start:idx_end
-        ch, i, j = dict_idx_flatvec_to_op[idx]
-        push!(Dict_1b,(i,j))
-    end
-    write(io, "Dict_$(label)1b", Dict_1b)
-    return nothing
-end
-
-"""
-Function to write out dictionaries to see the correspondance between the index of the flattened vector and the Operator object having p1b/n1b/pp2b/pn2b/nn2b parts.
-"""
-function write_dicts_idx_ket(HFobj, binfo, Chan2b, dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5)
-    nuc = binfo.nuc.cnuc
-    emax = binfo.emax
-    io = h5open("dicts_idx_ket_$(nuc)_e$(emax).h5","w")
-
-    # one-body part
-    write_1b_idx_ket_dict(dict_if_idx_for_hdf5, dict_idx_flatvec_to_op, HFobj.modelspace.p_sps, "p", io)
-    write_1b_idx_ket_dict(dict_if_idx_for_hdf5, dict_idx_flatvec_to_op, HFobj.modelspace.n_sps, "n", io)
-    
-    # two-body part
-    println("length(Chan2b) ", length(Chan2b))
-    arr_2b = zeros(Int64,length(Chan2b),6)
-    for ch = 1:length(Chan2b)
-        tbc = Chan2b[ch]
-        J = tbc.J; P = tbc.prty; Tz = tbc.Tz
-        dim = tbc.nkets
-        kets = tbc.kets
-        if dim == 0
-            arr_2b[ch,1:4] .= [J,P,Tz,dim]
-            continue
-        end
-        idx_start = dict_idx_op_to_flatvec[[ch,1,1]]
-        idx_end = dict_idx_op_to_flatvec[[ch,dim,dim]]        
-        println("ch $ch J $J P $P Tz $Tz dim $dim idx_starts $idx_start ends $idx_end ")
-        @assert div( dim * (dim+1), 2) == idx_end - idx_start + 1 "dim $dim idx_start $idx_start idx_end $idx_end"
-        arr_2b[ch,:] .= [J,P,Tz,dim,idx_start,idx_end]
-        write(io, "kets_$ch", kets)
-    end
-    write(io, "arr_2b", arr_2b)
-    close(io)
-    return nothing
-end
-
 """
 Function to make Operator flatten vector for ANN calculations, which are to be performed with flattened vectors.
 mode: can be "normal" or "valence"
 
 For VS-IMSRG, there is a possibility to work to deal with only `vv` space.
-
-Output:
-- `dict_idx_op_to_flatvec::Dict{Vector{Int64},Int64}`: taking `[ch,i,j]` as a key to get idx for the flattened vector. Note that `ch` is -1: proton 1b, 0: neutron 1b, 1-: twobody.
-- `dict_idx_flavec_to_op::Dict{Int64,Vector{Int64}}`: taking idx of a flattened vector as a key to get `[ch,i,j]` for the Operator object.
-- `dict_if_idx_for_hdf5::Dict{String,Vector{Int64}}`: taking the target channel (string: "p1b", "n1b", "pp2b", "pn2b", "nn2b") as a key to get the corresponding range of the flattened vector.
 """
-function get_non0omega_idxs(HFobj::HamiltonianNormalOrdered,Omega::Operator,Chan2b; mode="normal", debugmode=0)
+function get_non0omega_idxs(HFobj::HamiltonianNormalOrdered,Omega::Operator,Chan2b,mode="normal",verbose=false)
     @assert (mode == "normal" || mode=="valence") "unsupported mode for get_non0omega_idxs: $mode"
     dim1b = size(Omega.onebody[1])[1]
     p_sps = HFobj.modelspace.p_sps
@@ -283,9 +225,9 @@ function get_non0omega_idxs(HFobj::HamiltonianNormalOrdered,Omega::Operator,Chan
     dict_if_idx_for_hdf5["pp2b"] = [idx_s, idx_s+ppidx-1]; idx_s += ppidx
     dict_if_idx_for_hdf5["pn2b"] = [idx_s, idx_s+pnidx-1]; idx_s += pnidx
     dict_if_idx_for_hdf5["nn2b"] = [idx_s, idx_s+nnidx-1]; idx_s += nnidx
-    if debugmode > 0
+    if verbose
         println("dim. flatvec $(hit) # of nonzero element (other than E(s)) $hitnon0")
-    end    
+    end
     return dict_idx_op_to_flatvec, dict_idx_flatvec_to_op, dict_if_idx_for_hdf5
 end
 
@@ -410,17 +352,16 @@ function check_DMD_norm(X, Y, r, U_r, Atilde; verbose=false)
     return tnorm
 end
 
-function check_convergence(z_in,  Atilde, itnum=1000)
+function check_stationarity(z, z_k, z_pred,  Atilde, itnum=1000)
     tf = true
-    z_k = zeros(Float64,size(z_in)) .+ z_in  
-    z_kp1 = zeros(Float64,size(z_in))
+    z .= z_pred
+    z_k .= z_pred
     norms = zeros(Float64,itnum)
     for it = 1:itnum        
-        BLAS.gemv!('N', 1.0, Atilde, z_k, 0.0, z_kp1)
-        z_k .= z_kp1
-        norms[it] = norm(z_kp1)
+        BLAS.gemv!('N', 1.0, Atilde, z, 0.0, z_k)
+        norms[it] = norm(z_k - z_pred)
     end
-    println("|Atilde^$(itnum)z| $(norms[end]) <= $(norms[1])")
+    println("norms $norms")
     return tf
 end
 
@@ -461,7 +402,7 @@ function extrapolate_DMD(x_start, U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc,
             write_dmdvec_hdf5(x_pred,s,E_imsrg,nuc,inttype,emax,oupdir)
         end
         if verbose
-            check_convergence(z1_r, Atilde)
+            check_stationarity(z1_r, z_k, z_new, Atilde)
         end
     end
     return nothing
@@ -490,7 +431,7 @@ function util_SVD(X, Y, r_max, tol_svd, method, allow_fullSVD, to; dont_care_sta
     @assert method == "full" || method == "Arpack" || method == "KrylovKit" "method must be full, KrylovKit, or Arpack"
     fullrank = rank(X)
     r_used = min(r_max,fullrank)
-    println("fullrank $fullrank")
+    println("fullrank $fullrank r_used $r_used")
     if allow_fullSVD || method == "full"
         @timeit to "full SVD" U,Sigma,Vt = call_SVD(X, r_used, "full")
         r_used = min(r_max, fullrank, sum(Sigma .> tol_svd))
@@ -516,7 +457,7 @@ function util_SVD(X, Y, r_max, tol_svd, method, allow_fullSVD, to; dont_care_sta
         s = @view S_r[1:r_used]
         vt = @view Vt_r[1:r_used,:]
     end
-    print_vec("singular values ", S_r; ine=true)
+    print_vec("singular values r <= $r_used ", S_r[1:r_used];ine=true)
     return fullrank, r_used, u, Atilde
 end
 
@@ -538,7 +479,7 @@ function check_packages_SVD(X)
 end
 
 """
-Main function to perform the DMD calculation.
+main API for DMD
 
 # Arguments
 - `emax::Int64`: maximum energy for the IMSRG calculation, which is used only for the filename of the emulated fvec data
@@ -564,9 +505,9 @@ Main function to perform the DMD calculation.
 - `dont_care_stationarity::Bool`: if `true`, the stationarity of the Atilde is not checked
 """
 function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],fn_exact=String[],
-                  allow_fullSVD=true,tol_svd=1e-12,inttype="",
-                  methodSVD="full", oupdir="flowOmega/",is_show=true, debugmode=false,
-                  dont_care_stationarity=true, rev=false, extrapolating=true)
+                  allow_fullSVD=true,tol_svd=1e-6,inttype="",
+                  methodSVD="Arpack", oupdir="flowOmega/",is_show=true, debugmode=false,
+                  dont_care_stationarity=true, rev=false)
     to = TimerOutput()
     if !isdir("flowOmega")
         println("dir. flowOmega is created!")
@@ -585,13 +526,6 @@ function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],f
     fullrank, r, U_r, Atilde = util_SVD(X, Y, r_max, tol_svd, methodSVD, allow_fullSVD, to; dont_care_stationarity=dont_care_stationarity) 
     evals_Atilde = eigvals(Atilde)
     check_stationarity_Atilde(evals_Atilde)
-
-    if !extrapolating
-        x_start = Y[:,end]
-        z1_r = BLAS.gemv('T', 1.0, U_r, x_start)
-        check_convergence(z1_r, Atilde)
-    end
-
     sfirst = ifelse(rev, smax_train, smin)
     plot_Atilde_eigvals(evals_Atilde, emax, nuc, sfirst, s_end, ds, inttype, fullrank, r)
 
@@ -599,39 +533,37 @@ function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],f
         show(to); println()
     end
     # extrapolation
-    if extrapolating
-        extrapolate_DMD(Y[:,end],U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
-    end
+    extrapolate_DMD(Y[:,end],U_r, Atilde, s_pred, fn_exact, s_end, ds, nuc, inttype, emax, oupdir)
 
     return nothing
 end
 
-function check_stationarity_Atilde(evals; tol=1.e-3)
+function check_stationarity_Atilde(evals; tol=1.e-2)
     tf = all(abs.(evals) .<= 1.0+tol)
     println("eigenvalues of Atilde ", evals)
     println("stationary?  may be... ", tf)
     return tf
 end
 
-function plot_Atilde_eigvals(evals, emax, nuc, s_first, s_end, ds, inttype, fullrank, r; eps_evals=1.e-3)
+function plot_Atilde_eigvals(evals, emax, nuc, s_first, s_end, ds, inttype, fullrank, r)
     if !isdir("pic") 
         mkdir("pic")
     end
     fn = "pic/Atilde_eigvals_e$(emax)_$(nuc)_sfirst$(s_first)_send$(s_end)_ds$(ds)_rank$(r)_of_$(fullrank).pdf"
     # make figure square
-    p = plot(size=(300,300), palette = :seaborn_deep)
+    p = plot(size=(300,300))
 
     # draw unit circle
     θ = LinRange(0,2π,100)
     plot!(cos.(θ),sin.(θ),lw=2,alpha=0.8,label=:none)
 
     # plot eigenvalues .<= 1.0
-    inon = evals[findall(abs.(evals) .<= 1.0+eps_evals)]
-    plot!(real(inon),imag(inon),st=:scatter,label=L"|z| \leq 1+\varepsilon",alpha=0.8)
+    inon = evals[findall(abs.(evals) .<= 1.0)]
+    plot!(real(inon),imag(inon),st=:scatter,label=L"|z| \leq 1", alpha=0.8)
     
-    out = evals[findall(abs.(evals) .> 1.0+eps_evals)]
+    out = evals[findall(abs.(evals) .> 1.0)]
     if length(out) > 0
-        plot!(real(out),imag(out),st=:scatter,label=L"|z| > 1+\varepsilon",alpha=0.8)
+        plot!(real(out),imag(out),st=:scatter,label=L"|z| > 1",alpha=0.8)
     end
 
     xlabel!(L"\mathrm{Re} (z)")

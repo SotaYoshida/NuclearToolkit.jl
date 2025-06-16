@@ -41,7 +41,7 @@ struct ket_abJ
     J::Int64
 end
 
-function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork;verbose=true)
+function write_msnt_tbmes(io,Mtot,p_sps,n_sps,m_p_sps,msps_n,SPEs,olabels,oTBMEs,similar_to_prevwork;verbose=false)
     lp = length(p_sps)
     lpm = length(m_p_sps)
     m_sps = vcat(m_p_sps,msps_n)
@@ -170,7 +170,12 @@ function main_trans_msnt(fn,target_nuc,target_Js=[];similar_to_prevwork=false)
         tJ=target_Js[1]
         eval_jj = 0.5*tJ*(tJ/2+1)
     end
-    lp,ln,cp,cn,massop,Aref,p,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(fn,Anum;ignore_massop=true)
+    SMobj = readsmsnt(fn, target_nuc;ignore_massop=true)
+    cp = SMobj.cp; cn = SMobj.cn
+    p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+    SPEs = SMobj.SPEs
+    olabels = SMobj.olabels
+    oTBMEs = SMobj.oTBMEs
 
     target_el = replace.(target_nuc, string(Anum)=>"")
     Z,N,vp,vn = getZNA(target_el,Anum,cp,cn)

@@ -56,13 +56,13 @@ end
 function get_quenching_factors(qtype="")
     if qtype == "" || qtype == "SY" 
         # S. Yoshida et al., PRC 97, 054321(2018).
-        return quenching_factors(0.74, 1.0, 1.7, 1.0, 1.0, 0.55)
+        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55)
     elseif qtype == "W" || qtype == "Warburton" 
         # E. Warburton, J. Becker, B. Brown, and D. Millener, Ann. Phys. 187, 471 (1988).
-        return quenching_factors(1.0, 1.1, 1.5, 1.0, 1.0, 0.51)
+        return quenching_factors(1.0,1.1,1.5,1.0,1.0,0.51)
     else
         @warn "qtype=$qtype is not supported! SY value will be used"
-        return quenching_factors(0.74, 1.0, 1.7, 1.0, 1.0, 0.55) 
+        return quenching_factors(0.74,1.0,1.7,1.0,1.0,0.55) 
     end
 end
 
@@ -115,12 +115,8 @@ function calc_halflife(daughter::kshell_nuc,GTdata,FFkeys,FFdata;verbose=false)
     end
     for GTstate in GTdata
         if verbose #&& (GTstate.hl_expQ != Inf)
-            println("Energy ", @sprintf("%12.4f",GTstate.Energy), " J2prty",@sprintf("%4i",GTstate.J2)*GTstate.prty,
-                    " Ex. ", @sprintf("%9.3f",GTstate.Ex),
-                    " BGT ", @sprintf("%13.5f", GTstate.BGT),
-                    " log10ft(GT) ", @sprintf("%9.2f", GTstate.logft),
-                    " hl(expQ) ", @sprintf("%12.4e",GTstate.hl_expQ),
-                    " hl(thoQ) ", @sprintf("%12.4e",GTstate.hl_thoQ))
+            println("Energy ", @sprintf("%12.4f",GTstate.Energy), " J2prty",@sprintf("%4i",GTstate.J2)*GTstate.prty," Ex. ", @sprintf("%9.3f",GTstate.Ex),
+                    " BGT ", @sprintf("%13.5f", GTstate.BGT)," log10ft(GT) ", @sprintf("%9.2f", GTstate.logft))
         end
         if GTstate.hl_expQ != 0.0
             hl_GT_expQ += 1.0 / GTstate.hl_expQ
@@ -153,8 +149,7 @@ function calc_halflife(daughter::kshell_nuc,GTdata,FFkeys,FFdata;verbose=false)
             logft_expQ = log10(FFstate.f0_expQ*FFstate.hl_expQ)
             logft_thoQ = log10(FFstate.f0_thoQ*FFstate.hl_thoQ)
             println("Energy ", @sprintf("%12.4f",tkey), " J2prty",@sprintf("%4i",FFstate.J2)*FFstate.prty, " Ex. ", @sprintf("%9.3f",FFstate.Ex),
-                    " log10ft(expQ) ", @sprintf("%9.2f", logft_expQ)," log10ft(thoQ) ", @sprintf("%9.2f", logft_thoQ),
-                    " f0 ", @sprintf("%9.2e",FFstate.f0_expQ),@sprintf("%9.2e",FFstate.f0_thoQ))
+                    " log10ft(expQ) ", @sprintf("%9.2f", logft_expQ)," log10ft(thoQ) ", @sprintf("%9.2f", logft_thoQ) )
         end
     end
     
@@ -285,16 +280,13 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
     prty = ""
     for line in lines
         if occursin("MTOT",line)        
-            J2 = parse(Int, replace(split(split(line, "MTOT")[end],",")[1], "="=>""))
-            #J2 = parse(Int,split(split(line)[end],",")[1])
+            J2 = parse(Int,split(split(line)[end],",")[1])
         end
         if occursin("parity =",line)
-            prty = replace(split(split(line, "parity")[end],",")[1], "="=>"")
-            #prty = strip(split(line,"parity =")[end])
+            prty = strip(split(line,"parity =")[end])
         end
         if occursin("N_EIGEN",line)
-            n_eigen = parse(Int, replace(split(split(line, "N_EIGEN")[end],",")[1], "="=>""))
-            #n_eigen = parse(Int,split(split(line,"=")[end],",")[1])
+            n_eigen = parse(Int,split(split(line,"=")[end],",")[1])
         end
         if !occursin("strength function ",line); continue; end
         tl = split(line)
@@ -318,9 +310,6 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
         hl_thoQ =  K / (gAV^2 * BGT) / f0_thoQ
         push!(data,bgtdata(n,Energy,Ex,J2,prty,S,BGT,logft,f0_expQ,f0_thoQ,hl_expQ,hl_thoQ))
         count += 1
-        if count == maxit
-            break
-        end
     end
     if n_eigen != maxit 
         @warn "n_eigen $n_eigen != maxit $maxit  The bgt file $fn may be not completed, or the number of possible states with the given total J is smaller than the specified n_eigen $n_eigen."
@@ -365,7 +354,7 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
     gamma1 = sqrt(1.0-(fsalpha*dZ)^2)
     data = Dict{Float64,bFFdata}()
     for fn in fns
-        read_bff_file!(fn,qfactors,parent,daughter,Qvals,data, verbose)
+        read_bff_file!(fn,qfactors,parent,daughter,Qvals,data)
     end
     fis = zeros(Float64,4)
     keylist = [ tmp for tmp in keys(data)]
@@ -418,8 +407,7 @@ function eval_bFF_files(fns,qfactors::quenching_factors,parent,daughter,Qvals;ve
                 println("M0s,M0t,M0s'", @sprintf("%12.4e", ffobj.M0rs),@sprintf("%12.4e", ffobj.M0sp),@sprintf("%12.4e", ffobj.M0rsd))
                 println("x, u, xi'y  ", @sprintf("%12.4e", x),@sprintf("%12.4e", u),@sprintf("%12.4e", xidy))
                 println("x', u' z    ", @sprintf("%12.4e", xd),@sprintf("%12.4e", ud),@sprintf("%12.4e", z) )
-                println(@sprintf("zeta0 %12.4e breakdown %12.4e %12.4e %12.4e", zeta0, ffobj.M0sp, xi * ffobj.M0rsd, 1/3 * ffobj.M0rs * W0))
-                println("K0_01,K0_0 ",@sprintf("%12.4e", K0_m1),@sprintf("%12.4e",K0_0))
+                #println("K0_01,K0_0 ",@sprintf("%12.4e", K0_m1),@sprintf("%12.4e",K0_0))
                 #println("K2_0,K2_1,K2_2 ",@sprintf("%12.4e", K2_0),@sprintf("%12.4e",K2_1),@sprintf("%12.4e", K2_2) )
                 println("  W0 ",@sprintf("%12.4e",W0), " qval $qval Egamma $Egamma Ecoul $Ecoul")
                 println("f0, f1, f2  ",@sprintf("%12.4e", f_0),@sprintf("%12.4e", f_1),@sprintf("%12.4e", f_2) )
@@ -457,35 +445,23 @@ end
 #     end
 # end
 
-"""
-
-Note: 
-When you evaluate FF transition matrix elements, you should have prepared using KSHELL log_*_tr* files under the following order: Left = Daughter & Right = Parent.
-In the f0-integrals for FF transitions the reduced matrix elements such as, M2rs=<f|| [rC1 x sigma]^(2) t^- ||i>.
-This has a nontrivial sign (with respect to flip w.r.t. left and right), which originates from the conventions in the KSHELL code.
-"""
-function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,data,verbose)
+function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,data)
     dZ = daughter.nuc.Z
     @assert dZ <= 137 "Z = $dZ > 137 is not assumed in Fermi's beta-decay theory"
     A = daughter.nuc.A
     dN = A - dZ
     lambda_Ce = hc / Me    
     mass_n_nu = 0.5*(Mp + Mn) / Me
-    if !isfile(fn)
-        @warn "file $fn is not found"
-        return nothing
-    end
     f = open(fn,"r"); lines = readlines(f); close(f)
     hit = 0; rank = -1
     FFchannel = ""
     tar_text1 = "First Forbidden"
     tar_text2 = "First forbidden"
-    order = false
+    order = nothing
     for line in lines
         if occursin("FN_LOAD_WAVE_L",line)
             nuc_l = strip(split(split(replace(split(line,"=")[end],"\""=>""),"/")[end],"_")[1])
             order = ifelse(nuc_l == parent.nuc.cnuc,true,false)
-            #@assert order == false "When you evaluate FF transitions, wavefunctions must be ordered as <daughter|O|parent>."
         end
         if occursin(tar_text1,line) || occursin(tar_text2,line) 
             hit += 1
@@ -500,9 +476,8 @@ function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,dat
         line = replace(line, "("=>" ")
         line = replace(line, ")"=>" ")        
         tl = split(line)
+        J2f, NJf, Ef, J2i, NJi, Ei, Ex, Mred, B1, B2, Mom = tl 
         J2f, NJf, Ef, J2i, NJi, Ei, Ex, Mred, B1, B2, Mom = tl
-        Nth_parent = parse(Int,ifelse(order, NJf, NJi))
-        if Nth_parent != 1; continue; end # If the target state is not the lowest (within the same Jpi), skip
         Edaughter = parse(Float64,ifelse(order,Ei,Ef))
         J2f = parse(Int,J2f)
         J2i = parse(Int,J2i)
@@ -511,7 +486,6 @@ function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,dat
         C_J = 1.0 / sqrt( ifelse(order,J2f,J2i) + 1)
         Bval = (C_J * Mred)^2
         Ex_calc = Edaughter - daughter.Egs
-        @assert Ex_calc >= 0.0 " Ex_calc $Ex_calc must be >= 0 "
         if order 
             B1 = parse(Float64,B1)    
             @assert abs(B1-Bval) < 1.e-3 "B1 $B1 B(FF) $Bval"
@@ -521,12 +495,11 @@ function read_bff_file!(fn,qfactors::quenching_factors,parent,daughter,Qvals,dat
         end
         Qd_exp = Qvals[1] - Ex_calc
         Qd_tho = Qvals[2] - Ex_calc
-        # if verbose
-        #     println("rank $rank channel $FFchannel Qexp $(@sprintf("%6.2f", Qd_exp)) Qtho $(@sprintf("%6.2f", Qd_tho)) Bval $(@sprintf("%7.3f", Bval))  Mred $(@sprintf("%7.3f", Mred))",
-        #             "Edaughter $(@sprintf("%9.3f", Edaughter)) Ex_calc $(@sprintf("%9.3f", Ex_calc)) order $order")
-        # end
-        if !haskey(data, Edaughter)
+        tf = get(data,Edaughter,nothing)
+        #println("Qexp $Qd_exp Qtho $Qd_tho Edaughter $Edaughter Ex_calc $Ex_calc order $order")
+        if tf == nothing
             data[Edaughter] = bFFdata(J2,"",Ex_calc,Qd_exp,Qd_tho,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)
+            #println("Ef $Ef Ei $Ei Ex $Ex Edgs $(daughter.Egs) Qd $Qd_exp $Qd_tho Ecoul ",Ecoulomb_SM(pZ,pN)-Ecoulomb_SM(pZ+1,pN-1))
         end
         ME_FF_func!(FFchannel,qfactors,C_J,Mred,lambda_Ce,mass_n_nu,data[Edaughter])
     end

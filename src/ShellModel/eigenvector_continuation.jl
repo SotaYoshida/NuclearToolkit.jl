@@ -108,7 +108,15 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+    
+    SMobj = readsmsnt(sntf, target_nuc)
+    lp = SMobj.lp; ln = SMobj.ln
+    cp = SMobj.cp; cn = SMobj.cn
+    massop = SMobj.massop; Aref = SMobj.Aref; pow = SMobj.p
+    p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+    SPEs = SMobj.SPEs; olabels = SMobj.olabels; oTBMEs = SMobj.oTBMEs
+    labels = SMobj.labels; TBMEs = SMobj.TBMEs
+
     hw, bpar = init_ho_by_mass(Anum,1) # mass formula 
     if 16<= Anum <= 40
         hw, bpar = init_ho_by_mass(Anum,2) # 2: mass formula for sd-shell
@@ -132,7 +140,13 @@ function prepEC(Hs,target_nuc,num_ev,num_ECsample,tJ,mode;
         for (iter,sntf) in enumerate(Hs)
             @timeit to "make sample" begin
                 println("sntf: $sntf")
-                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+                SMobj = readsmsnt(sntf, target_nuc)
+                lp = SMobj.lp; ln = SMobj.ln; cp = SMobj.cp; cn = SMobj.cn
+                massop = SMobj.massop; Aref = SMobj.Aref; pow = SMobj.p
+                p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+                SPEs = SMobj.SPEs; olabels = SMobj.olabels; oTBMEs = SMobj.oTBMEs
+                labels = SMobj.labels; TBMEs = SMobj.TBMEs
+
                 pp_2bjump,nn_2bjump = prep_Hamil_T1(p_sps,n_sps,msps_p,msps_n,pbits,nbits,labels,TBMEs)   
                 bVpn,Vpn,delMs = prep_Hamil_pn(p_sps,n_sps,msps_p,msps_n,labels[3],TBMEs[3])
                 bis,bfs,p_NiNfs,n_NiNfs,num_task = prep_pn(lblock,pbits,nbits,Mps,delMs,bVpn,Vpn)
@@ -342,7 +356,13 @@ function solveEC(Hs,target_nuc,tJNs;
     to = TimerOutput()
     sntf = Hs[1]    
     Anum = parse(Int64, match(reg,target_nuc).match)
-    lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+    SMobj = readsmsnt(sntf, target_nuc)
+    lp = SMobj.lp; ln = SMobj.ln; cp = SMobj.cp; cn = SMobj.cn
+    massop = SMobj.massop; Aref = SMobj.Aref; pow = SMobj.p
+    p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+    SPEs = SMobj.SPEs; olabels = SMobj.olabels; oTBMEs = SMobj.oTBMEs
+    labels = SMobj.labels; TBMEs = SMobj.TBMEs
+
     hw, bpar = init_ho_by_mass(Anum,1) # mass formula 
     if 16<= Anum <= 40
         hw, bpar = init_ho_by_mass(Anum,2) # 2: mass formula for sd-shell
@@ -401,7 +421,13 @@ function solveEC(Hs,target_nuc,tJNs;
             sntf = Hs[sntidx]
             tMat .= 0.0
             @timeit to "Hmat" begin
-                lp,ln,cp,cn,massop,Aref,pow,p_sps,n_sps,SPEs,olabels,oTBMEs,labels,TBMEs = readsmsnt(sntf,Anum)
+                SMobj = readsmsnt(sntf, target_nuc)
+                lp = SMobj.lp; ln = SMobj.ln; cp = SMobj.cp; cn = SMobj.cn
+                massop = SMobj.massop; Aref = SMobj.Aref; pow = SMobj.p
+                p_sps = SMobj.p_sps; n_sps = SMobj.n_sps
+                SPEs = SMobj.SPEs; olabels = SMobj.olabels; oTBMEs = SMobj.oTBMEs
+                labels = SMobj.labels; TBMEs = SMobj.TBMEs
+
                 MEs = [SPEs[1],SPEs[2],oTBMEs]
                 MEs = [(MEs...)...]
                 for (idx,TD) in enumerate(TDs)
@@ -1080,6 +1106,7 @@ function prepTBTD(tJ,idxs,p_sps,n_sps,msps_p::Array{Array{Int64,1},1},msps_n::Ar
     sps = [p_sps,n_sps]
     loffs = [ 0, length(p_sps)]
     TBTD1 = [ T1ifc[ ] , T1ifc[] ]
+    n = nthreads()
     #@threads
     for vrank =1:2 #pp:1, nn:2
         loff = loffs[vrank]

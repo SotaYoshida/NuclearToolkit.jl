@@ -72,12 +72,12 @@ function calc_vmom_3nf(chiEFTobj,it,to;pnm=false)
     # Contact term
     V_E(chiEFTobj.params,xr,r_cE*bbf,V12mom,dict_pwch,to)
     ## pion exchange: V_C(TPE), V_D(OPE)    
-    tllsj = [copy(tmp_llsj) for i =1:Threads.maxthreadid()]
+    tllsj = [copy(tmp_llsj) for i =1:nthreads()]
     for pnrank =1:3
         tdict = dict_pwch[pnrank]
         #MN = Ms[pnrank]#;dwn = 1.0/MN;sq_dwn=dwn^2      
         itt = 2 *(pnrank -2)
-        @views tllsj[1:Threads.maxthreadid()][1] .= itt
+        @views tllsj[1:nthreads()][1] .= itt
         @inbounds for J=0:jmax
             lsj = lsjs[J+1]
             @inbounds for i= 1:n_mesh

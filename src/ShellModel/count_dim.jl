@@ -7,7 +7,7 @@ struct SingleParticleState_Mscheme
     tz::Int64
 end
 
-function get_msps_from_jsps(sps::Array{SingleParticleState})
+function get_msps_from_jsps(sps::Array{SingleParticleState}; concatenate=false)
     msps_proton = SingleParticleState_Mscheme[]
     msps_neutron = SingleParticleState_Mscheme[]
     for i in 1:length(sps)
@@ -21,7 +21,12 @@ function get_msps_from_jsps(sps::Array{SingleParticleState})
             push!(target, SingleParticleState_Mscheme(e,n,l,j,jz,tz))
         end
     end
-    return msps_proton, msps_neutron
+    if concatenate
+        msps = vcat(msps_proton, msps_neutron)
+        return msps
+    else
+        return msps_proton, msps_neutron
+    end
 end
 
 """
@@ -47,15 +52,11 @@ function count_parity_Nmax_Mtot(bint::Int128, msps, Nref)
     return parity, Nexc, Mtot
 end
 
-function int2bitstr(x, N)
-    return string(bitstring(x)[end-N+1:end] |> s -> lpad(s, N, '0'))
-end
 
 """
 Counting the sum of e for naive filling configurations, which is needed to eval excitation quanta.
 """
-function get_Nref_from_nucleus(nuc, p_msps, n_msps)
-    Z = nuc.Z; N = nuc.N
+function get_Nref_from_nucleus(p_msps, n_msps, Z, N)
     Nref_proton = sum( [ msps.e for msps in p_msps[1:Z]] )
     Nref_neutron= sum( [ msps.e for msps in n_msps[1:N]] )
     return Nref_proton, Nref_neutron
@@ -153,7 +154,7 @@ function get_maxint(int_init, msps, Nmax, verbose=0) ::Int128
     return x 
 end
 
-function hash_3inttuple(Mtot, parity, Nmax)::UInt
+function hash_3int(Mtot, parity, Nmax)::UInt
     Mtot = Mtot + 1000
     parity = parity + 10
     Nmax = Nmax + 10
@@ -186,9 +187,9 @@ function generate_xinit_xmax(num_particle, msps, upperbound)
     if num_particle % num_cycles != 0
         nums_bit_shift[num_cycles] += num_particle % num_cycles
     end
-    # println("x0:  ", int2bitstr(xinit, length(msps)))
-    # println("xm:  ", int2bitstr(upperbound, length(msps)))
-    println("nums_bit_shift $nums_bit_shift")
+    ## println("x0:  ", int2bitstr(xinit, length(msps)))
+    ## println("xm:  ", int2bitstr(upperbound, length(msps)))
+    #println("nums_bit_shift $nums_bit_shift")
     @assert nums_bit_shift[end] == num_particle "nums_bit_shift[end] $(nums_bit_shift[end]) != num_particle"
     for n in 0:max_shift
         x_low = x_R = xinit << n
@@ -224,28 +225,35 @@ function generate_xinit_xmax(num_particle, msps, upperbound)
     return x_list
 end
 
-function count_only_num_particle(num_particle, msps, Nref, Nmax_specified, to;
+function count_only_num_particle(num_particle, msps, Nref, Nmax_specified=10^5;
                                  store_config=false, verbose=0) 
     naive_config = config_struct[ ]
     if num_particle == 0
         push!(naive_config, config_struct(0, 1, 0, [Int128(0)], [Int128(1)]))
+    elseif num_particle == length(msps) # fully occupied   
+        x = Int128(1) << (num_particle) - 1
+        parity, Nmax, Mtot = count_parity_Nmax_Mtot(x, msps, Nref)   
+        push!(naive_config, config_struct(Mtot, parity, Nmax, [Int128(1) << (num_particle) - 1], [Int128(1)]))
     else
         int_init = Int128(1) << (num_particle) - 1
-        upper_bound = get_maxint(int_init, msps, Nmax_specified, verbose)
+        upper_bound = int_init << (length(msps) - num_particle) #???
 
         x_list = generate_xinit_xmax(num_particle, msps, upper_bound)
         all_encountered = [ Dict{UInt,Vector{Int128}}() for _ in 1:length(x_list) ]
         all_counts = [ Dict{UInt,Vector{Int128}}() for _ in 1:length(x_list) ]
-        
-        @threads for idx = 1:length(x_list)
+
+        #println("upper_bound $upper_bound $(int2bitstr(upper_bound, length(msps)))")
+        #println("x_list $x_list $(x_list[end])")
+        for idx = 1:length(x_list)
             encountered = all_encountered[idx]
             counts = all_counts[idx]
             x = x_list[idx][1]
-            maxint = x_list[idx][2]
+            maxint = x_list[idx][2] + ifelse(idx==length(x_list), 1, 0)
+
             while x < maxint
-                parity, Nmax, Mtot = count_parity_Nmax_Mtot(x, msps, Nref)            
+                parity, Nmax, Mtot = count_parity_Nmax_Mtot(x, msps, Nref)   
                 if Nmax <= Nmax_specified 
-                    tkey = hash_3inttuple(Mtot, parity, Nmax)
+                    tkey = hash_3int(Mtot, parity, Nmax)
                     if haskey(counts, tkey)
                         if store_config
                             push!(encountered[tkey], x)
@@ -280,12 +288,14 @@ function count_only_num_particle(num_particle, msps, Nref, Nmax_specified, to;
             configs = Int128[ ]
             for i in 1:length(all_counts)
                 if haskey(all_counts[i], key)
-                    tmp_counts[1] += all_counts[i][key][1]
+                    tmp_counts[1] += all_counts[i][key][1]                    
+                end
+                if store_config && haskey(all_encountered[i], key)
+                    append!(configs, all_encountered[i][key])
                 end
             end
             push!(naive_config, config_struct(Mtot, parity, Nmax, configs, tmp_counts))
         end
-   
     end
     return naive_config
 end
@@ -316,10 +326,10 @@ function count_CIdim(nuc::nucleus, sps::Array{SingleParticleState},
         println("Generating configurations with specified Z/N...")
         println("upper value for p/n ", binomial(big(length(p_msps)), nuc.Z), " ", binomial(big(length(n_msps)), nuc.N))
     end
-    Nref_proton, Nref_neutron = get_Nref_from_nucleus(nuc, p_msps, n_msps)
+    Nref_proton, Nref_neutron = get_Nref_from_nucleus(p_msps, n_msps, nuc.Z, nuc.N)
 
-    @timeit to "Zconfig" struct_proton_config  = count_only_num_particle(nuc.Z, p_msps, Nref_proton, Nmax_specified, to)
-    @timeit to "Nconfig" struct_neutron_config = count_only_num_particle(nuc.N, n_msps, Nref_neutron, Nmax_specified, to)
+    @timeit to "Zconfig" struct_proton_config  = count_only_num_particle(nuc.Z, p_msps, Nref_proton, Nmax_specified)
+    @timeit to "Nconfig" struct_neutron_config = count_only_num_particle(nuc.N, n_msps, Nref_neutron, Nmax_specified)
 
     Nmax_of_interest = 2:2:Nmax_specified
 
@@ -390,3 +400,73 @@ function count_CIdim(nuc::nucleus, sps::Array{SingleParticleState},
     return dim_dict
 end
 
+# function CIdim_plot(emax::Int, Data, nucs, Nmaxmax)
+#     plot_linewidth = 2
+#     marker_pool = [:circle, :diamond, :utriangle, :dtriangle, :pentagon, :hexagon, :rect, ]
+#     f = Figure( size=(500, 300), backgroundcolor = :transparent)
+#     ax = Axis(f[1, 1] , xlabel = "Nmax", ylabel = "Dim.", yscale = log10,
+#               xticks = 2:2:Nmaxmax,
+#               yticks = LogTicks(2:2:18),
+#               backgroundcolor = :transparent)
+#     xlims!(ax, 1, Nmaxmax+1)
+#     ylims!(ax, 1e1, 1e18)
+#     for idx = 1:length(nucs)
+#         marker = marker_pool[idx]
+#         nuc = nucs[idx]
+#         lnuc = latex_nuc(nuc)
+#         tData = Data[nuc]
+#         x = tData["Nmax"]
+#         y = tData["dim"]
+#         if nuc == nucs[1]
+#             obj = scatterlines!(ax, x, y,
+#                                 label=lnuc, linewidth=plot_linewidth, 
+#                                 marker=marker, markersize=15,
+#                                 colormap =:seaborn_dark
+#             )
+#         else
+#             obj = scatterlines!(ax, x, y,
+#                 label=lnuc, linewidth=plot_linewidth,
+#                 marker=marker, markersize=15,
+#             )
+#         end
+#     end
+#     axislegend(ax, merge = true, position = (0.01,0.99), fontsize=35, nbanks=2)
+#     save("nuclear_model_space_dimensions_emax$(emax).pdf", f)
+# end
+
+# function main_count(; plot_from_jld2 = false, show_time = true, log_level = 0)
+#     ref = "nucl"
+#     corenuc = ""
+#     hw = 20
+#     emax = 8
+#     emax_calc = 4
+#     sntf = homedir() * "/Desktop/ThBMEs/tbme_em500n3lo_srg2.0hw$(hw)emax$(emax).snt.bin"
+#     println("emax $emax_calc hw $hw ")
+
+#     nucs = ["H3", "He4", "Li6", "n8", "He8", "C12", "O16"]
+#     Nmax_max = 16
+
+#     nucs = ["He4", "Li6", "C12", "O16", "Ne20", "Ca40"]
+#     nucs = ["He4", "Li6", "Be8", "C12", "O16", "Ne20" ]
+#     Nmax_max = 16
+
+#     Data = Dict{String, Dict{String, Vector{Int128}}}( )
+#     for cnuc in nucs
+#         nuc = def_nuc(cnuc, ref, corenuc)
+#         binfo = basedat(nuc, sntf, hw, emax_calc, ref)
+#         sps,dicts1b,dicts = readsnt_bin(sntf, binfo; use_Float64=false, neutron_drop=false)
+#         Data[cnuc] = count_CIdim(nuc, sps, Nmax_max, show_time=show_time, verbose=log_level)        
+#     end
+
+#     # Write out the Data in jld2 format
+#     @save "nuclear_model_space_dimensions_emax$(emax_calc).jld2" Data
+
+#     # plot
+#     plot_from_jld2 = !false 
+#     if plot_from_jld2
+#         @load "nuclear_model_space_dimensions_emax$(emax_calc).jld2" Data
+#     end
+
+#     CIdim_plot(emax_calc, Data, nucs, Nmax_max)
+
+# end

@@ -25,6 +25,15 @@ using SpecialFunctions
 using TimerOutputs
 using WignerSymbols
 
+include("util_func.jl")
+export latex_nuc, int2bitstr, reg, element, rm_comment, rm_nan, print_vec, show_matrix
+export get_nkey2_arr, get_nkey2, get_nkey2_u, get_nkey3
+export get_nkey3_u, get_nkey3_JPT, get_nkey3_ketJ
+export get_nkey4
+export get_nkey6, get_nkey6_shift, get_nkey_from_abcdarr
+export show_allitems_of_dict
+export deltaf
+
 ### ChiEFTint.jl  chiEFTint/
 include("chiEFTint/struct_const_io.jl")
 include("chiEFTint/dict_LECs.jl")
@@ -50,10 +59,10 @@ export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")
-export ame2020data
 
 ### HartreeFock.jl
 include("hartreefock.jl/def_struct.jl")
+export SingleParticleState
 include("hartreefock.jl/io_input.jl")
 export basedat, def_nuc
 export readsnt, readsnt_bin
@@ -91,7 +100,17 @@ export eval_betadecay_from_kshell_log
 export main_trans_msnt
 include("ShellModel/count_dim.jl")
 export count_CIdim
+export get_msps_from_jsps
+export SingleParticleState_Mscheme
+export count_only_num_particle
+export get_Nref_from_nucleus
 
+include("ShellModel/partitions.jl")
+export gen_partition_from_snt
+
+include("Quantum/qsci.jl")
+#export read_bitstr, read_bitint
+export qsci_main
 end
 
 

@@ -323,7 +323,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
         nkets = length(kets)
         if nkets == 0; continue;end
         D = @view MatOp[threadid()][1:nkets,1:nkets]
-        D2 = @view MatOp[threadid()+Threads.maxthreadid()][1:nkets,1:nkets]
+        D2 = @view MatOp[threadid()+nthreads()][1:nkets,1:nkets]
         Op2b = Omats[ch]       
         for ib = 1:nkets
             i,j = kets[ib]
@@ -495,7 +495,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
     if hfmbptlevel
         allhs = vcat(holes[1],holes[2])
         allps = vcat(particles[1],particles[2])
-        nthre = Threads.maxthreadid()
+        nthre = nthreads()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
         @inbounds @threads for idx_a in eachindex(allps)

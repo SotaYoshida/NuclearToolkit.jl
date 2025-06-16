@@ -643,63 +643,6 @@ function nlj_from_str(str)
     return n,l,j   
 end
 
-function get_nkey2_arr(tmp;ofst=10^3)
-    return tmp[1] + tmp[2] * ofst
-end
-
-function get_nkey2(i,j;ofst=10^3)
-    return i + j * ofst
-end
-
-function get_nkey2_u(i,j)::UInt64
-    return (UInt64(i) << 10) +  UInt64(j)
-end
-
-function get_nkey3(i,j,k;ofst=10^3)
-    return i + ofst * j + ofst^2 * k
-end
-
-function get_nkey3_u(i,j,k)::UInt64
-    return (UInt64(i) << 20) + (UInt64(j) << 10) +  UInt64(k)
-end
-
-function get_nkey3_JPT(arr::Vector{Int64})::UInt64
-    return (UInt64(arr[1]+2) << 20) + (UInt64(arr[2]+2) << 10) +  UInt64(arr[3])
-end
-function get_nkey3_JPT(aTz::Int64,P::Int64,J::Int64)::UInt64
-    return (UInt64(aTz+2) << 20) + (UInt64(P+2) << 10) +  UInt64(J)
-end
-
-function get_nkey3_ketJ(i,j,J)::UInt64
-    return (UInt64(i) << 20) + (UInt64(j) << 10) +  UInt64(J)
-end
-
-function get_nkey4(i,j,k,l;ofst=10^3)
-    return i + ofst * j + ofst^2 * k + ofst^3 * l
-end
-
-function get_nkey6(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::UInt64
-    return  (UInt64(j1) << 50) + (UInt64(j2) << 40) +(UInt64(j3) << 30) +  (UInt64(j4) << 20) + (UInt64(j5) << 10) +  UInt64(j6)
-end
-
-"""
-Unlike other wigner symbols, constructing CG coefficients enconter the case with negative indices.
-One way to avoid this is to use the following function to get hash key for the CG coefficients.
-This function asssume all `j` is >= -3
-"""
-function get_nkey6_shift(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::UInt64    
-    return  (UInt64(j1+3) << 50) + (UInt64(j2+3) << 40) +(UInt64(j3+3) << 30) +  (UInt64(j4+3) << 20) + (UInt64(j5+3) << 10) +  UInt64(j6+3)
-end
-
-"""
-    get_nkey_from_abcdarr(tkey;ofst=1000)
-
-To get integer key from an Int array (with length greater than equal 4)
-"""
-function get_nkey_from_abcdarr(tkey;ofst=1000)
-    return tkey[1] + tkey[2] * ofst + tkey[3] * ofst^2 + tkey[4] * ofst^3 
-end
-
 function call_dcgm0(l1,l2,l,dcgm0)
     l1p = l1 
     l2p = l2

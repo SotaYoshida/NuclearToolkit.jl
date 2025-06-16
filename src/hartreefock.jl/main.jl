@@ -31,7 +31,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     BLAS.set_num_threads(1)
     if debugmode != 0
         println("BLAS.get_config() ",BLAS.get_config())
-        println("BLAS.get_num_threads() $(BLAS.get_num_threads()) nthreads $(Base.Threads.maxthreadid())")
+        println("BLAS.get_num_threads() $(BLAS.get_num_threads()) nthreads $(Base.Threads.nthreads())")
     end
     @assert isfile(sntf) "sntf:$sntf is not found!"
     
@@ -66,7 +66,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         end 
         MatOp = Matrix{Float64}[]
         if "Rp2" in Operators
-            MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*Threads.maxthreadid()]
+            MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
         end
     end
 
@@ -100,9 +100,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             HFobj = hf_iteration(binfo,HFdata[i],sps,Hamil,dictsnt.dictTBMEs,Chan1b,Chan2bD,Gamma,maxnpq,dWS,Object_3NF,to;verbose=verbose,io=io,E0cm=E0cm) 
         end
         if doIMSRG
-           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;
-                                 delete_Ops=delete_Ops,fn_params=fn_params,debugmode=debugmode,
-                                 Hsample=Hsample,restart_from_files=restart_from_files)
+           IMSRGobj = imsrg_main(binfo,Chan1b,Chan2bD,HFobj,dictsnt,dWS,valencespace,Operators,MatOp,to;delete_Ops=delete_Ops,fn_params=fn_params,debugmode=debugmode,Hsample=Hsample,restart_from_files=restart_from_files)
            if return_obj; return IMSRGobj;end
         else
             if "Rp2" in Operators
@@ -140,7 +138,7 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;
     Object_3NF = main_read_me3j(fn_3nf, emax_calc, e1max_file, e2max_file, e3max, e3max_file, sps, dWS, to)
     MatOp = Matrix{Float64}[]
     if "Rp2" in Operators
-        MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*Threads.maxthreadid()]
+        MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
     end
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
@@ -509,11 +507,11 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
     l_sps = length(sps)
     E3max = sps_3b.e3max
     nchan = length(Chan2b)
-    Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:Threads.maxthreadid()]
-    M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:Threads.maxthreadid()]
+    Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
+    M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
     use3NF = Object_3NF.use3BME
     dim_v3_g = ifelse(use3NF, maxnpq, 1)
-    V3NOs = [ zeros(Float64,dim_v3_g,dim_v3_g) for i =1:Threads.maxthreadid()]
+    V3NOs = [ zeros(Float64,dim_v3_g,dim_v3_g) for i =1:nthreads()]
 
     @threads for ch = 1:nchan
         tid = threadid()
@@ -806,7 +804,7 @@ function eval_V3NO!(sps,V3tilde,rho,rho_p,rho_n,Object_3NF)
     dict_idx_me3j_to_snt = Object_3NF.dict_idx_to_snt
     V3tilde .= 0.0
     v3monopole = Object_3NF.v3monopole
-    v = [ zeros(Float64,size(V3tilde)[1],size(V3tilde)[2]) for i = 1:Threads.maxthreadid()]    
+    v = [ zeros(Float64,size(V3tilde)[1],size(V3tilde)[2]) for i = 1:nthreads()]    
     keylist = collect(keys(v3monopole))
     @threads for idx in eachindex(keylist)
         tkey = keylist[idx]
@@ -823,7 +821,7 @@ function eval_V3NO!(sps,V3tilde,rho,rho_p,rho_n,Object_3NF)
         v3tmp = v[threadid()]
         v3tmp[i,j] += rho_ab * rho_cd * v3monopole[tkey]
     end
-    for i = 1:Threads.maxthreadid()
+    for i = 1:nthreads()
         V3tilde .+= v[i]
     end
     V3tilde .+= transpose(V3tilde) - Diagonal(V3tilde)

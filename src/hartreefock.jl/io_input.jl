@@ -15,6 +15,7 @@ function get_ZNref(ref::String,Z::Int,N::Int,corenuc::String)
     end
     return Zr,Nr
 end
+
 """
     def_nuc(nuc::Vector{Int},ref,corenuc)
 constructor of `nucleus` strict from given `Z`,`N`,`ref`,`corenuc`
@@ -32,6 +33,7 @@ function def_nuc(nuc::Vector{Int},ref::String,corenuc::String)
     Aref = Zref + Nref
     return nucleus(Zref,Nref,A,Aref,el,cnuc,cZ,cN,corenuc)
 end 
+
 """
     def_nuc(Z,N,ref,corenuc)
 constructor of `nucleus` strict from given `cnuc`,`ref`,`corenuc`
@@ -75,32 +77,6 @@ function cZN_from_corenuc(rZ,rN,corenuc::String)
     end 
     A = parse(Int64,A); N = A-Z   
     return Z,N
-end
-
-"""
-    rm_comment(lines)
-remove fortran like comment from input (snt fmt) strings
-"""
-function rm_comment(lines)
-    nlines = []
-    for line in lines
-        line = strip(line)
-        if length(line) > 0
-            if startswith(line,"!")||startswith(line,"#")
-                continue
-            end
-        end
-        push!(nlines,line)
-    end
-    return nlines
-end
-
-function rm_nan(array)
-    na = []
-    for tmp in array
-        if tmp != "";push!(na,tmp); end
-    end
-    return na
 end
 
 """ 

@@ -929,6 +929,19 @@ function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN
             Hmat[nkey] = val
         end
     end
+    if verbose >=1
+        println("Hamiltonian matrix")
+        for (nkey, val) in Hmat
+            idx_bra, idx_ket = unhash_2ints(nkey)
+            bra_bitint, ket_bitint = all_bitint_prod[idx_bra], all_bitint_prod[idx_ket]
+            p_bra, n_bra = bra_bitint
+            p_ket, n_ket = ket_bitint
+            bra_bitstr = int2bitstr(p_bra, length(p_msps)) * " ⊗ " * int2bitstr(n_bra, length(n_msps))
+            ket_bitstr = int2bitstr(p_ket, length(p_msps)) * " ⊗ " * int2bitstr(n_ket, length(n_msps))
+
+            println("H_ij = $(@sprintf("%11.6f", val)) for bra ($(@sprintf("%4i", idx_bra))) $(bra_bitstr), ket ($(@sprintf("%4i", idx_ket))) $(ket_bitstr)")
+        end
+    end
     return Hmat
 end
 
@@ -1094,6 +1107,120 @@ function evaluate_energy_variance(Hamil_mat, evecs, n_eigen, to)
     return evars
 end
 
+function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m)
+    len = length(SPEs)
+    argmins = sortperm(SPEs)
+    occs_jj = zeros(Int, len)
+    count = 0
+    for idx in argmins
+        j2 = sps_jj[idx].j
+        for jz = -j2:2:j2
+            if count >= Nocc
+                break 
+            end
+            count += 1
+            occs_jj[idx] += 1
+        end
+    end
+    println("occs_jj: $occs_jj ")
+    len_m = sum( sps_jj[i].j + 1 for i in 1:len )
+    bitint_possible = Int128[ ]
+    bitint_base = Int128(0)
+    for idx_jj in 1:len
+        if occs_jj[idx_jj] == 0
+            continue
+        end
+        # jj is fully occupied case
+        if occs_jj[idx_jj] == sps_jj[idx_jj].j +1 
+            for idx_mm in dict_j2m[idx_jj]
+                bitint_base = bitint_base | (Int128(1) << (idx_mm - 1))
+            end
+        end
+    end    
+    count_partial_jj = 0 
+    for idx_jj in 1:len
+        if occs_jj[idx_jj] == 0
+            continue
+        end
+        # partially occupied case
+        if occs_jj[idx_jj] < sps_jj[idx_jj].j + 1
+            count_partial_jj += 1
+            x = bitint_base
+            min_relevant = minimum(dict_j2m[idx_jj])
+            bit_rel_min = Int128(0)
+            nshift = sps_jj[idx_jj].j + 1 - occs_jj[idx_jj]
+            #println("nshift: $nshift min_relevant: $min_relevant ")
+            for idx_mm = min_relevant:min_relevant + Nocc - 1
+                bit_rel_min |= (Int128(1) << (idx_mm - 1))
+            end
+            bit_rel_max = bit_rel_min << nshift
+            #println("bit_rel_min: $bit_rel_min $(int2bitstr(bit_rel_min, len_m))")
+            #println("bit_rel_max: $bit_rel_max $(int2bitstr(bit_rel_max, len_m))")
+
+            x = bit_rel_min >> nshift
+            push!(bitint_possible, x << nshift | bitint_base)
+            while x < (bit_rel_max >> nshift)
+                u = x & (-x)
+                v = x + u   
+                x = v + (((v ⊻ x) ÷ u) >> 2) 
+                xtarget = x << nshift | bitint_base
+                #println("xtarget : $(xtarget) $(int2bitstr(xtarget, len_m))")
+                push!(bitint_possible, xtarget)
+            end
+        end
+    end
+    @assert count_partial_jj <= 1 "There should be at most one partially occupied jj state, but found $count_partial_jj"
+    if count_partial_jj == 0
+        push!(bitint_possible, bitint_base)
+    end
+    # for bitint in bitint_possible
+    #     println("possible: $(bitint) $(int2bitstr(bitint, len_m))")
+    # end
+    return bitint_possible
+end
+
+function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
+                                    vZ, vN, all_bitint_prod, maxnum_subspace_basis;
+                                    sampling_scheme::Symbol=:uniform)
+    if sampling_scheme == :uniform
+        idxs_subspace = sample(1:length(all_bitint_prod), maxnum_subspace_basis, replace=false)
+        return idxs_subspace
+    end
+
+    if sampling_scheme == :lowest_filling || sampling_scheme == :lowest_filling_2p2h
+        p_msps = sps2msps(Hamil_snt.p_sps)
+        n_msps = sps2msps(Hamil_snt.n_sps)
+        # Firstly, we need to find the lowest filling configurations
+        h_1b = Hamil_snt.h_1b
+        lp = Hamil_snt.lp; ln = Hamil_snt.ln
+        p_SPEs = [ h_1b[(i,i)] for i in 1:lp]
+        n_SPEs = [ h_1b[(i+lp, i+lp)] for i in 1:ln]
+        candidates_p = get_lowest_filling_configs(p_SPEs, Hamil_snt.p_sps, vZ, dict_j2m)
+        candidates_n = get_lowest_filling_configs(n_SPEs, Hamil_snt.n_sps, vN, dict_j2m)
+        println("candidates_p $candidates_p candidates_n $candidates_n")
+
+        idxs_subspace = Int[ ]
+        for idx in 1:length(all_bitint_prod)
+            p_bitint, n_bitint = all_bitint_prod[idx]
+            println("idx $idx $p_bitint $(int2bitstr(p_bitint, length(p_msps))) $n_bitint $(int2bitstr(n_bitint, length(n_msps)))")
+            if (p_bitint in candidates_p) && (n_bitint in candidates_n)
+                push!(idxs_subspace, idx)
+            end
+        end
+        println("idxs_lowest_filling: $(idxs_subspace)")
+        for idx in idxs_subspace
+            p_bitint, n_bitint = all_bitint_prod[idx]
+            println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps)))")
+        end
+        if length(idxs_subspace) < maxnum_subspace_basis
+            remaining_idxs = setdiff(1:length(all_bitint_prod), idxs_subspace)
+            remaining_idxs = sample(remaining_idxs, maxnum_subspace_basis - length(idxs_subspace), replace=false)
+            idxs_subspace = vcat(idxs_subspace, remaining_idxs)
+        end
+        return idxs_subspace
+    end
+end
+
 function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
                    sampling_method::Symbol=:exact,
                    maxnum_subspace_basis::Int=0,
@@ -1109,7 +1236,6 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
         method_to_sample_bitstrings = "random"
     end
     println("Using sampling method: $method_to_sample_bitstrings")
-
     to = TimerOutput()
 
     # Read the interaction file and prepare the single-particle states
@@ -1139,10 +1265,9 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     if method_to_sample_bitstrings == "exact"
         all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
     elseif method_to_sample_bitstrings == "random"
-        # For now, we shall use just Monte Carlo sampling
         all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
         Random.seed!(1234) 
-        idxs_subspace = sample(1:length(all_bitint_prod), maxnum_subspace_basis, replace=false)
+        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, all_bitint_prod, maxnum_subspace_basis, sampling_scheme=:lowest_filling)        
         all_bitint_prod = [all_bitint_prod[i] for i in idxs_subspace]
     elseif method_to_sample_bitstrings == "qsci"
         # We need to develop a function to sample bitstrings from e.g. IBM Qiskit
@@ -1161,7 +1286,6 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     @timeit to "Lanczos" evals, evecs = lanczos(Hmat, mdim, n_eigen, true, to; itnum=300, tol=1e-9, debug_mode=1)
 
     if length(evals) < n_eigen
-        # padding NaN
         evals = vcat(evals, fill(NaN, n_eigen - length(evals)))
     end
 
@@ -1169,13 +1293,13 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     #@timeit to "<H²>" evars = evaluate_energy_variance(Hmat, evecs, n_eigen, to)
     #print_vec("evars", evars .- evals.^2; ine=true)
 
-
-    if is_show
-        show(to); println("")
-    end
-
     if !ret_evecs
         evecs = [0.0]
     end
+    if is_show
+        show(to); 
+    end
+    println("")
+
     return Result_QSCI(evals, evecs, evars, mdim)
 end

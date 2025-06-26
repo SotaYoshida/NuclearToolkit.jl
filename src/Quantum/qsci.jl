@@ -936,10 +936,11 @@ function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN
             bra_bitint, ket_bitint = all_bitint_prod[idx_bra], all_bitint_prod[idx_ket]
             p_bra, n_bra = bra_bitint
             p_ket, n_ket = ket_bitint
+
             bra_bitstr = int2bitstr(p_bra, length(p_msps)) * " ⊗ " * int2bitstr(n_bra, length(n_msps))
             ket_bitstr = int2bitstr(p_ket, length(p_msps)) * " ⊗ " * int2bitstr(n_ket, length(n_msps))
 
-            println("H_ij = $(@sprintf("%11.6f", val)) for bra ($(@sprintf("%4i", idx_bra))) $(bra_bitstr), ket ($(@sprintf("%4i", idx_ket))) $(ket_bitstr)")
+            println("H[$(idx_bra),$(idx_ket)] = $(val) for bra $(bra_bitstr) ket $(ket_bitstr)")
         end
     end
     return Hmat
@@ -1107,87 +1108,154 @@ function evaluate_energy_variance(Hamil_mat, evecs, n_eigen, to)
     return evars
 end
 
-function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m)
+function get_occs_jj(SPEs, sps_jj, Nocc, NpNh=0)
+    @assert 0 <= NpNh <= 2 "NpNh must be 0, 1, or 2 in the current implementation."
     len = length(SPEs)
     argmins = sortperm(SPEs)
     occs_jj = zeros(Int, len)
-    count = 0
-    for idx in argmins
-        j2 = sps_jj[idx].j
+    org_idx_Fermi_level = idx_Fermi_level = count = 0
+    for idx in 1:len
+        idx_jj = argmins[idx]
+        j2 = sps_jj[idx_jj].j        
+        if count + j2 + 1 >= Nocc
+            idx_Fermi_level = idx 
+            org_idx_Fermi_level = argmins[idx_Fermi_level]
+        end        
+        #println("idx: $idx j2: $j2 count: $count Nocc: $Nocc occs_jj: $occs_jj")
         for jz = -j2:2:j2
-            if count >= Nocc
-                break 
-            end
             count += 1
-            occs_jj[idx] += 1
+            occs_jj[idx_jj] += 1
+            if count == Nocc
+                break
+            end
+        end
+        if count == Nocc
+            break
         end
     end
-    println("occs_jj: $occs_jj ")
+    occs_summary = Vector{Int}[ ]
+    push!(occs_summary, occs_jj)
+    if NpNh > 0 
+        occs_summary = Vector{Int}[ ]
+        for idx_particle in argmins[idx_Fermi_level+1:end]
+            occs = zeros(Int, len) .+ occs_jj
+            oidx_particle = argmins[idx_particle]
+            println("argmins $argmins idx_Fermi_level (@$(idx_Fermi_level)): $org_idx_Fermi_level idx_particle (@$(idx_particle)): $oidx_particle") 
+            if sps_jj[idx_particle].j + 1 >= NpNh && sps_jj[org_idx_Fermi_level].j + 1 >= NpNh
+                occs[org_idx_Fermi_level] -= NpNh
+                occs[idx_particle] += NpNh
+            else
+                @error "This case NpNh=$NpNh is not supported."
+            end
+            push!(occs_summary, occs)
+        end
+    end
+    return occs_summary
+end
+
+function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m, include_2p2h::Bool)
+    len = length(SPEs)
+
+    occs_pool = get_occs_jj(SPEs, sps_jj, Nocc, 0)
+    if include_2p2h
+        occs_pool = vcat(occs_pool, get_occs_jj(SPEs, sps_jj, Nocc, 1))
+        occs_pool = vcat(occs_pool, get_occs_jj(SPEs, sps_jj, Nocc, 2))
+    end
+    occ_full = [ sps_jj[i].j + 1 for i in 1:len ]
     len_m = sum( sps_jj[i].j + 1 for i in 1:len )
     bitint_possible = Int128[ ]
-    bitint_base = Int128(0)
-    for idx_jj in 1:len
-        if occs_jj[idx_jj] == 0
-            continue
-        end
-        # jj is fully occupied case
-        if occs_jj[idx_jj] == sps_jj[idx_jj].j +1 
-            for idx_mm in dict_j2m[idx_jj]
-                bitint_base = bitint_base | (Int128(1) << (idx_mm - 1))
+    for occs_jj in occs_pool
+        bitint_base = Int128(0)
+        for idx_jj in 1:len
+            if occs_jj[idx_jj] == 0
+                continue
             end
-        end
-    end    
-    count_partial_jj = 0 
-    for idx_jj in 1:len
-        if occs_jj[idx_jj] == 0
-            continue
-        end
-        # partially occupied case
-        if occs_jj[idx_jj] < sps_jj[idx_jj].j + 1
-            count_partial_jj += 1
-            x = bitint_base
-            min_relevant = minimum(dict_j2m[idx_jj])
-            bit_rel_min = Int128(0)
-            nshift = sps_jj[idx_jj].j + 1 - occs_jj[idx_jj]
-            #println("nshift: $nshift min_relevant: $min_relevant ")
-            for idx_mm = min_relevant:min_relevant + Nocc - 1
-                bit_rel_min |= (Int128(1) << (idx_mm - 1))
+            # jj is fully occupied case
+            if occs_jj[idx_jj] == sps_jj[idx_jj].j +1 
+                for idx_mm in dict_j2m[idx_jj]
+                    bitint_base = bitint_base | (Int128(1) << (idx_mm - 1))
+                end
             end
-            bit_rel_max = bit_rel_min << nshift
-            #println("bit_rel_min: $bit_rel_min $(int2bitstr(bit_rel_min, len_m))")
-            #println("bit_rel_max: $bit_rel_max $(int2bitstr(bit_rel_max, len_m))")
+        end 
+        println("occs_jj: $occs_jj, bitint_base: $bitint_base $(int2bitstr(bitint_base, len_m))")
+        count_partial_jj = 0
+        subbit_pool = [ Int128[ ] for _ in 1:len ]
+        for idx_jj in 1:len
+            if occs_jj[idx_jj] == 0
+                continue
+            end
+            Nocc_jj = occs_jj[idx_jj]
+            # partially occupied case
+            if occs_jj[idx_jj] < sps_jj[idx_jj].j + 1
+                count_partial_jj += 1
+                x = bitint_base
+                idx_min_relevant = minimum(dict_j2m[idx_jj])
+                bit_rel_min = Int128(0)
+                nshift = sps_jj[idx_jj].j + 1 - Nocc_jj
+                #println("nshift: $nshift  idx_min_relevant: $idx_min_relevant ")
+                for idx_mm = idx_min_relevant: idx_min_relevant + Nocc_jj - 1
+                    bit_rel_min |= (Int128(1) << (idx_mm - 1))
+                end
+                bit_rel_max = bit_rel_min << nshift
+                #println("bit_rel_min: $bit_rel_min $(int2bitstr(bit_rel_min, len_m))")
+                #println("bit_rel_max: $bit_rel_max $(int2bitstr(bit_rel_max, len_m))")
 
-            x = bit_rel_min >> nshift
-            push!(bitint_possible, x << nshift | bitint_base)
-            while x < (bit_rel_max >> nshift)
-                u = x & (-x)
-                v = x + u   
-                x = v + (((v ⊻ x) ÷ u) >> 2) 
-                xtarget = x << nshift | bitint_base
-                #println("xtarget : $(xtarget) $(int2bitstr(xtarget, len_m))")
-                push!(bitint_possible, xtarget)
+                nshift_sub = idx_min_relevant - 1
+                x = bit_rel_min >> nshift_sub # Integer within target jj orbit
+                push!(subbit_pool[idx_jj], x << nshift_sub | bitint_base)
+                while x < (bit_rel_max >> nshift_sub)
+                    u = x & (-x)
+                    v = x + u   
+                    x = v + (((v ⊻ x) ÷ u) >> 2) 
+                    xtarget = x << nshift_sub | bitint_base
+                    #println("xtarget: $xtarget $(int2bitstr(xtarget, len_m))")
+                    push!(subbit_pool[idx_jj], xtarget)
+                end
             end
         end
+        if count_partial_jj == 0
+            push!(bitint_possible, bitint_base)
+        end
+
+        ## Here, we have to sum up all the possible combinations of subbit_pool
+        ## For example, if subbit_pool = [ [2, 32], [4, 16, 64], [], [ ] ], then we have 2+4, 2+16, 2+64, 32+4, 32+16, 32+64.
+        ## i.e. picking one from each subbit_pool
+        println("subbit_pool: $subbit_pool")
+        if count_partial_jj > 0
+            bitint_combinations = [Int128(0)]
+            for idx_jj in 1:len
+                if length(subbit_pool[idx_jj]) == 0
+                    continue
+                end
+                new_combinations = [ ]
+                for bitint in subbit_pool[idx_jj]
+                    for existing in bitint_combinations
+                        push!(new_combinations, existing | bitint)
+                    end
+                end
+                bitint_combinations = new_combinations
+            end
+            for bitint in bitint_combinations
+                push!(bitint_possible, bitint)
+            end
+        end
+        println("len(bitint_possible) = $(length(bitint_possible))")
+        # for bitint in bitint_possible
+        #     println("possible: $(bitint) $(int2bitstr(bitint, len_m))")
+        # end
     end
-    @assert count_partial_jj <= 1 "There should be at most one partially occupied jj state, but found $count_partial_jj"
-    if count_partial_jj == 0
-        push!(bitint_possible, bitint_base)
-    end
-    # for bitint in bitint_possible
-    #     println("possible: $(bitint) $(int2bitstr(bitint, len_m))")
-    # end
     return bitint_possible
 end
 
 function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
-                                    vZ, vN, all_bitint_prod, maxnum_subspace_basis;
+                                    vZ, vN, all_bitint_prod, maxnum_subspace_basis, verbose;
                                     sampling_scheme::Symbol=:uniform)
     if sampling_scheme == :uniform
         idxs_subspace = sample(1:length(all_bitint_prod), maxnum_subspace_basis, replace=false)
         return idxs_subspace
     end
-
     if sampling_scheme == :lowest_filling || sampling_scheme == :lowest_filling_2p2h
+        include_2p2h = (sampling_scheme == :lowest_filling_2p2h)
         p_msps = sps2msps(Hamil_snt.p_sps)
         n_msps = sps2msps(Hamil_snt.n_sps)
         # Firstly, we need to find the lowest filling configurations
@@ -1195,22 +1263,24 @@ function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
         lp = Hamil_snt.lp; ln = Hamil_snt.ln
         p_SPEs = [ h_1b[(i,i)] for i in 1:lp]
         n_SPEs = [ h_1b[(i+lp, i+lp)] for i in 1:ln]
-        candidates_p = get_lowest_filling_configs(p_SPEs, Hamil_snt.p_sps, vZ, dict_j2m)
-        candidates_n = get_lowest_filling_configs(n_SPEs, Hamil_snt.n_sps, vN, dict_j2m)
+        candidates_p = get_lowest_filling_configs(p_SPEs, Hamil_snt.p_sps, vZ, dict_j2m, include_2p2h)
+        candidates_n = get_lowest_filling_configs(n_SPEs, Hamil_snt.n_sps, vN, dict_j2m, include_2p2h)
         println("candidates_p $candidates_p candidates_n $candidates_n")
 
         idxs_subspace = Int[ ]
         for idx in 1:length(all_bitint_prod)
             p_bitint, n_bitint = all_bitint_prod[idx]
-            println("idx $idx $p_bitint $(int2bitstr(p_bitint, length(p_msps))) $n_bitint $(int2bitstr(n_bitint, length(n_msps)))")
+            #println("idx $idx $p_bitint $(int2bitstr(p_bitint, length(p_msps))) $n_bitint $(int2bitstr(n_bitint, length(n_msps)))")
             if (p_bitint in candidates_p) && (n_bitint in candidates_n)
                 push!(idxs_subspace, idx)
             end
         end
-        println("idxs_lowest_filling: $(idxs_subspace)")
-        for idx in idxs_subspace
-            p_bitint, n_bitint = all_bitint_prod[idx]
-            println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps)))")
+        if verbose >= 1
+            println("idxs_lowest_filling: $(idxs_subspace)")
+            for idx in idxs_subspace
+                p_bitint, n_bitint = all_bitint_prod[idx]
+                println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps)))")
+            end
         end
         if length(idxs_subspace) < maxnum_subspace_basis
             remaining_idxs = setdiff(1:length(all_bitint_prod), idxs_subspace)
@@ -1267,7 +1337,11 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     elseif method_to_sample_bitstrings == "random"
         all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
         Random.seed!(1234) 
-        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, all_bitint_prod, maxnum_subspace_basis, sampling_scheme=:lowest_filling)        
+        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, all_bitint_prod, maxnum_subspace_basis, verbose, sampling_scheme=:lowest_filling_2p2h)
+        if length(idxs_subspace) > maxnum_subspace_basis # This can happen when the model space is small
+            @warn "Probably unexpected truncation is introduced: length(idxs_subspace)=$(length(idxs_subspace)) > maxnum_subspace_basis=$(maxnum_subspace_basis)."
+            idxs_subspace = idxs_subspace[1:maxnum_subspace_basis] 
+        end
         all_bitint_prod = [all_bitint_prod[i] for i in idxs_subspace]
     elseif method_to_sample_bitstrings == "qsci"
         # We need to develop a function to sample bitstrings from e.g. IBM Qiskit
@@ -1284,7 +1358,7 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
 
     @timeit to "Many-body Hamil const." Hmat = construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN, dict_m2j, int_shift, dict_CGs, verbose, to; Hrank=Hrank)
     @timeit to "Lanczos" evals, evecs = lanczos(Hmat, mdim, n_eigen, true, to; itnum=300, tol=1e-9, debug_mode=1)
-
+    print_vec("Energies (MeV):", evals)
     if length(evals) < n_eigen
         evals = vcat(evals, fill(NaN, n_eigen - length(evals)))
     end

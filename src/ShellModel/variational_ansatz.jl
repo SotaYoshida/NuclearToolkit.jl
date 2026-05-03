@@ -140,6 +140,7 @@ function main_pairwise_truncation(truncation_scheme,psi_exact,eigenvals,tdims,ms
     operate_J!(psi_gs,vtmp,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
     Jexpec = dot(psi_gs,vtmp)
     totalJ = J_from_JJ1(Jexpec)
+    println("Jexpec: $Jexpec")
     println("<Hflat>_0 = ", dot(psi_gs,Hflat * psi_gs), " <J>_0 = $totalJ")
 
     # Specifying pairwise truncations for VMC
@@ -176,7 +177,7 @@ function main_pairwise_truncation(truncation_scheme,psi_exact,eigenvals,tdims,ms
     #         end
     #     end
     # end
-
+    print_vec("svals", svals)
     show_matrix("subH",subH)
     println("Midxs $Midxs")
     #println("valid_bits $valid_bits")
@@ -211,7 +212,7 @@ and `masked_bits` are the vectors of something like [0, 65], which may be 0-prot
 - `n_states_show` : number of states to show (default: 1)
 - `pairwise_fmt`: format of the pairwise configurations (default: true)
 """
-function show_configurations_and_weights(SPEs, msps_p, msps_n, svals, svecs, masked_bits, ln_pbit, ln_nbit; n_states_show=1, pairwise_fmt=true)
+function show_configurations_and_weights(SPEs, msps_p, msps_n, svals, svecs, masked_bits, ln_pbit, ln_nbit; n_states_show=5, pairwise_fmt=true)
     for state = 1:n_states_show
         println("state $state energy = $(svals[state])")
         vec = svecs[:,state]

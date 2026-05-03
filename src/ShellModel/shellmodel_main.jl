@@ -86,7 +86,8 @@ Digonalize the model-space Hamiltonian
 - `truncated_jocc=Dict{String,Vector{Int64}}()` option to specify the truncation scheme for each orbit, e.g. Dict("p0p1"=>[1],"n0p3"=>[2,3]) means that the occupation number for proton 0p1 is truncated upto 1, and for neutron 0p3 min=2 and max=3"
 - `debugmode`= "" option to specify debug mode. Lanczos/BlockLanczos are supported
 """
-function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
+function main_sm(sntf,target_nuc,num_ev,target_J;
+                 save_wav=false,q=1,is_block=false,is_show=false,num_history=3,lm=300,ls=20,tol=1.e-8,
                  in_wf="",mdimmode=false, print_evec=false, calc_moment = false, calc_entropy = false, visualize_occ = false,
                  gfactors = [1.0,0.0,5.586,-3.826], effcharge=[1.5,0.5], truncation_scheme="",truncated_jocc=Dict{String,Vector{Int64}}(),
                  debugmode="")
@@ -125,6 +126,7 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
 
     lblock=length(pbits)
     mdim = tdims[end]; if mdim==0; println("Aborted due to the mdim=0");return true;end
+    println("hey: num_ev $num_ev mdim $mdim")
     num_ev = min(num_ev,mdim)
     mdim_print(target_nuc,Z,N,cp,cn,vp,vn,mdim,tJ)
     if mdimmode; return nothing;end
@@ -230,11 +232,16 @@ function main_sm(sntf,target_nuc,num_ev,target_J;save_wav=false,q=1,is_block=fal
         Js[nth] += dot(Rv,vt)
     end
 
+    vt = zeros(Float64,mdim)
+    for (nth,Rv) in enumerate(Rvecs)
+        vt .= 0.0
+        operate_J!(Rv,vt,pbits,nbits,tdims,Jidxs,oPP,oNN,oPNu,oPNd)
+        Js[nth] += dot(Rv,vt)
+    end
+
     if print_evec
         print("\n")
-        if target_nuc == "Li6"
-            svd_li6(Rvecs)
-        end
+        println("vec(1)", Rvecs[1])       
     end
     
     totJs = J_from_JJ1.(Js)
@@ -380,7 +387,7 @@ function construct_msps(p_sps,n_sps)
         n,l,j,tz = tsps
         for mz = -j:2:j;push!(msps_n,[n,l,j,tz,mz,nidx]);push!(mz_n,mz);end
     end
-    return msps_p, msps_n,mz_p,mz_n
+    return msps_p, msps_n, mz_p, mz_n
 end
 
 """
@@ -1230,7 +1237,7 @@ end
 
 function make_distribute(num_task)
     lblock = length(num_task)
-    n = nthreads()
+    n = Threads.maxthreadid()
     r = div(lblock,n)
     tasks = [ num_task[bi][1]*num_task[bi][2] for bi=1:lblock]
     idxs = sortperm(tasks,rev=true)
@@ -1264,7 +1271,7 @@ end
 
 function make_distribute_J(Jtasks)
     lblock = length(Jtasks)
-    n = nthreads()
+    n = Threads.maxthreadid()
     r = div(lblock,n)
     idxs = sortperm(Jtasks,rev=true)
     tmp = [ Int64[ ] for i=1:n]

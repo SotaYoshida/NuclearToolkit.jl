@@ -279,8 +279,8 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
     J2 = -1
     prty = ""
     for line in lines
-        if occursin("MTOT",line)        
-            J2 = parse(Int,split(split(line)[end],",")[1])
+        if occursin("MTOT",line)
+            J2 = parse(Int,split(split(line, "=")[end],",")[1])
         end
         if occursin("parity =",line)
             prty = strip(split(line,"parity =")[end])
@@ -303,7 +303,7 @@ function read_bgtstrength_file!(fn::String,qfactors::quenching_factors,parent::k
         BGT = qGT^2 * S
         logft = log10( K / (gAV^2 * BGT) )
         Ex = Energy-daughter.Egs
-        @assert Ex >= 0.0 "Energy $Energy must be higher than daughter Egs $(daughter.Egs)"        
+        @assert Ex >= 0.0 || abs(Ex) < 1e-3 "Energy $Energy must be higher than daughter Egs $(daughter.Egs)"        
         f0_expQ = Fermi_integral(Qvals[1]-Ex,dZ,R)
         f0_thoQ = Fermi_integral(Qvals[2]-Ex,dZ,R)
         hl_expQ =  K / (gAV^2 * BGT) / f0_expQ

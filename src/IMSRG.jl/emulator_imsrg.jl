@@ -507,7 +507,8 @@ main API for DMD
 function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],fn_exact=String[],
                   allow_fullSVD=true,tol_svd=1e-6,inttype="",
                   methodSVD="Arpack", oupdir="flowOmega/",is_show=true, debugmode=false,
-                  dont_care_stationarity=true, rev=false)
+                  dont_care_stationarity=true, rev=false,
+                  plot_eig=false)
     to = TimerOutput()
     if !isdir("flowOmega")
         println("dir. flowOmega is created!")
@@ -527,7 +528,9 @@ function dmd_main(emax, nuc, fns, r_max, smin, smax_train, ds;s_pred=Float64[],f
     evals_Atilde = eigvals(Atilde)
     check_stationarity_Atilde(evals_Atilde)
     sfirst = ifelse(rev, smax_train, smin)
-    plot_Atilde_eigvals(evals_Atilde, emax, nuc, sfirst, s_end, ds, inttype, fullrank, r)
+    if plot_eig
+        plot_Atilde_eigvals(evals_Atilde, emax, nuc, sfirst, s_end, ds, inttype, fullrank, r)
+    end
 
     if is_show
         show(to); println()

@@ -85,6 +85,7 @@ struct Hamiltonian_snt_fmt
     V2b_pp::Dict{Tuple{UInt,UInt}, Vector{Tuple{Float64,Float64}}} # proton-proton two-body matrix elements; 1st UInt = (p, q), 2nd UInt = (r, s)
     V2b_nn::Dict{Tuple{UInt,UInt}, Vector{Tuple{Float64,Float64}}} # neutron-neutron two-body matrix elements; like V2b_pp
     V2b_pn::Dict{Tuple{UInt,UInt}, Vector{Tuple{Float64,Float64}}} # proton-neutron two-body matrix elements; 1st UInt = (p, r), 2nd UInt = (q, s)
+    V3b::Vector{Obj_3BME}
 end
 
 function sps2msps(sps::Vector{SingleParticleState})
@@ -141,7 +142,12 @@ function unhash_2ints(h::UInt) :: Tuple{Int, Int}
     return (i, j)
 end
 
-function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false) 
+function read_smsnt_dev(sntf, 
+                        cnuc::String;
+                        ncsm::Bool=false, 
+                        reorder_orbits::Bool=false,
+                        ignore_massop=false) 
+    idx_dicts_org2reo = Dict{Int, Int}()
     Anum = parse(Int64,match(reg,cnuc).match)
     if Anum <= 0
         @error "Invalid nucleus $cnuc, Anum=$Anum"
@@ -153,14 +159,34 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
     lp,ln,cp,cn = map(x->parse(Int,x),rm_nan(split(line," ")))
     p_sps = SingleParticleState[ ]
     n_sps = SingleParticleState[ ]
+    sps_both = SingleParticleState[ ]
     for i = 1:lp
         ith, n, l, j, tz = map(x->parse(Int64,x),rm_nan(split(lines[1+i]," "))[1:5])
-        push!(p_sps, SingleParticleState(n, l, j, tz, [0.0], [false], [true], [false]))
+        push!(p_sps, SingleParticleState(2*n+l, n, l, j, tz, [0.0], [false], [true], [false]))
+        push!(sps_both, SingleParticleState(2*n+l, n, l, j, tz, [0.0], [false], [true], [false]))
     end
     for i = 1:ln
         ith, n, l, j, tz = map(x->parse(Int64,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
-        push!(n_sps, SingleParticleState(n, l, j, tz, [0.0], [false], [true], [false]))
+        push!(n_sps, SingleParticleState(2*n+l, n, l, j, tz, [0.0], [false], [true], [false]))
+        push!(sps_both, SingleParticleState(2*n+l, n, l, j, tz, [0.0], [false], [true], [false]))  
     end
+    if reorder_orbits
+        # Reorder the orbits by j (smaller j first), and then by n (larger n first) if j is the same. 
+        # First we need to update the idx_dicts_org2reo to reflect the new ordering,
+        # which will be used later when we read the 1b and 2b matrix elements.
+        idxs_p = sortperm(p_sps, by = x -> (x.j, -x.n))
+        idxs_n = sortperm(n_sps, by = x -> (x.j, -x.n))
+        for (new_idx, old_idx) in enumerate(idxs_p)
+            idx_dicts_org2reo[old_idx] = new_idx
+        end
+        for (new_idx, old_idx) in enumerate(idxs_n)
+            idx_dicts_org2reo[old_idx + lp] = new_idx + lp
+        end        
+        p_sps = sort(p_sps, by = x -> (x.j, -x.n))
+        n_sps = sort(n_sps, by = x -> (x.j, -x.n))
+        sps_both = vcat(p_sps, n_sps)
+    end
+
     # num_of_1b-term, method
     nsp, zero = map(x->parse(Int,x),rm_nan(split(lines[1+ln+lp+1]," "))[1:2])
     
@@ -172,10 +198,16 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
     h_1b = Dict{Tuple{Int,Int}, Float64}()
     for n = 1:nsp
         ttxt = rm_nan(split(lines[1+ln+lp+1+n]," "))
-        i, j = map(x->parse(Int,x),ttxt[1:2])
-        spe = parse(Float64,ttxt[3])
-        h_1b[(i, j)] = spe
-        if i != j
+        i, j = map(x->parse(Int,x),ttxt[1:2])        
+        spe = parse(Float64,ttxt[3])  
+        if reorder_orbits
+            i = idx_dicts_org2reo[i]
+            j = idx_dicts_org2reo[j]
+        end
+        if i == j
+            h_1b[(i, j)] = spe 
+        else
+            h_1b[(i, j)] = spe 
             h_1b[(j, i)] = spe 
         end
     end
@@ -184,18 +216,41 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
     # KSHELL:  num_of_TBME, mass_option, Aref, power for mass dependence
     tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1]," "))
     @assert 3 <= length(tmp) <= 4 "Invalid snt file format: expected 3 or 4 elements in the line after 1b terms, got $(length(tmp)) elements. Check the file format."
-    snt_mode = ifelse(length(tmp) == 3, "NuHamil", "KSHELL")
+    snt_mode = ifelse(length(tmp) == 3 && tmp[2]!="0", "NuHamil", "KSHELL")
 
     ntbme = hw_option = hw_value = massop = Aref = p = 0
     if snt_mode == "NuHamil"
         ntbme, hw_option, hw_value = tmp[1:3]
         ntbme = parse(Int,ntbme); hw_option = parse(Int,hw_option); hw_value = parse(Float64,hw_value)
         Aref = Anum
+        println("ncsm $ncsm, ntbme $ntbme hw_option $hw_option, hw_value $hw_value")
+        if !ncsm 
+            @warn "ncsm is set false, but the interaction file is in NuHamil format. I would suggest to check it."
+        end
     else
-        ntbme,massop,Aref,p = tmp[1:4]
+        p = 1.0
+        try
+            ntbme,massop,Aref,p = tmp[1:4]
+            p = parse(Float64,p)
+        catch
+            ntbme, massop, Aref = tmp[1:3]
+        end
         ntbme = parse(Int,ntbme); massop=parse(Int,massop)
         Aref = parse(Float64,string(Aref))
-        p = parse(Float64,p)
+    end
+    Adep_factor_1b = ifelse(ncsm, hw_value *(Anum-1)/Anum, 1.0)
+    if ncsm && hw_option == 10 && !ignore_massop
+        for i in 1:nsp
+            for j in i:nsp
+                if haskey(h_1b, (i, j))
+                    jfac =sqrt( 1 + sps_both[i].j) # no need
+                    h_1b[(i, j)] *= Adep_factor_1b
+                    if i != j 
+                        h_1b[(j, i)] *= Adep_factor_1b 
+                    end
+                end
+            end
+        end
     end
     vfactor = ifelse(massop==1, (Anum/Aref)^p, 1.0)
 
@@ -208,22 +263,49 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
     V2b_pp = Dict{Tuple{UInt, UInt}, Vector{Tuple{Float64, Float64}}}( )
     V2b_nn = Dict{Tuple{UInt, UInt}, Vector{Tuple{Float64, Float64}}}( )
     V2b_pn = Dict{Tuple{UInt, UInt}, Vector{Tuple{Float64, Float64}}}( )
-
-    Vpp = 0.0
+    println("massop $massop hw_option $hw_option vfactor $vfactor Anum $Anum Aref $Aref")
     for ith = 1:ntbme
         tmp = rm_nan(split(lines[1+ln+lp+1+nsp+1+ith], " "))
         p, q, r, s, totJ, TBME = tmp[1:6]
+        Vkin = 0.0
         if length(tmp) > 6
-            Vpp = parse(Float64, tmp[7])  # vpp term, if present
+            try
+                Vkin = parse(Float64, split(tmp[7]))  # vpp term, if present
+            catch
+                Vkin = 0.0
+            end
         end
         p = parse(Int,p); q = parse(Int,q); r = parse(Int,r); s = parse(Int,s)
+        if reorder_orbits
+            p = idx_dicts_org2reo[p]
+            q = idx_dicts_org2reo[q]
+            r = idx_dicts_org2reo[r]
+            s = idx_dicts_org2reo[s]
+        end
         totJ = parse(Float64,totJ)
         TBME = parse(Float64,TBME)
+
+        # Check the ordering of indices and apply the necessary phase factor to make them canonically ordered.
+        j_p = sps_both[p].j; j_q = sps_both[q].j; j_r = sps_both[r].j; j_s = sps_both[s].j
+        if p > q
+            p, q = q, p
+            TBME *= (-1)^(div(j_p+j_q, 2) + totJ + 1)
+        end
+        if r > s
+            r, s = s, r
+            TBME *= (-1)^(div(j_r+j_s, 2) + totJ + 1)
+        end
+        if p > r || (p == r && q > s)
+            p, q, r, s = r, s, p, q
+        end
+
         ## Mass dependence factor if needed
         if massop == 1 && !ignore_massop
             TBME *= vfactor
         end
-
+        if hw_option == 10 && !ignore_massop
+            TBME = TBME + Vkin * hw_value / Anum
+        end
         pnrank = 0
         if p <= lp && q <= lp
             pnrank = 1 # proton-proton
@@ -243,20 +325,31 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
         if TotT == 1
             bra_Uint = hash_2ints(p, q)
             ket_Uint = hash_2ints(r, s)
+            phase_bra = phase_ket = 1.0
+            if p > q
+                bra_Uint = hash_2ints(q, p)
+                phase_bra *= (-1)^(div(sps_both[p].j+sps_both[q].j, 2) + totJ + 1)
+            end
+            if r > s
+                ket_Uint = hash_2ints(s, r)
+                phase_ket *= (-1)^(div(sps_both[r].j+sps_both[s].j, 2) + totJ + 1)
+            end
             target = ifelse(pnrank == 1, V2b_pp, V2b_nn)
             if !haskey(target, (bra_Uint, ket_Uint))
                 target[(bra_Uint, ket_Uint)] = Vector{Tuple{Float64, Float64}}( )
             end
-            push!(target[(bra_Uint, ket_Uint)], (totJ, TBME))
+            push!(target[(bra_Uint, ket_Uint)], (totJ, TBME*phase_bra*phase_ket))
+            #println("p $p q $q r $r s $s totJ $totJ TBME $TBME key ($bra_Uint, $ket_Uint) ")
             # permutation for bra and ket
             if bra_Uint != ket_Uint
                 if !haskey(target, (ket_Uint, bra_Uint))
                     target[(ket_Uint, bra_Uint)] = Vector{Tuple{Float64, Float64}}( )
                 end
-                push!(target[(ket_Uint, bra_Uint)], (totJ, TBME))
+                push!(target[(ket_Uint, bra_Uint)], (totJ, TBME*phase_bra*phase_ket))
             end
 
         elseif TotT == 0
+            @assert p < q && r < s "Indices in bra/ket must be ordered for TotT=0 case: p=$p, q=$q, r=$r, s=$s"
             p_Uint = hash_2ints(p, r)
             n_Uint = hash_2ints(q, s)
             if !haskey(V2b_pn, (p_Uint, n_Uint))
@@ -277,7 +370,9 @@ function read_smsnt_dev(sntf, cnuc::String; ignore_massop=false)
         end
     end
     println("# of entries 1b terms: $(length(h_1b)) Vpp $(length(V2b_pp)) Vnn $(length(V2b_nn)) Vpn $(length(V2b_pn))")
-    return Hamiltonian_snt_fmt(lp, ln, cp, cn, p_sps,n_sps, h_1b, V2b_pp, V2b_nn, V2b_pn)
+    # Prepare undefined V3b
+    V3b = Obj_3BME[]
+    return Hamiltonian_snt_fmt(lp, ln, cp, cn, p_sps,n_sps, h_1b, V2b_pp, V2b_nn, V2b_pn, V3b)
 end
 
 
@@ -320,14 +415,6 @@ function eval_Hij_nondiag_02_20(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_
         end
     end
     @assert ani != 0 && cre != 0 "ani or cre must be nonzero: ani = $ani, cre = $cre bitint_bra $bitint_bra bitint_ket $bitint_ket"
-    idx_jj_ani = dict_m2j[ani + offset_idx]
-    idx_jj_cre = dict_m2j[cre + offset_idx]
-    if haskey(Hamil_snt.h_1b, (idx_jj_cre, idx_jj_ani))
-        if verbose >=1
-            println("H_ij: 1b term from ($idx_jj_cre, $idx_jj_ani)")
-        end
-        H_ij += Hamil_snt.h_1b[(idx_jj_cre, idx_jj_ani)] # phase???
-    end
 
     for idx_m in 1:cre-1
         onehot = Int128(1) << (idx_m-1)
@@ -344,7 +431,16 @@ function eval_Hij_nondiag_02_20(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_
     if verbose >= 1
         println("cre $cre ani $ani phase_bra $phase_bra phase_ket $phase_ket")
     end
-
+    
+    idx_jj_ani = dict_m2j[ani + offset_idx]
+    idx_jj_cre = dict_m2j[cre + offset_idx]
+    tkey = (idx_jj_cre, idx_jj_ani)
+    if haskey(Hamil_snt.h_1b, tkey)        
+        if verbose >=1
+            println("H_ij $(Hamil_snt.h_1b[tkey]): 1b term from ($idx_jj_cre, $idx_jj_ani)")
+        end
+        H_ij += Hamil_snt.h_1b[tkey] * phase_bra * phase_ket  *(-1) 
+    end
     # Two-body terms
     # Other than ani/cre bit, the rest of the occupied bits must be the same, which can be called "spectators"
     # One should run through all the spectators to sum up the two-body matrix elements
@@ -469,12 +565,13 @@ function eval_Hij_nondiag_04_40(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_
     j3 = m_sps[ani1].j; m3 = m_sps[ani1].jz
     j4 = m_sps[ani2].j; m4 = m_sps[ani2].jz
 
+    txt = ""; txt_count = 0 
     if verbose >= 1
-        println("op ~ $(cre1)_+ $(cre2)_+ | $(ani1)_- $(ani2)_- ")
-        println("jm_1 ($j1, $m1) jm_2 ($j2, $m2) jm_3 ($j3, $m3) jm_4 ($j4, $m4) ")
-        println("phase bra $phase_bra ket $phase_ket => $phase" )
-        println("phase_from cre1 $phase_from_cre1 cre2 $phase_from_cre2" )
-        println("phase_from ani1 $phase_from_ani1 ani2 $phase_from_ani2" )
+        txt  = "op ~ $(cre1)_+ $(cre2)_+ | $(ani1)_- $(ani2)_- \n"
+        txt *= "jm_1 ($j1, $m1) jm_2 ($j2, $m2) jm_3 ($j3, $m3) jm_4 ($j4, $m4) \n"
+        txt *= "phase bra $phase_bra ket $phase_ket => $phase\n" 
+        txt *= "phase_from cre1 $phase_from_cre1 cre2 $phase_from_cre2\n" 
+        txt *= "phase_from ani1 $phase_from_ani1 ani2 $phase_from_ani2" 
     end
     H_ij = 0.0
     key_bra = hash_2ints(idx_jj_p, idx_jj_q)
@@ -493,6 +590,10 @@ function eval_Hij_nondiag_04_40(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_
             vtmp = Vjj * CG / (NJ_pq * NJ_rs) *phase
             H_ij += vtmp
             if verbose >= 1
+                txt_count += 1
+                if txt_count == 1
+                    println(txt)
+                end
                 println("Vjj(04/40): <$idx_jj_p $idx_jj_q| $idx_jj_r $idx_jj_s> J=$J v=$Vjj v*fac=$(CG*Vjj/(NJ_pq*NJ_rs)) cg1 $cg1 cg2 $cg2 NJ_pq=$NJ_pq NJ_rs=$NJ_rs")
             end
         end
@@ -541,7 +642,14 @@ function eval_Hij_diag(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_ket, n_bi
                     continue
                 end
                 target = ifelse(ppnn == 1, Hamil_snt.V2b_pp, Hamil_snt.V2b_nn)
-                Vs_relevant = target[(hash_2ints(idx_j_1, idx_j_2), hash_2ints(idx_j_1, idx_j_2))]
+                # println("idx_i_m $idx_m_1 idx_i_j $idx_j_1 ; idx_j_m $idx_m_2  idx_j_j $idx_j_2")
+                # println("target keys: $(keys(target))")
+                key1 = hash_2ints(idx_j_1, idx_j_2)
+                key2 = hash_2ints(idx_j_1, idx_j_2)
+                if !haskey(target, (key1, key2))
+                    continue
+                end
+                Vs_relevant = target[(key1, key2)]
                 j1 = msps[idx_m_1].j; m1 = msps[idx_m_1].jz
                 j2 = msps[idx_m_2].j; m2 = msps[idx_m_2].jz
                 M = div(m1+m2, 2)
@@ -717,7 +825,7 @@ function operate_H_on_vec!(w, Hamil_mat::Dict{UInt64, Float64}, v, partials::Mat
 end
 
 """
-    lanczos(Hamil_mat, dim, save_Exact_wf, to; itnum=300, tol=1e-9, debug_mode=0)
+    lanczos(Hamil_mat, dim, get_evecs, to; itnum=300, tol=1e-9, debug_mode=0)
 
 Function to compute the lowest eigenvalue of the Hamiltonian using the Lanczos method.
 
@@ -727,7 +835,7 @@ and the tridiagonal matrix ``T_m = V_m^T H V_m`` where ``V_m = [v_1, v_2, \\cdot
 # Arguments
 - `Hamil_mat`: Hamiltonian matrix, either a `Matrix{Float64}` or a `Dict{UInt64, Float64}`.
 - `dim`: Dimension of the basis, i.e. number of configurations
-- `save_Exact_wf`: If `true`, save the exact wave function to a HDF5 file
+- `get_evecs`: If `true`, save the exact wave function to a HDF5 file
 - `to`: TimerOutput object
 
 # Optional arguments
@@ -735,7 +843,7 @@ and the tridiagonal matrix ``T_m = V_m^T H V_m`` where ``V_m = [v_1, v_2, \\cdot
 - `tol`: Tolerance for convergence
 - `debug_mode`: the level of debug information
 """
-function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9, debug_mode=0)
+function lanczos(Hamil_mat, dim, n_eigen, get_evecs, to; itnum=300, tol=1e-8, debug_mode=0)
     if n_eigen >= dim
         n_eigen = dim
     end
@@ -743,7 +851,7 @@ function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9
     keysvec = collect(keys(Hamil_mat))
     partials = zeros(Float64, dim, Threads.maxthreadid())
     println("Starting Lanczos iteration...")
-    Random.seed!(1234)
+    Random.seed!(123456)
     v1 = rand(dim)
     v1 ./= norm(v1)
     alpha = beta = 0.0
@@ -754,7 +862,7 @@ function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9
     vks = [zeros(Float64, dim) for _ in 1:itnum]
     vks[2] = v1
     conv_flag = 0
-    it_finished = 0
+    it_finished = min(dim, itnum)
     for i = 1:min(dim, itnum)
         conv_flag = 0
         v = vks[i+1]
@@ -763,7 +871,7 @@ function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9
         T[i, i] = alpha
         if i >= n_eigen
             Es_monitor[:, 1] .= eigvals(T[1:i, 1:i])[1:n_eigen]
-            if debug_mode > 0 && i % 10 == 0
+            if (debug_mode > 0 && i % 10 == 0) || (debug_mode > 1)
                 print_vec("iter = $(@sprintf("%6i", i))", Es_monitor[:,1])
             end
             for n in 1:n_eigen
@@ -772,8 +880,8 @@ function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9
                 end
             end
         end
+        it_finished = i
         if conv_flag == n_eigen
-            it_finished = i
             break
         end
         w .-= alpha .* v
@@ -788,7 +896,7 @@ function lanczos(Hamil_mat, dim, n_eigen, save_Exact_wf, to; itnum=300, tol=1e-9
         end
     end
     evecs = zeros(Float64, 1, 1)
-    if save_Exact_wf
+    if get_evecs
         evecs = get_ritz_vector(vks, T, n_eigen, it_finished)
     end
     return Es_monitor[:, 1], evecs
@@ -800,8 +908,11 @@ function get_ritz_vector(vks, Tmat, n_eigen, it_finished)
     Rvecs = zeros(Float64, dim, n_eigen)
     for nth in 1:n_eigen
         Rvec = @view Rvecs[:, nth]
-        for k in 1:length(vals)
+        for k in 1:size(vecs, 1)
             coeff = vecs[k, nth]
+            if k+1 > length(vks)
+                break
+            end
             axpy!(coeff, vks[k+1], Rvec)
         end
         Rvec .*= 1.0/sqrt(dot(Rvec,Rvec))
@@ -825,6 +936,7 @@ function reOrthogonalize!(w, vks, i)
     return w
 end
 
+
 function prepare_CGcoeffs(p_msps, n_msps)
     dict_CGs = Dict{UInt, Float64}( )
     jmax = maximum( p_msps[n].j for n in 1:length(p_msps) )
@@ -841,7 +953,6 @@ function prepare_CGcoeffs(p_msps, n_msps)
                         if abs(M) > J; continue; end
                         CG = clebschgordan(Float64, j1//2, m1//2, j2//2, m2//2, J//1, M//1)
                         key = get_nkey6_shift(j1, m1, j2, m2, J, M; int_shift=jmax+1)
-                        #println("nkey $key j1 $j1 m1 $m1 j2 $j2 m2 $m2 J $J M $M ")
                         dict_CGs[key] = CG
                     end
                 end
@@ -852,26 +963,33 @@ function prepare_CGcoeffs(p_msps, n_msps)
     return jmax+1, dict_CGs
 end
 
-function triangular_index_to_ij(idx, N)
-    i = 1
-    total = 0
-    while i <= N
-        rowlen = N - i + 1
-        if idx <= total + rowlen
-            j = i + (idx - total) - 1
-            return i, j
-        end
-        total += rowlen
-        i += 1
-    end
-    error("Invalid index for traiangular matrix: $idx for size $N")
-end
 
 function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN, 
                         dict_m2j, int_shift, dict_CGs, verbose, to;
                         Hrank=2)
+
     Hmat = Dict{UInt, Float64}( )
     partial_dict = [ Dict{UInt, Float64}( ) for _ in 1:Threads.maxthreadid() ]
+
+    # # 3NF stuff
+    is_3NF = length(Hamil_snt.V3b) > 0
+    #Hamil_3NF = Hamil_snt.V3b[1]
+    # println("checking 3NF sps...")
+    # sps_3b = Hamil_3NF.sps_3b.sps
+    # for (idx, sp) in sps_3b
+    #     println("3NF sps idx $idx : n $(sp.n) l $(sp.l) j $(sp.j) tz $(sp.tz)")
+    # end
+    # println("checking 3NF terms...")
+    # cnt = 0
+    # for (key, v3m) in Hamil_3NF.v3monopole        
+    #     a, b, c, d, e, f = unhash_key6j(key)
+    #     println("<$a $b $c |V3b| $d $e $f > = $v3m")
+    #     cnt += 1
+    #     if cnt == 5
+    #         break
+    #     end
+    # end
+
     @timeit to "thread loop" Threads.@threads for iter in 1:mdim^2
         idx_bra = div(iter-1, mdim) + 1
         idx_ket = iter - (idx_bra-1) * mdim
@@ -899,18 +1017,19 @@ function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN
         #@timeit to "diag" 
         if sum_ham_dist == 0 
             Hij += eval_Hij_diag(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_ket, n_bitint_ket,
-                                    p_msps, n_msps, dict_m2j, int_shift, dict_CGs)
+                                 p_msps, n_msps, dict_m2j, int_shift, dict_CGs)
         end
+
         #@timeit to "02_20" 
         if sum_ham_dist == 2
             Hij += eval_Hij_nondiag_02_20(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_ket, n_bitint_ket,
-                                            p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, Hrank, int_shift, dict_CGs, verbose)
+                                          p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, Hrank, int_shift, dict_CGs, verbose)
         end 
 
         #@timeit to "04_40" 
         if sum_ham_dist == 4 && prod_ham_dist == 0
             Hij += eval_Hij_nondiag_04_40(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_ket, n_bitint_ket,
-                                            p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, Hrank, int_shift, dict_CGs,verbose)
+                                          p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, Hrank, int_shift, dict_CGs,verbose)
         end
 
         #@timeit to "pn" 
@@ -919,6 +1038,17 @@ function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN
                                 p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, int_shift, dict_CGs, verbose, to) 
         end
         
+        # Dev not: I am going to add 3NF here
+        # First, need to evaluate T=3/2 terms (ppp/nnn),
+        # then T=1/2 terms (ppn/nnp) will be considered... long way to go.
+
+        if is_3NF
+            #@timeit to "3NF T=3/2"
+            Hij += eval_Hij_3NF_T3(Hamil_snt, p_bitint_bra, n_bitint_bra, p_bitint_ket, n_bitint_ket,
+                                   p_ham_dist, n_ham_dist, p_msps, n_msps, dict_m2j, Hrank, int_shift, dict_CGs, verbose)
+        end
+
+
         #@timeit to "assign" 
         partial_dict[tid][hash_2ints(idx_bra, idx_ket)] = Hij
     end    
@@ -936,11 +1066,10 @@ function construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN
             bra_bitint, ket_bitint = all_bitint_prod[idx_bra], all_bitint_prod[idx_ket]
             p_bra, n_bra = bra_bitint
             p_ket, n_ket = ket_bitint
-
             bra_bitstr = int2bitstr(p_bra, length(p_msps)) * " ⊗ " * int2bitstr(n_bra, length(n_msps))
             ket_bitstr = int2bitstr(p_ket, length(p_msps)) * " ⊗ " * int2bitstr(n_ket, length(n_msps))
+            println("H[$(idx_bra),$(idx_ket)] = $(Hmat[nkey]) for bra $(bra_bitstr) ket $(ket_bitstr)")
 
-            println("H[$(idx_bra),$(idx_ket)] = $(val) for bra $(bra_bitstr) ket $(ket_bitstr)")
         end
     end
     return Hmat
@@ -993,7 +1122,7 @@ function prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps,
         end      
     end
     mdim = Int(mdim)
-    println("M-scheme dimension: $(mdim)")
+    print("Full M-scheme dimension: $(mdim)    ")
     
     if verbose >= 1 
         println("Checking the bitstrings and their properties:")
@@ -1020,24 +1149,49 @@ function prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps,
     return all_bitint_prod
 end
 
-function summarize_bitstrings(sampled_bits, p_msps, n_msps, maxnum_subspace_basis::Int;
+function summarize_bitstrings(sampled_bits, p_msps, n_msps, vZ, vN, maxnum_subspace_basis::Int;
                               Qiskit_ordered=true, Nref_proton=0, Nref_neutron=0, 
                               postselection::Vector{Int}=[0, 0, 0],
-                              verbose::Bool = false)
+                              verbose::Bool = false,
+                              preferred_configs::Vector{Tuple{Int, Int}} = [ ])
     Nocc, parity, Mtot = postselection
     sampled_bits = sampled_bits[1:min(maxnum_subspace_basis, length(sampled_bits))]
     all_bitint_prod = Tuple{Int128, Int128}[ ]
+    if length(preferred_configs) > 0
+        all_bitint_prod = [ (Int128(p_bit), Int128(n_bit)) for (p_bit, n_bit) in preferred_configs ]
+    end
     if typeof(sampled_bits) == Vector{Int} || typeof(sampled_bits) == Vector{Int128}
         @assert Qiskit_ordered "sample_bits::Vector{Int} or Vector{Int128} is not supported in Qiskit_ordered=false mode."
-        all_bitint_prod = [(Int128(bit) >> length(p_msps), Int128(bit) & ((Int128(1) << length(n_msps)) - 1)) for bit in sampled_bits]
+        for bit in sampled_bits
+            pbitint = Int128(bit) >> length(n_msps)
+            nbitint = Int128(bit) & ((Int128(1) << length(n_msps)) - 1)
+            if (pbitint, nbitint) in all_bitint_prod
+                continue
+            end
+            push!(all_bitint_prod, (pbitint, nbitint))
+            msg = "The number of particles in the bitstring does not match the expected vZ and vN. "
+            msg *= "pbit $(int2bitstr(pbitint, length(p_msps))) nbit $(int2bitstr(nbitint, length(n_msps)))"
+            @assert count_ones(pbitint) == vZ && count_ones(nbitint) == vN msg
+        end
     elseif typeof(sampled_bits) == Vector{String}
         @assert length(sampled_bits[1]) == length(p_msps) + length(n_msps) "Each bitstring must have length $(length(p_msps) + length(n_msps)), but got $(length(sampled_bits[1]))"
-        if Qiskit_ordered
-            all_bitint_prod = [(parse(Int128, bit[1:length(p_msps)], base=2),
-                                parse(Int128, bit[length(p_msps)+1:end], base=2)) for bit in sampled_bits]
-        else
-            all_bitint_prod = [(parse(Int128, bit[length(p_msps):-1:1], base=2),
-                                parse(Int128, bit[end:-1:length(p_msps)+1], base=2)) for bit in sampled_bits]
+        targets = nothing
+        if Qiskit_ordered # neutron(<=) ⊗ proton(<=)
+            targets = [(parse(Int128, bit[length(n_msps)+1:end], base=2),
+                        parse(Int128, bit[1:length(n_msps)], base=2)) for bit in sampled_bits]
+        else # neutron(=>) ⊗ proton(=>) this may not be used 
+            targets = [(parse(Int128, bit[end:-1:length(n_msps)+1], base=2),
+                        parse(Int128, bit[length(n_msps):-1:1], base=2)) for bit in sampled_bits]
+        end
+        for bitint_prod in targets
+            pbitint, nbitint = bitint_prod
+            if (pbitint, nbitint) in all_bitint_prod
+                continue
+            end
+            push!(all_bitint_prod, (pbitint, nbitint))
+            msg = "The number of particles in the bitstring does not match the expected vZ and vN. "
+            msg *= "pbit $(int2bitstr(pbitint, length(p_msps))) nbit $(int2bitstr(nbitint, length(n_msps)))"
+            @assert count_ones(pbitint) == vZ && count_ones(nbitint) == vN msg
         end
     end
 
@@ -1085,7 +1239,8 @@ end
 
 struct Result_QSCI
     evals::Vector{Float64}
-    evecs::Vector{Float64}
+    evecs::Matrix{Float64}
+    Jvals::Vector{Float64}
     evars::Vector{Float64}
     mdim::Int
 end
@@ -1140,7 +1295,7 @@ function get_occs_jj(SPEs, sps_jj, Nocc, NpNh=0)
         for idx_particle in argmins[idx_Fermi_level+1:end]
             occs = zeros(Int, len) .+ occs_jj
             oidx_particle = argmins[idx_particle]
-            println("argmins $argmins idx_Fermi_level (@$(idx_Fermi_level)): $org_idx_Fermi_level idx_particle (@$(idx_particle)): $oidx_particle") 
+            #println("argmins $argmins idx_Fermi_level (@$(idx_Fermi_level)): $org_idx_Fermi_level idx_particle (@$(idx_particle)): $oidx_particle") 
             if sps_jj[idx_particle].j + 1 >= NpNh && sps_jj[org_idx_Fermi_level].j + 1 >= NpNh
                 occs[org_idx_Fermi_level] -= NpNh
                 occs[idx_particle] += NpNh
@@ -1177,12 +1332,12 @@ function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m, include_2p2h::
                 end
             end
         end 
-        println("occs_jj: $occs_jj, bitint_base: $bitint_base $(int2bitstr(bitint_base, len_m))")
+        #println("occs_jj: $occs_jj, bitint_base: $bitint_base $(int2bitstr(bitint_base, len_m))")
         count_partial_jj = 0
         subbit_pool = [ Int128[ ] for _ in 1:len ]
         for idx_jj in 1:len
             if occs_jj[idx_jj] == 0
-                continue
+                continue 
             end
             Nocc_jj = occs_jj[idx_jj]
             # partially occupied case
@@ -1220,7 +1375,7 @@ function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m, include_2p2h::
         ## Here, we have to sum up all the possible combinations of subbit_pool
         ## For example, if subbit_pool = [ [2, 32], [4, 16, 64], [], [ ] ], then we have 2+4, 2+16, 2+64, 32+4, 32+16, 32+64.
         ## i.e. picking one from each subbit_pool
-        println("subbit_pool: $subbit_pool")
+        #println("subbit_pool: $subbit_pool")
         if count_partial_jj > 0
             bitint_combinations = [Int128(0)]
             for idx_jj in 1:len
@@ -1239,7 +1394,7 @@ function get_lowest_filling_configs(SPEs, sps_jj, Nocc, dict_j2m, include_2p2h::
                 push!(bitint_possible, bitint)
             end
         end
-        println("len(bitint_possible) = $(length(bitint_possible))")
+        #println("len(bitint_possible) = $(length(bitint_possible))")
         # for bitint in bitint_possible
         #     println("possible: $(bitint) $(int2bitstr(bitint, len_m))")
         # end
@@ -1249,9 +1404,37 @@ end
 
 function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
                                     vZ, vN, all_bitint_prod, maxnum_subspace_basis, verbose;
-                                    sampling_scheme::Symbol=:uniform)
+                                    sampling_scheme::Symbol=:uniform, only_2p2h::Bool=false,
+                                    nu_max::Int=10000)
     if sampling_scheme == :uniform
         idxs_subspace = sample(1:length(all_bitint_prod), maxnum_subspace_basis, replace=false)
+        return idxs_subspace
+    end
+    if sampling_scheme == :seniority
+        idxs_subspace = Int[ ]
+        Dict_seniority = Dict{Int, Vector{Int}}( )
+        p_msps = sps2msps(Hamil_snt.p_sps)
+        n_msps = sps2msps(Hamil_snt.n_sps)
+        for idx in 1:length(all_bitint_prod)
+            bitint = all_bitint_prod[idx]
+            vp, vn = count_seniority(bitint, p_msps, n_msps)
+            if vp + vn > nu_max
+                continue
+            end
+            if vp+vn in keys(Dict_seniority)
+                push!(Dict_seniority[vp+vn], idx)
+            else
+                Dict_seniority[vp+vn] = [idx]
+            end
+        end
+        keys_seniority = sort(collect(keys(Dict_seniority)))
+        for key in keys_seniority
+            v = key
+            if verbose >= 1
+                println("v = $v idx range = $(length(idxs_subspace)+1):$(length(idxs_subspace) + length(Dict_seniority[key]))")
+            end
+            idxs_subspace = vcat(idxs_subspace, Dict_seniority[key])
+        end
         return idxs_subspace
     end
     if sampling_scheme == :lowest_filling || sampling_scheme == :lowest_filling_2p2h
@@ -1265,7 +1448,9 @@ function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
         n_SPEs = [ h_1b[(i+lp, i+lp)] for i in 1:ln]
         candidates_p = get_lowest_filling_configs(p_SPEs, Hamil_snt.p_sps, vZ, dict_j2m, include_2p2h)
         candidates_n = get_lowest_filling_configs(n_SPEs, Hamil_snt.n_sps, vN, dict_j2m, include_2p2h)
-        println("candidates_p $candidates_p candidates_n $candidates_n")
+        if verbose >= 1
+            println("candidates_p $candidates_p candidates_n $candidates_n")
+        end
 
         idxs_subspace = Int[ ]
         for idx in 1:length(all_bitint_prod)
@@ -1282,6 +1467,9 @@ function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
                 println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps)))")
             end
         end
+        if only_2p2h
+            return idxs_subspace
+        end
         if length(idxs_subspace) < maxnum_subspace_basis
             remaining_idxs = setdiff(1:length(all_bitint_prod), idxs_subspace)
             remaining_idxs = sample(remaining_idxs, maxnum_subspace_basis - length(idxs_subspace), replace=false)
@@ -1289,29 +1477,152 @@ function random_sampling_of_configs(Hamil_snt::Hamiltonian_snt_fmt, dict_j2m,
         end
         return idxs_subspace
     end
+    @error "Invalid sampling scheme: $sampling_scheme. Supported schemes are :uniform, :lowest_filling, and :lowest_filling_2p2h."
 end
 
-function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
+
+function prep_Hcm2bmat(Hamil_snt)
+    Hcm2bmat = Dict{Tuple{UInt,UInt,UInt,UInt,UInt}, Float64}( )
+    for ch in ["pp", "nn", "pn"]
+        sps_1 = ch == "nn" ? Hamil_snt.n_sps : Hamil_snt.p_sps
+        sps_2 = ch == "pp" ? Hamil_snt.p_sps : Hamil_snt.n_sps
+        for i = 1:length(sps_1)
+            n_i, l_i, j_i, tz_i = sps_1[i].n, sps_1[i].l, sps_1[i].j, sps_1[i].tz
+            tkey_i = get_nkey4_shift(n_i, l_i, j_i, tz_i)
+            for j = 1:length(sps_2)
+                n_j, l_j, j_j, tz_j = sps_2[j].n, sps_2[j].l, sps_2[j].j, sps_2[j].tz
+                Tz_bra = tz_i + tz_j
+                tkey_j = get_nkey4_shift(n_j, l_j, j_j, tz_j)
+                for k = 1:length(sps_1)
+                    n_k, l_k, j_k, tz_k = sps_1[k].n, sps_1[k].l, sps_1[k].j, sps_1[k].tz
+                    if tz_k != tz_i
+                        continue
+                    end
+                    tkey_k = get_nkey4_shift(n_k, l_k, j_k, tz_k)
+                    for l = 1:length(sps_2)
+                        n_l, l_l, j_l, tz_l = sps_2[l].n, sps_2[l].l, sps_2[l].j, sps_2[l].tz
+                        if (tz_k + tz_l) != Tz_bra
+                            continue
+                        end
+                        tkey_l = get_nkey4_shift(n_l, l_l, j_l, tz_l)
+                        Jmin_bra = div(abs(j_i - j_j), 2)
+                        Jmax_bra = div(j_i + j_j, 2)
+                        Jmin_ket = div(abs(j_k - j_l), 2)
+                        Jmax_ket = div(j_k + j_l, 2)
+                        Jmin = max(Jmin_bra, Jmin_ket)
+                        Jmax = min(Jmax_bra, Jmax_ket)
+                        for Jtot = Jmin:Jmax
+                            nkey = (tkey_i, tkey_j, tkey_k, tkey_l, UInt(Jtot))
+                            val = hcm_2body(n_i, l_i, j_i, tz_i, n_j, l_j, j_j, tz_j,
+                                            n_k, l_k, j_k, tz_k, n_l, l_l, j_l, tz_l,
+                                            Jtot)
+                            Hcm2bmat[nkey] = val                        
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return Hcm2bmat
+
+end
+
+function parse_e3max_from_filename(fn_3nf)
+    e1max_file = e2max_file = e3max_file = 0
+    #ThBME_srg2.0_ramp40-5-36-7-32-9-28-11-24_N3LO_EM500_c1_-0.81_c3_-3.2_c4_5.4_cD_0.7_cE_-0.06_LNL2_650_500_IS_hw20from30_ms1_2_1.me3j.gz 
+    # extract ms_XX_YY_ZZ pattern
+    pattern = r"ms(\d+)_(\d+)_(\d+)"
+    m = match(pattern, fn_3nf)
+    if m !== nothing
+        e1max_file = parse(Int, m.captures[1])
+        e2max_file = parse(Int, m.captures[2])
+        e3max_file = parse(Int, m.captures[3])
+        println("Extracted from filename: e1max=$e1max_file, e2max=$e2max_file, e3max=$e3max_file")
+    else
+        println("Could not extract e3max information from filename: $fn_3nf. Using default e*max=0.")
+    end
+    return e1max_file, e2max_file, e3max_file
+end
+
+function read_3NF_into_snt!(Hamil_snt, fn_3nf, e1max, e3max, to)
+    println("Reading 3NF from file: $fn_3nf")
+    # Try extract model space from the filename
+    e1max_file, e2max_file, e3max_file = parse_e3max_from_filename(fn_3nf)
+    sps_p = Hamil_snt.p_sps
+    sps_n = Hamil_snt.n_sps
+    sps_snt = vcat(sps_p, sps_n)
+
+    # Prealloc Wigner coeffs.
+    jmax = 2 * e1max + 1
+    dcg_spin = prep_dcg_spin()
+    d6j_lj = prep_d6j_lj(jmax)
+    dWS = dWS2n(Dict{Int64, Float64}(), Dict{Int64, Float64}(),
+                dcg_spin, Dict{UInt64, Float64}(), d6j_lj,
+                Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}(),
+                Dict{Int64,Dict{Int64,Dict{Int64,Float64}}}())
+
+    _Obj_3BME = main_read_me3j(fn_3nf, 
+                               e1max, e1max_file, e2max_file, e3max, 
+                               e3max_file, sps_snt, dWS, to) 
+                
+    push!(Hamil_snt.V3b, _Obj_3BME)
+    return nothing 
+end
+
+
+"""
+Hrank: rank of the Hamiltonian operator (e.g., 2 for two-body interaction) currently not much used, but may be useful for future extensions.
+"""
+function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen;
+                   fn_3nf::AbstractString = "",
+                   e1max::Int= 0,
+                   e3max::Int= 0,
+                   verbose::Int=0,
+                   ncsm::Bool=false,
+                   is_eval_EntropyMeasure::Bool=false,
                    sampling_method::Symbol=:exact,
                    maxnum_subspace_basis::Int=0,
                    sampled_bits::Union{Vector{Int}, Vector{Int128}, Vector{String}, Nothing}=nothing,
+                   get_evecs::Bool=true,
                    ret_evecs::Bool=false,
-                   is_show::Bool=false)
-    @assert sampling_method in [:exact, :qsci, :QSCI, :random] "Invalid sampling method: $sampling_method"
-
+                   is_show::Bool=false,
+                   beta_cm = 0.0,
+                   is_RDM::Bool=false,
+                   show_breakdown_eigenstates::Bool=false,
+                   nu_max::Int=10^5,
+                   reorder_orbits::Bool=false
+                   )
+    @assert sampling_method in [:exact, :qsci, :QSCI, :random, :seniority] "Invalid sampling method: $sampling_method"
+    if ncsm && beta_cm == 0.0
+        @warn "You are specifying β_cm = 0, which is not recommended for NCSM calculations. Consider using a non-zero value for β_cm."
+    end
+    if beta_cm != 0.0  
+        if !get_evecs 
+            @warn "When beta_cm != 0.0, you need to set the optional argument `get_evecs=true` to get center-of-mass corrected energies.\nHence, `get_evecs` is set to true. If it is not what you want, please stop here."
+            get_evecs = true
+        end
+    end
     method_to_sample_bitstrings = "exact" # default method
     if sampling_method in [:qsci, :QSCI]
         method_to_sample_bitstrings = "qsci"
     elseif sampling_method in [:random]
         method_to_sample_bitstrings = "random"
+    elseif sampling_method == :seniority || (sampling_method == :exact && nu_max < 20)
+        method_to_sample_bitstrings = "seniority"
     end
     println("Using sampling method: $method_to_sample_bitstrings")
     to = TimerOutput()
 
     # Read the interaction file and prepare the single-particle states
-    SMobj = Hamil_snt = read_smsnt_dev(sntf, target_nuc)
-    Acore = SMobj.cp + SMobj.cn
-    corenuc = element[SMobj.cp] * string(Acore)
+    Hamil_snt = read_smsnt_dev(sntf, target_nuc; ncsm=ncsm, reorder_orbits=reorder_orbits)
+
+    # Read 3NF if provided
+    if fn_3nf != ""
+        read_3NF_into_snt!(Hamil_snt, fn_3nf, e1max, e3max, to)
+    end
+
+    Acore = Hamil_snt.cp + Hamil_snt.cn
+    corenuc = element[Hamil_snt.cp] * string(Acore)
     nucleus = def_nuc(target_nuc, "", corenuc)
     vZ = nucleus.Z - nucleus.cZ
     vN = nucleus.N - nucleus.cN
@@ -1320,7 +1631,11 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     # p_ptn, n_ptn, prod_pn_ptn = gen_partition_from_snt(sntf, parity, vZ, vN, target_nuc)
 
     # prepare the single-particle states in M-scheme
-    p_sps = SMobj.p_sps; n_sps = SMobj.n_sps       
+    p_sps = Hamil_snt.p_sps; n_sps = Hamil_snt.n_sps       
+    if length(p_sps) != length(n_sps)
+        @warn "The number of proton and neutron single-particle states are different: $(length(p_sps)) != $(length(n_sps)). This may lead to unexpected results with the current implementation."
+    end
+
     p_msps = sps2msps(p_sps)
     n_msps = sps2msps(n_sps)
     dict_m2j, dict_j2m = make_m2j_j2m_dicts(p_sps, n_sps)
@@ -1332,48 +1647,293 @@ function qsci_main(sntf, target_nuc, parity, Mtot, Hrank, n_eigen, verbose::Int;
     # Prepare the configurations
     # This could be either an exact calculation or sampled bitstrings by e.g. Monte Carlo, Quantum computing, etc.
     all_bitint_prod, mdim = nothing, 0
+
+    ## Note: current implementation firstly prepares all configurations in the model space, and then samples them.
+    ## This is obviously not applicable for larger model spaces. We need to change this in the future.
+    org_all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
+    org_mdim = length(org_all_bitint_prod)
+    maxnum_subspace_basis = ifelse(maxnum_subspace_basis == 0, org_mdim, maxnum_subspace_basis)
+
+    idxs_subspace = Int[ ] 
+    Mask = Dict{UInt, Float64}() # Mask for the subspace basis
     if method_to_sample_bitstrings == "exact"
-        all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
+        all_bitint_prod = org_all_bitint_prod
+        org_all_bitint_prod = nothing
     elseif method_to_sample_bitstrings == "random"
-        all_bitint_prod = prepare_all_configs_in_modelspace(parity, Mtot, vZ, vN, p_msps, n_msps, Nref_proton, Nref_neutron, verbose, to)
-        Random.seed!(1234) 
-        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, all_bitint_prod, maxnum_subspace_basis, verbose, sampling_scheme=:lowest_filling_2p2h)
+        Random.seed!(1234)
+        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, org_all_bitint_prod, maxnum_subspace_basis, verbose, sampling_scheme=:lowest_filling_2p2h, nu_max=nu_max)
         if length(idxs_subspace) > maxnum_subspace_basis # This can happen when the model space is small
             @warn "Probably unexpected truncation is introduced: length(idxs_subspace)=$(length(idxs_subspace)) > maxnum_subspace_basis=$(maxnum_subspace_basis)."
             idxs_subspace = idxs_subspace[1:maxnum_subspace_basis] 
         end
-        all_bitint_prod = [all_bitint_prod[i] for i in idxs_subspace]
+        for (idx_sub, idx) in enumerate(idxs_subspace)
+            nkey = hash_2ints(idx, idx_sub)
+            Mask[nkey] = 1.0
+        end
+        all_bitint_prod = [org_all_bitint_prod[i] for i in idxs_subspace]
     elseif method_to_sample_bitstrings == "qsci"
-        # We need to develop a function to sample bitstrings from e.g. IBM Qiskit
+        # First, we prepare lowest filling + 2p2h configurations
+        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, org_all_bitint_prod, maxnum_subspace_basis, verbose, sampling_scheme=:lowest_filling_2p2h, only_2p2h=true, nu_max=nu_max)
+        preferred_configs = [org_all_bitint_prod[i] for i in idxs_subspace]
+        println("# of configs. within HF2p2h: $(length(preferred_configs))")
+        # sampled bitstrings from e.g. IBM Qiskit
         @assert sampled_bits !== nothing "For QSCI sampling, you need to provide the sampled bits as a Vector{Int}, Vector{Int128} or Vector{String}."
-        all_bitint_prod = summarize_bitstrings(sampled_bits, p_msps, n_msps, maxnum_subspace_basis; Qiskit_ordered=true, 
+        all_bitint_prod = summarize_bitstrings(sampled_bits, p_msps, n_msps, vZ, vN, maxnum_subspace_basis; Qiskit_ordered=true, 
                                                Nref_proton=Nref_proton, Nref_neutron=Nref_neutron,
                                                postselection=[vZ+vN, parity, Mtot],
-                                               verbose=verbose>=1)
+                                               verbose=verbose>=1,
+                                               preferred_configs=preferred_configs)
+        if length(all_bitint_prod) > maxnum_subspace_basis # This can happen when the model space is small
+            @warn "Probably unexpected truncation is introduced: length(idxs_subspace)=$(length(all_bitint_prod)) > maxnum_subspace_basis=$(maxnum_subspace_basis)."
+            all_bitint_prod = all_bitint_prod[1:maxnum_subspace_basis]
+        end
+        Mask = get_Mask_qsci(org_all_bitint_prod, all_bitint_prod, maxnum_subspace_basis, verbose)
+    elseif method_to_sample_bitstrings == "seniority"
+        idxs_subspace = random_sampling_of_configs(Hamil_snt, dict_j2m, vZ, vN, org_all_bitint_prod, maxnum_subspace_basis, verbose, sampling_scheme=:seniority, nu_max=nu_max)
+        idxs_subspace = idxs_subspace[1:min(maxnum_subspace_basis, length(idxs_subspace))]
+        all_bitint_prod = [org_all_bitint_prod[i] for i in idxs_subspace]
+        Mask = get_Mask_qsci(org_all_bitint_prod, all_bitint_prod, maxnum_subspace_basis, verbose)
     else
         @error "Unsupported sampling method: $method_to_sample_bitstrings"
     end
     mdim = length(all_bitint_prod)
     println("subdim $mdim")
 
+    Hoffd = Dict{UInt, Float64}( )
+    if sampling_method != :exact
+        @timeit to "Full Hamil const." FullHmat = construct_Hmat(Hamil_snt, org_mdim, org_all_bitint_prod, p_msps, n_msps, vZ, vN, dict_m2j, int_shift, dict_CGs, verbose, to; Hrank=Hrank)
+        Hoffd = get_off_diagonal(FullHmat, idxs_subspace); FullHmat = nothing
+    end
+    
     @timeit to "Many-body Hamil const." Hmat = construct_Hmat(Hamil_snt, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN, dict_m2j, int_shift, dict_CGs, verbose, to; Hrank=Hrank)
-    @timeit to "Lanczos" evals, evecs = lanczos(Hmat, mdim, n_eigen, true, to; itnum=300, tol=1e-9, debug_mode=1)
-    print_vec("Energies (MeV):", evals)
-    if length(evals) < n_eigen
-        evals = vcat(evals, fill(NaN, n_eigen - length(evals)))
+    @timeit to "JJ const." Jmat = construct_Jmat(mdim, all_bitint_prod, p_msps, n_msps, verbose, to)
+    
+    HCMmat = nothing
+    if beta_cm != 0.0
+        dict_Hcm = prep_Hcm2bmat(Hamil_snt)
+        @timeit to "Hcm const." begin
+            HCMmat = construct_HCMmat(beta_cm, mdim, all_bitint_prod, p_msps, n_msps, vZ, vN,
+                                    dict_m2j, int_shift, dict_CGs, dict_Hcm, verbose, to; Hrank=Hrank)
+        end
+
+        # debug purpose: test HCM operation
+        if false
+            vec_test_1 = zeros(Float64, mdim)
+            vec_test_2 = zeros(Float64, mdim)
+            for idx_to_fill in 1:mdim
+                vec_test_1 .= 0.0
+                vec_test_2 .= 0.0
+                vec_test_1[idx_to_fill] = 1.0 # test for a specific basis
+                keysvec = collect(keys(HCMmat))
+                partials = zeros(Float64, mdim, Threads.maxthreadid())
+                operate_H_on_vec!(vec_test_2, HCMmat, vec_test_1, partials, keysvec, to)
+                HCMv = copy(vec_test_2)
+                Hcm_test = dot(vec_test_1, vec_test_2) / beta_cm
+
+                println("<Hcm> for e_$(idx_to_fill):", @sprintf("%8.3f", Hcm_test))
+                for i = 1:mdim
+                    n_bitint_ket = all_bitint_prod[idx_to_fill][2]
+                    n_str_ket = int2bitstr(n_bitint_ket, length(n_msps))
+                    p_bitint, n_bitint = all_bitint_prod[i]
+                    n_str = int2bitstr(n_bitint, length(n_msps))
+                    tmp =  HCMv[i]/beta_cm
+                    if abs(tmp) < 1e-3
+                        continue
+                    end
+                    println("<$n_str ⊗ $n_str_ket>", @sprintf("%3i", i), @sprintf("%10.6f", HCMv[i]/beta_cm))
+                end
+            end
+        end        
+
+        # Add the center-of-mass Hamiltonian to the many-body Hamiltonian
+        add_HCM_to_Hmat!(Hmat, HCMmat)
+    end   
+
+    @timeit to "Lanczos" evals, evecs = lanczos(Hmat, mdim, n_eigen, get_evecs, to; itnum=300, tol=1e-9, debug_mode=2)
+    n_eigen = min(n_eigen, length(evals))
+
+    if is_eval_EntropyMeasure
+        calc_entropy_and_mutual_information(sntf, target_nuc, evecs, all_bitint_prod,
+                                            length(p_msps)+length(n_msps),
+                                            p_msps, n_msps, verbose)
     end
 
+    if show_breakdown_eigenstates
+        breakdown_eigenstates(evecs[:,1], all_bitint_prod, p_msps, n_msps, (vZ+vN)%2!=0, verbose)
+    end
+
+    if verbose >= 2
+        println("Eigenvector configs& coefficients of the lowest state:")
+        show_eigenvector_configs_coeffs(evecs[:, 1], all_bitint_prod, p_msps, n_msps)
+    end
+
+    Ecms = zeros(Float64, n_eigen)        
+    if beta_cm != 0.0 
+        @timeit to "<Ecm>" eval_HCMexpec(beta_cm, evecs, mdim, HCMmat, Ecms, n_eigen, to)
+    end
+    Energies = evals - Ecms
+    ExEnergies = Energies .- Energies[1]
+    print_vec("Energies (MeV):", Energies)
+    print_vec("Ex. (MeV):     ", ExEnergies)
+
+    JJvals = eval_JJexpec(evecs, mdim, Jmat, Mtot, n_eigen, to)
+    print_vec("<J^2>:         ", JJvals)
+    Jvals = get_Jvals_fromJJ(JJvals)
+    print_vec("<J>?:          ", Jvals)
+    
+    ## <H^2> calculation will be implemented hopefully soon.
     evars = zeros(Float64, n_eigen)
-    #@timeit to "<H²>" evars = evaluate_energy_variance(Hmat, evecs, n_eigen, to)
-    #print_vec("evars", evars .- evals.^2; ine=true)
+    if sampling_method != :exact
+        @timeit to "H2 eval." evars = eval_H2(evecs, evals, Mask, Hoffd, org_mdim, to)        
+        print_vec("Energy variance:", evars; ine=true)
+    end
+
+    if is_RDM
+        verbose = 1
+        @timeit to "RDM eval." eval_RDM(evecs, all_bitint_prod, p_msps, n_msps, verbose)
+    end
 
     if !ret_evecs
-        evecs = [0.0]
+        evecs = zeros(Float64, 1, 1)
     end
     if is_show
         show(to); 
     end
     println("")
 
-    return Result_QSCI(evals, evecs, evars, mdim)
+    return Result_QSCI(evals, evecs, Jvals, evars, mdim)
+end
+
+function show_eigenvector_configs_coeffs(evecs, all_bitint_prod, p_msps, n_msps)
+    for i in eachindex(all_bitint_prod)
+        p_bitint, n_bitint = all_bitint_prod[i]
+        coeff = evecs[i, 1]
+        if abs(coeff) > 1e-6
+            if p_bitint == 0
+                println("... ⊗ $(int2bitstr(n_bitint, length(n_msps))) coeff = $(@sprintf("%10.6f", coeff))")
+            elseif n_bitint == 0
+                println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ ... coeff = $(@sprintf("%10.6f", coeff))")
+            else
+                println("$(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps))) coeff = $(@sprintf("%10.6f", coeff))")
+            end 
+        end
+    end
+    return nothing
+end
+
+function get_Mask_qsci(org_all_bitint_prod, all_bitint_prod, maxnum_subspace_basis, verbose)
+    Mask = Dict{UInt, Float64}()
+    if verbose >= 1
+        println("Mask for QSCI sampling:")
+    end
+    for (idx_sub, bitint_prod) in enumerate(all_bitint_prod)
+        p_bitint, n_bitint = bitint_prod
+        for (idx_org, org_bitint_prod) in enumerate(org_all_bitint_prod)
+            if org_bitint_prod == bitint_prod
+                nkey = hash_2ints(idx_org, idx_sub)
+                Mask[nkey] = 1.0
+                if verbose >= 1
+                    println("Mask[($(idx_org), $(idx_sub))] = 1.0 for $(int2bitstr(p_bitint, length(p_msps))) ⊗ $(int2bitstr(n_bitint, length(n_msps)))")
+                end
+                break
+            end
+        end
+    end
+    return Mask
+end
+
+function breakdown_eigenstates(evec, all_bitint_prod, p_msps, n_msps, odd, verbose)
+    @assert length(evec) == length(all_bitint_prod) "The length of evec must match the length of all_bitint_prod."
+    prob_sens = zeros(Float64, 10)
+    for idx in 1:length(evec)
+        if abs(evec[idx]) < 1e-6
+            continue
+        end
+        bitint = all_bitint_prod[idx]
+        p_bitint, n_bitint = bitint
+        vp, vn = count_seniority(bitint, p_msps, n_msps)
+        if verbose >= 2 && length(evec) <= 1000
+            println("$(int2bitstr(p_bitint, length(p_msps))) (νp=$vp) ⊗ $(int2bitstr(n_bitint, length(n_msps))) (νn=$vn): $(@sprintf("%10.6f", evec[idx]))")
+        end
+        idx_sens = div(vp + vn, 2) + 1
+        prob_sens[idx_sens] += evec[idx]^2
+    end
+    labels = ifelse(odd, "g.s. sens: v=1, 3,...", "g.s. sens: v=0, 2,...")
+    print_vec(labels, prob_sens)
+    return nothing
+end
+
+function get_off_diagonal(FullHmat, idx_subspace)
+    keysvec = collect(keys(FullHmat))
+    partials = [Dict{UInt, Float64}() for _ in 1:Threads.maxthreadid()]
+    @threads for idx in 1:length(keysvec)
+        tkey = keysvec[idx]
+        idx_bra, idx_ket = unhash_2ints(tkey)
+        if ( (idx_bra in idx_subspace) && (idx_ket in idx_subspace) ) || ( !(idx_bra in idx_subspace) && !(idx_ket in idx_subspace) )
+            continue
+        end
+        tid = Threads.threadid()
+        partials[tid][tkey] = FullHmat[tkey]
+    end
+    Hoffdiag = Dict{UInt, Float64}()
+    for tid in 1:Threads.maxthreadid()
+        for (tkey, value) in partials[tid]
+            if haskey(Hoffdiag, tkey)
+                Hoffdiag[tkey] += value
+            else
+                Hoffdiag[tkey] = value
+            end
+        end
+    end
+    return Hoffdiag
+end
+
+function count_seniority(bitint, p_msps, n_msps)
+    pbitint, nbitint = bitint
+    proton_occ = Int[ ]
+    neutron_occ = Int[ ]
+    for idx_bit in 1:length(p_msps)
+        onehot = Int128(1) << (idx_bit-1)
+        if onehot & pbitint == onehot
+            push!(proton_occ, idx_bit)
+        end
+    end
+    for idx_bit in 1:length(n_msps)
+        onehot = Int128(1) << (idx_bit-1)
+        if onehot & nbitint == onehot
+            push!(neutron_occ, idx_bit)
+        end
+    end
+    vp = vn = 0
+    for pn in 1:2
+        occs = ifelse(pn == 1, proton_occ, neutron_occ)
+        msps = ifelse(pn == 1, p_msps, n_msps)
+        for (idx, idx_p) in enumerate(occs)
+            orb = msps[idx_p]
+            m = orb.jz
+            if m > 0
+                continue
+            end
+            hit = 0
+            for idx_2 in idx+1:length(occs)
+                idx_p_2 = occs[idx_2]
+                orb_2 = msps[idx_p_2]
+                if delta_morb_except_m(orb, orb_2) == 0
+                    continue
+                end
+                mp = orb_2.jz
+                if mp == -m 
+                    hit += 1
+                end
+            end
+            @assert hit == 0 || hit == 1 "hit = $hit"
+            if pn == 1
+                vp += 2 * (1 - hit)
+            else
+                vn += 2 * (1 - hit)
+            end
+        end
+    end
+
+    return vp, vn
 end

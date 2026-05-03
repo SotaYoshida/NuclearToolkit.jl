@@ -11,4 +11,4 @@ tbme_fmt = "snt.bin"
 ### --- IMSRG ---
 smax = 500.0
 dsmax = 0.5
-denominatorDelta=0.0
+denominatorDelta=20.0

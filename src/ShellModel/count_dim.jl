@@ -7,6 +7,16 @@ struct SingleParticleState_Mscheme
     tz::Int64
 end
 
+function get_nl(msps::Vector{SingleParticleState_Mscheme}, idx_m)
+    sps = msps[idx_m]
+    return sps.n, sps.l
+end
+
+function get_nljt(msps::Vector{SingleParticleState_Mscheme}, idx_m)
+    sps = msps[idx_m]
+    return sps.n, sps.l, sps.j, sps.tz
+end
+
 function get_msps_from_jsps(sps::Array{SingleParticleState}; concatenate=false)
     msps_proton = SingleParticleState_Mscheme[]
     msps_neutron = SingleParticleState_Mscheme[]

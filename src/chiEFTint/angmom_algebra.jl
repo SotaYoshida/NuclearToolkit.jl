@@ -681,7 +681,13 @@ function call_d6j(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6
     if j4 == 0; return delta(j3,j5) * delta(j2,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j3+1)*(j6+1)); end
     if j5 == 0; return delta(j3,j4) * delta(j1,j6) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j1+1)*(j4+1)); end
     if j6 == 0; return delta(j1,j5) * delta(j2,j4) * get_phase_j3(j1,j2,j3) / sqrt(1.0*(j2+1)*(j5+1)); end 
-    return d6j[get_key6j_sym(j1,j2,j3,j4,j5,j6)]
+    tkey = get_key6j_sym(j1,j2,j3,j4,j5,j6)
+    if !haskey(d6j,tkey)
+        t6j = wigner6j(Float64,j1//2,j2//2,j3//2,j4//2,j5//2,j6//2)
+        d6j[tkey] = t6j
+        return t6j
+    end
+    return d6j[tkey]
 end
 
 function call_d6j_defined(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64,d6j::Dict{UInt64,Float64})::Float64
@@ -860,8 +866,8 @@ end
 """
 Function to construct `dWS2n` struct, CG-coefficients and Wigner symbols for the given parameters.
 """
-function prep_dWS2n(params,to;emax_calc=0, no_need_9j_HOB=false)
-    emax = ifelse(emax_calc!=0,emax_calc,params.emax)
+function prep_dWS2n(params::chiEFTparams, to;emax_calc=0, no_need_9j_HOB=false)
+    emax = ifelse(emax_calc!=0, emax_calc, params.emax)
     e2max = 2 * emax
     Nnmax = params.Nnmax
     jmax = 2*emax + 1
@@ -913,16 +919,16 @@ function prep_dictHOB(e2max,dtri,dcgm0,d6j_int,no_need_9j_HOB)
     if no_need_9j_HOB
         return dictHOB
     end
-    for Lam = 0:e2max
+    for Lam = 0:e2max+2
         dictHOB[Lam] = Dict{Int64,Dict{Int64,Float64}}()
     end
-    for E = 0:e2max
+    for E = 0:e2max+2
         for e_nl = 0:E
             e_NL = E - e_nl
             for n = 0:div(e_nl,2)
                 l = e_nl - 2*n
                 for N = 0:div(e_NL,2)
-                    L = e_NL - 2*N                           
+                    L = e_NL - 2*N    
                     for e_nlp = 0:E
                         e_NLp = E - e_nlp
                         for np = 0:div(e_nlp,2)
@@ -971,6 +977,7 @@ function prep_d6j_int(emax,jmax_in,to)
                             if !(j1+j3<=j2+J<=J12+J23); continue;end
                             nkey = get_key6j_sym(j1,j2,J12,j3,J,J23)
                             d6j_int[nkey] = wigner6j(Float64,j1/2,j2/2,J12/2,j3/2,J/2,J23/2)
+                            #println("d6j_int[$nkey] j1 $(j1/2) j2 $(j2/2) J12 $(J12/2) j3 $(j3/2) J $(J/2) J23 $(J23/2) val = $(d6j_int[nkey])")
                         end
                     end
                 end
@@ -1347,7 +1354,7 @@ function zero_9j_check(j1,j2,j3,j4,j5,j6,j7,j8,j9)
         w1 = wigner6j(Float64,j1,j4,j7,j8,j9,x)
         w2 = wigner6j(Float64,j2,j5,j8,j4,x,j6)
         w3 = wigner6j(Float64,j3,j6,j9,x,j1,j2)
-        s += t * w1 * w2 * w3
+        s += t * w1 * w2 * w3dictHOB
         println("x $x w1 $w1 w2 $w2 w3 $w3 s $s")
     end
 end
@@ -1360,6 +1367,15 @@ end
 
 function get_dictHOB(n12, l12, n3, l3, n45, l45, n6, l6, lambda, dictHOB)
     key1,key2 = get_HOB_nlkey(n12,l12,n3,l3,n45,l45,n6,l6)
+    if !haskey(dictHOB,lambda)
+        @error "dictHOB doesn't have lambda=$lambda"
+    end
+    if !haskey(dictHOB[lambda],key1)
+        @error "dictHOB[$lambda] doesn't have key1=$key1 for (n12 $n12 l12 $l12 n3 $n3 l3 $l3) (n45 $n45 l45 $l45 n6 $n6 l6 $l6)"
+    end
+    if !haskey(dictHOB[lambda][key1],key2)
+        @error "dictHOB[$lambda][$key1] doesn't have key2=$key2 for (n45 $n45 l45 $l45 n6 $n6 l6 $l6)"
+    end
     return dictHOB[lambda][key1][key2]
 end
 

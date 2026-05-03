@@ -181,7 +181,7 @@ function HF_MBPT3(binfo,modelspace,e1b_p,e1b_n,Chan2b,dict_2b_ch,dWS,Gamma,to;ve
     end   
     allhs = vcat(holes[1],holes[2])
     allps = vcat(particles[1],particles[2])
-    nthre = nthreads()
+    nthre = Threads.maxthreadid()
     keychs = [ zeros(Int64,3) for i=1:nthre]
     Ethreads = zeros(Float64,nthre)      
     @threads for idxa in eachindex(allps)

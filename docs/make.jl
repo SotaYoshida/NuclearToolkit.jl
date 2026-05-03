@@ -24,7 +24,8 @@ makedocs(;
              "References" => ["ChiEFTint" => "ChiEFTint.md",
                               "HartreeFock" => "HartreeFock.md",
                               "IMSRG" => "IMSRG.md",
-                              "ShellModel" => "ShellModel.md"]
+                              "ShellModel" => "ShellModel.md",
+                              "Quantum" => "Quantum.md",]
     ],
 )
 

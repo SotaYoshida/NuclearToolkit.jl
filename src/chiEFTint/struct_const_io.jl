@@ -153,6 +153,121 @@ mutable struct chiEFTparams
     BetaCM::Float64
 end
 
+const CHIEFT_PARAM_FIELDS = Set(Symbol.(fieldnames(chiEFTparams)))
+
+function _field_type(T::DataType, fname::Symbol)
+    idx = findfirst(==(fname), fieldnames(T))
+    idx === nothing && error("Unknown field name: $(fname)")
+    return fieldtypes(T)[idx]
+end
+
+function _parse_chieft_literal(ex)
+    if ex isa Number || ex isa Bool || ex isa String
+        return ex
+    elseif ex isa Expr
+        if ex.head == :vect
+            return [_parse_chieft_literal(arg) for arg in ex.args]
+        elseif ex.head == :tuple
+            return tuple((_parse_chieft_literal(arg) for arg in ex.args)...)
+        elseif ex.head == :call && length(ex.args) == 2 && ex.args[1] == :-
+            val = _parse_chieft_literal(ex.args[2])
+            val isa Number || error("Unary minus is only allowed for numeric literals")
+            return -val
+        else
+            error("Only literal values are supported in chiEFT parameter files")
+        end
+    else
+        error("Unsupported value type in chiEFT parameter file")
+    end
+end
+
+function _coerce_param_value(fname::Symbol, val)
+    ftype = _field_type(chiEFTparams, fname)
+    if ftype == Int64
+        return Int64(val)
+    elseif ftype == Float64
+        return Float64(val)
+    elseif ftype == Bool
+        return Bool(val)
+    elseif ftype == String
+        return String(val)
+    elseif ftype == Vector{Vector{Int64}}
+        val isa AbstractVector || error("$(fname) must be a vector of integer vectors")
+        return [Int64.(v) for v in val]
+    else
+        return convert(ftype, val)
+    end
+end
+
+function read_chiEFT_parameter_dict(fn; io=stdout)
+    params_dict = Dict{Symbol,Any}()
+    for (lnum, rawline) in enumerate(eachline(fn))
+        line = strip(first(split(rawline, "#"; limit=2)))
+        isempty(line) && continue
+        m = match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$", line)
+        if m === nothing
+            continue
+        end
+        key = Symbol(m.captures[1])
+        if !(key in CHIEFT_PARAM_FIELDS)
+            continue
+        end
+        rhs = strip(m.captures[2])
+        parsed = try
+            Meta.parse(rhs)
+        catch
+            if io != nothing
+                println(io, "Warning: failed to parse value for $(key) at $(fn):$(lnum), skipped.")
+            end
+            continue
+        end
+        value = try
+            _parse_chieft_literal(parsed)
+        catch err
+            if io != nothing
+                println(io, "Warning: invalid literal for $(key) at $(fn):$(lnum): $(err). Skipped.")
+            end
+            continue
+        end
+        params_dict[key] = value
+    end
+    return params_dict
+end
+
+function _normalize_chiEFTparams!(params::chiEFTparams, overrides::AbstractDict{Symbol,Any}; io=stdout)
+    if !haskey(overrides, :LambdaSFR) && occursin("emn", params.pottype)
+        params.LambdaSFR = ifelse(params.pottype == "emn500n4lo", 700.0, 650.0)
+    end
+    if params.pottype == "nnlosat"
+        if !haskey(overrides, :LambdaSFR); params.LambdaSFR = 700.0; end
+        if !haskey(overrides, :Lambda_cutoff); params.Lambda_cutoff = 450.0; end
+        if !haskey(overrides, :n_reg); params.n_reg = 3; end
+    end
+    if params.pottype == "emn500n4lo" && params.chi_order > 4
+        params.chi_order = 4
+        if io != nothing
+            println(io, "chi_order must be <= 4 for pottype=emn500n4lo, chi_order=4 will be used.")
+        end
+    end
+    if (params.pottype == "emn500n3lo" || params.pottype == "em500n3lo") && params.chi_order > 3
+        if io != nothing
+            println(io, "chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
+        end
+        params.chi_order = 3
+    end
+    if params.pottype == "nnlosat" && params.chi_order > 2
+        if io != nothing
+            println(io, "chi_order must be == 2for pottype=nnlosat, chi_order=2 will be used")
+        end
+        params.chi_order = 2
+    end
+    if !haskey(overrides, :fn_tbme)
+        tx = "bare"; if params.srg; tx ="srg"*string(params.srg_lambda); end; if params.calc_3N; tx ="2n3n_"*tx; end
+        params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
+    end
+    return nothing
+end
+
 """
     ChiralEFTobject
 # Fields
@@ -213,7 +328,11 @@ end
     init_chiEFTparams(;fn_params="optional_parameters.jl")
 constructor of chiEFTparams, see `chiEFTparams` mutable struct for more details.
 """
-function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 0,Anum = -1,io=stdout)
+function init_chiEFTparams(;fn_params="optional_parameters.jl",
+                            use_hw_formula = 0,
+                            Anum = -1,
+                            io=stdout
+)
     n_mesh = 50
     pmax_fm = 5.0
     emax = 2
@@ -244,10 +363,14 @@ function init_chiEFTparams(;fn_params="optional_parameters.jl",use_hw_formula = 
                           hw,srg,srg_lambda,tbme_fmt,fn_tbme,pottype,LambdaSFR,Lambda_cutoff,n_reg,
                           target_nlj,v_chi_order,n_mesh_P,Pmax_fm,kF,BetaCM)
     if !isfile(fn_params)
-        println("Since $fn_params is not found, the default parameters will be used.")
-        println("You can specify the parameters with optional argument, fn_params like make_chiEFTint(;fn_params=\"PATH_TO_YOUR_FILE\").")
+        if io != nothing
+            println(io, "Since $fn_params is not found, the default parameters will be used.")
+            println(io, "You can specify the parameters with optional argument, fn_params like make_chiEFTint(;fn_params=\"PATH_TO_YOUR_FILE\").")
+        end
     else
-        println("option in $fn_params will be used.")
+        if io != nothing
+            println(io, "option in $fn_params will be used.")
+        end
         read_chiEFT_parameter!(fn_params,params;io=io)
     end
     return params
@@ -258,50 +381,37 @@ end
 Function to overwrite params from the parameter file `fn`.
 """
 function read_chiEFT_parameter!(fn,params::chiEFTparams;io=stdout)
-    include(fn)
-    if @isdefined(n_mesh); params.n_mesh = n_mesh ; end
-    if @isdefined(pmax_fm); params.pmax_fm = pmax_fm ; end
-    if @isdefined(emax); params.emax = emax; end
-    if @isdefined(Nnmax); params.Nnmax = Nnmax; end
-    if @isdefined(chi_order); params.chi_order = chi_order; end
-    if @isdefined(calc_NN); params.calc_NN = calc_NN; end
-    if @isdefined(calc_3N); params.calc_3N = calc_3N; end
-    if @isdefined(hw); params.hw = hw; end
-    if @isdefined(srg); params.srg = srg; end
-    if @isdefined(srg_lambda); params.srg_lambda = srg_lambda; end
-    if @isdefined(tbme_fmt); params.tbme_fmt = tbme_fmt; end
-    if @isdefined(fn_tbme); params.fn_tbme = fn_tbme; end
-    if @isdefined(pottype); params.pottype = pottype; end
-    if @isdefined(coulomb); params.coulomb = coulomb; end
-    if @isdefined(calc_EperA); params.calc_EperA = calc_EperA; end
-    if @isdefined(target_nlj); params.target_nlj = target_nlj; end
-    if @isdefined(v_chi_order); params.v_chi_order = v_chi_order; end
-    if @isdefined(n_mesh_P); params.n_mesh_P = n_mesh_P; end
-    if @isdefined(Pmax_fm); params.Pmax_fm = Pmax_fm; end
-    if @isdefined(kF); params.kF = kF; end
-    if occursin("emn",params.pottype)
-       params.LambdaSFR = ifelse(pottype=="emn500n4lo",700.0,650.0)
+    overrides = read_chiEFT_parameter_dict(fn; io=io)
+    read_chiEFT_parameter!(overrides, params; io=io)
+    return nothing
+end
+
+"""
+    read_chiEFT_parameter!(overrides,params)
+Function to overwrite params from a dictionary-like object.
+"""
+function read_chiEFT_parameter!(overrides::AbstractDict, params::chiEFTparams; io=stdout)
+    valid_overrides = Dict{Symbol,Any}()
+    for (k, v) in overrides
+        key = Symbol(k)
+        if !(key in CHIEFT_PARAM_FIELDS)
+            if io != nothing
+                println(io, "Warning: unknown chiEFT parameter key $(key) is ignored.")
+            end
+            continue
+        end
+        coerced = try
+            _coerce_param_value(key, v)
+        catch err
+            if io != nothing
+                println(io, "Warning: invalid value for $(key): $(err). This key is skipped.")
+            end
+            continue
+        end
+        valid_overrides[key] = coerced
+        setfield!(params, key, coerced)
     end
-    if params.pottype == "nnlosat"
-        params.LambdaSFR = 700.0
-        params.Lambda_cutoff = 450.0
-        params.n_reg = 3
-     end
-    if @isdefined(BetaCM); params.BetaCM = BetaCM; end
-    if params.pottype =="emn500n4lo" && params.chi_order>4
-        params.chi_order=4
-        println("chi_order must be <= 4 for pottype=emn500n4lo, chi_order=4 will be used.") 
-    end
-    if (params.pottype =="emn500n3lo" || params.pottype =="em500n3lo") && params.chi_order > 3
-        println("chi_order must be <= 3 for pottype=emn500n3lo or em500n3lo, chi_order=3 will be used")
-        params.chi_order=3
-    end
-    if (params.pottype =="nnlosat") && params.chi_order > 2
-        println("chi_order must be == 2for pottype=nnlosat, chi_order=2 will be used")
-        params.chi_order=2
-    end
-    tx = "bare";if params.srg; tx ="srg"*string(params.srg_lambda);end;if params.calc_3N; tx="2n3n_"*tx;end
-    params.fn_tbme = "tbme_"*params.pottype*"_"*tx*"hw"*string(round(Int64,params.hw))*"emax"*string(params.emax)*"."*params.tbme_fmt
+    _normalize_chiEFTparams!(params, valid_overrides; io=io)
     if io != nothing
         println(io,"--- chiEFTparameters used ---")
         for fieldname in fieldnames(typeof(params))                 

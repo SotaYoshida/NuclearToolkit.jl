@@ -41,8 +41,10 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     @timeit to "prep dWS2n" begin
         need = "Rp2" in Operators || chiEFTparams.BetaCM != 0.0
         no_need_9j_HOB = !need
-        dWS = prep_dWS2n(chiEFTparams,to;emax_calc=max(emax_calc,e1max_file),no_need_9j_HOB=no_need_9j_HOB)
+        dWS = prep_dWS2n(chiEFTparams,to;emax_calc=min(emax_calc,e1max_file),no_need_9j_HOB=no_need_9j_HOB)
     end
+
+    nthre = Threads.maxthreadid()
     @timeit to "read NNint" begin
         TF = occursin(".bin",sntf)
         tfunc = ifelse(TF,readsnt_bin,readsnt)     
@@ -52,6 +54,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         A=nuc.A
         BetaCM = chiEFTparams.BetaCM
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)
+
         HCM = InitOp(Chan1b,Chan2bD.Chan2b)
         TCM = InitOp(Chan1b,Chan2bD.Chan2b)
         VCM = InitOp(Chan1b,Chan2bD.Chan2b)
@@ -66,7 +69,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
         end 
         MatOp = Matrix{Float64}[]
         if "Rp2" in Operators
-            MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
+            MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthre]
         end
     end
 
@@ -137,8 +140,9 @@ function hf_main_mem(chiEFTobj::ChiralEFTobject,nucs,dict_TM,dWS,HFdata,to;
     dictTBMEs = dictsnt.dictTBMEs
     Object_3NF = main_read_me3j(fn_3nf, emax_calc, e1max_file, e2max_file, e3max, e3max_file, sps, dWS, to)
     MatOp = Matrix{Float64}[]
+    nthre = Threads.maxthreadid()
     if "Rp2" in Operators
-        MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthreads()]
+        MatOp = [ zeros(Float64,maxnpq,maxnpq) for i=1:2*nthre]
     end
     for (i,tnuc) in enumerate(nucs)
         nuc = def_nuc(tnuc,ref,corenuc)
@@ -277,10 +281,10 @@ function def_sps(emax)
             if n < 0;continue;end
             if jmin < 1;jmin=jmax;end
             for j = jmin:2:jmax
-                push!(p_sps,SingleParticleState(n,l,j,-1,[0.0],[false],[false],[false]))
-                push!(sps,SingleParticleState(n,l,j,-1,[0.0],[false],[false],[false]))
-                push!(n_sps,SingleParticleState(n,l,j,1,[0.0],[false],[false],[false]))
-                push!(sps,SingleParticleState(n,l,j,1,[0.0],[false],[false],[false]))
+                push!(p_sps,SingleParticleState(2*n+l,n,l,j,-1,[0.0],[false],[false],[false]))
+                push!(sps,SingleParticleState(2*n+l,n,l,j,-1,[0.0],[false],[false],[false]))
+                push!(n_sps,SingleParticleState(2*n+l,n,l,j,1,[0.0],[false],[false],[false]))
+                push!(sps,SingleParticleState(2*n+l,n,l,j,1,[0.0],[false],[false],[false]))
             end
         end
     end
@@ -370,7 +374,12 @@ function naive_filling(sps,n_target,emax,for_ref=false)
         end
         ofst += e + 1 
     end
-    if Nocc != n_target; println("warn! Nocc");exit();end
+    if Nocc != n_target
+        txt = "Nocc!=n_target happend in naive_filling: Nocc=$Nocc n_target=$n_target."
+        txt *= " This may happen when you are trying to fill beyond the given emax=$emax."
+        @warn "$txt"
+        exit()
+    end
     return occ
 end
 
@@ -503,15 +512,15 @@ function calc_Gamma!(Gamma,sps,Cp,Cn,V2,Chan2b,maxnpq,Object_3NF,rho,dWS)
     sps_3b = Object_3NF.sps_3b
     dict_3b_idx = Object_3NF.dict_3b_idx
     v3bme = Object_3NF.v3bme
-
     l_sps = length(sps)
     E3max = sps_3b.e3max
     nchan = length(Chan2b)
-    Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
-    M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthreads()]
+    nthre = Threads.maxthreadid()
+    Ds = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthre]
+    M  = [ zeros(Float64,maxnpq,maxnpq) for i =1:nthre]
     use3NF = Object_3NF.use3BME
     dim_v3_g = ifelse(use3NF, maxnpq, 1)
-    V3NOs = [ zeros(Float64,dim_v3_g,dim_v3_g) for i =1:nthreads()]
+    V3NOs = [ zeros(Float64,dim_v3_g,dim_v3_g) for i =1:nthre]
 
     @threads for ch = 1:nchan
         tid = threadid()
@@ -804,7 +813,8 @@ function eval_V3NO!(sps,V3tilde,rho,rho_p,rho_n,Object_3NF)
     dict_idx_me3j_to_snt = Object_3NF.dict_idx_to_snt
     V3tilde .= 0.0
     v3monopole = Object_3NF.v3monopole
-    v = [ zeros(Float64,size(V3tilde)[1],size(V3tilde)[2]) for i = 1:nthreads()]    
+    nthre = Threads.maxthreadid()
+    v = [ zeros(Float64,size(V3tilde)[1],size(V3tilde)[2]) for i = 1:nthre]    
     keylist = collect(keys(v3monopole))
     @threads for idx in eachindex(keylist)
         tkey = keylist[idx]
@@ -821,7 +831,7 @@ function eval_V3NO!(sps,V3tilde,rho,rho_p,rho_n,Object_3NF)
         v3tmp = v[threadid()]
         v3tmp[i,j] += rho_ab * rho_cd * v3monopole[tkey]
     end
-    for i = 1:nthreads()
+    for i = 1:nthre
         V3tilde .+= v[i]
     end
     V3tilde .+= transpose(V3tilde) - Diagonal(V3tilde)
@@ -1014,6 +1024,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_p[idx_a,idx_b]
                     tkey[1] = i; tkey[3] = j;tkey[2] = a; tkey[4] = b
                     if a < i; tkey[2] = i; tkey[4] = j;tkey[1] = a; tkey[3] = b; end
+                    if !haskey(dict_pp,tkey); continue; end
                     vmono,vmono2n3n = dict_pp[tkey]
                     Vt_pp[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n * symfac)
                     # if rho_ab != 0.0; println("pp: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
@@ -1038,6 +1049,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     if !(b in Chan1b_n[a]);continue;end
                     rho_ab = rho_n[idx_a,idx_b] 
                     tkey[1] = i;tkey[3] = j; tkey[2] = a; tkey[4] = b
+                    if !haskey(dict_pn,tkey); continue; end
                     vmono,vmono2n3n = dict_pn[tkey]
                     Vt_pn[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n * symfac) 
                     #if rho_ab != 0.0; println("pn: i $i j $j  a $a b $b rho $rho_ab key $tkey vmono ",vmono/(sps[i].j+1));end
@@ -1066,6 +1078,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_n[idx_a,idx_b]
                     tkey[1] = i; tkey[3] = j;tkey[2] = a; tkey[4] = b                    
                     if a < i; tkey[2] = i; tkey[4] = j;tkey[1] = a; tkey[3] = b; end
+                    if !haskey(dict_nn,tkey); continue; end
                     vmono,vmono2n3n = dict_nn[tkey]
                     Vt_nn[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n* symfac) 
                     if a!=b
@@ -1089,6 +1102,7 @@ function calc_Vtilde(sps,Vt_pp,Vt_nn,Vt_pn,Vt_np,rho_p,rho_n,dictTBMEs,tkey,Chan
                     rho_ab = rho_p[idx_a,idx_b] 
                     tkey[1] = a ; tkey[3] = b
                     tkey[2] = i; tkey[4] = j
+                    if !haskey(dict_pn,tkey); continue; end
                     vmono,vmono2n3n = dict_pn[tkey]
                     Vt_np[idx_i,idx_j] += rho_ab * (vmono + vmono2n3n*symfac)
                     if a!=b

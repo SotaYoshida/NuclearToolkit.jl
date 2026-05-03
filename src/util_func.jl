@@ -1,5 +1,29 @@
 const reg = r"[0-9]+"
 
+"""
+mutable struct `SingleParticleState`
+# Fields
+- `n::Int64` principal quantum number of the single particle state(sps)
+- `l::Int64` azimuthal quantum number of the sps
+- `j::Int64` angular momentum
+- `tz::Int64` z-component of isospin (doubled) tz=-1 => proton & tz=1 => neutron
+- `occ::Float64` occupation number (can be fractional) of the sps
+- `c::Bool` indicating whether the single-particle state belongs to "core" or not 
+- `v::Bool` whether belongs to "valence" or not 
+- `q::Bool` whether belongs to "q-space" or not 
+"""
+struct SingleParticleState  
+    e::Int64
+    n::Int64
+    l::Int64
+    j::Int64
+    tz::Int64
+    occ::Vector{Float64}
+    c::Vector{Bool}
+    v::Vector{Bool}
+    q::Vector{Bool}
+end
+
 function latex_nuc(nuc::String)
     A =  match(r"\d+", nuc).match
     el = replace(nuc, r"\d+" => "")
@@ -100,6 +124,10 @@ function get_nkey4(i,j,k,l;ofst=10^3)
     return i + ofst * j + ofst^2 * k + ofst^3 * l
 end
 
+function get_nkey4_shift(i,j,k,l;int_shift=3):: UInt64
+    return (UInt64(i+int_shift) << 30) + (UInt64(j+int_shift) << 20) + (UInt64(k+int_shift) << 10) +  UInt64(l+int_shift)
+end
+
 function get_nkey6(j1::Int64,j2::Int64,j3::Int64,j4::Int64,j5::Int64,j6::Int64)::UInt64
     return  (UInt64(j1) << 50) + (UInt64(j2) << 40) +(UInt64(j3) << 30) +  (UInt64(j4) << 20) + (UInt64(j5) << 10) +  UInt64(j6)
 end
@@ -137,7 +165,12 @@ end
 function show_matrix(text, mat)
     println("$text:")
     for i = 1:size(mat)[1]
-        print_vec("",mat[i,:])
+        print_vec("",mat[i,:];ine=true)
     end
     return nothing
+end
+
+function lowest_hotbit_index(x::Integer)
+    x == 0 && return 0  
+    return trailing_zeros(x) + 1
 end

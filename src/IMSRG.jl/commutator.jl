@@ -26,6 +26,7 @@ function OpCommutator!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1
     return nothing
 end
 
+
 """
     Bernoulli_number(k::Int64)::Float64
 
@@ -381,7 +382,7 @@ function comm221ss!(X::Op,Y::Op,ret::Op,HFobj::HamiltonianNormalOrdered,Chan1b::
     sps = HFobj.modelspace.sps
     dim1b = size(m1bs[1])[1]
     ch_dict = Chan2bD.dict_ch_idx_from_ket
-    nthre = nthreads()
+    nthre = Threads.maxthreadid()
     for i=1:2*nthre; PandyaObj.copy_1bmat[i] .= 0.0;end
     @inbounds @threads :dynamic for ch in eachindex(x2bs)
         tbc = Chan2b[ch]; nket = tbc.nkets

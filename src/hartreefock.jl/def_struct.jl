@@ -201,28 +201,6 @@ mutable struct space_channel
     qq::Dict{Int64,Vector{Int64}}
 end
 
-"""
-mutable struct `SingleParticleState`
-# Fields
-- `n::Int64` principal quantum number of the single particle state(sps)
-- `l::Int64` azimuthal quantum number of the sps
-- `j::Int64` angular momentum
-- `tz::Int64` z-component of isospin (doubled) tz=-1 => proton & tz=1 => neutron
-- `occ::Float64` occupation number (can be fractional) of the sps
-- `c::Bool` indicating whether the single-particle state belongs to "core" or not 
-- `v::Bool` whether belongs to "valence" or not 
-- `q::Bool` whether belongs to "q-space" or not 
-"""
-struct SingleParticleState  
-    n::Int64
-    l::Int64
-    j::Int64
-    tz::Int64
-    occ::Vector{Float64}
-    c::Vector{Bool}
-    v::Vector{Bool}
-    q::Vector{Bool}
-end
 
 """
 struct `ModelSpace`

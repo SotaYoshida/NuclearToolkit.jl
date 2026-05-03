@@ -8,7 +8,8 @@ srg = true
 srg_lambda = 10.0
 
 tbme_fmt = "snt.bin"
-chi_order = 4; pottype="emn500n4lo"
+chi_order = 4
+pottype="emn500n4lo"
 
 ### --- IMSRG ---
 smax = 500.0

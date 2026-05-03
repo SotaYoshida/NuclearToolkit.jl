@@ -264,7 +264,7 @@ function calc_Eta_atan!(HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSRGobject,Ch
                 if sps[a].c[1] || sps[b].c[1] ; continue;end                
                 nume = 2 * Gam[ib,ik]
                 deno = Get2bDenominator(ch,pnrank,a,b,i,j,na,nb,ni,nj,f,Delta,dictMono,key)                             
-                tmp = 0.5 * atan(nume / deno)                
+                tmp = 0.5 * atan(nume / deno)
                 eta2b[ib,ik] = tmp
                 if ib != ik; eta2b[ik,ib] = -tmp;end
             end
@@ -496,12 +496,12 @@ function prep_PandyaLookup(binfo::basedat,HFobj::HamiltonianNormalOrdered,Chan1b
             target[tkey] = idx
         end 
     end
-    nthre = nthreads()
+    nthre = Threads.maxthreadid()
     dim1b = length(MS.p_sps)
     copy_1bmat = [ zeros(Float64,dim1b,dim1b) for i=1:2*nthre]
     XYbars =  [ [zeros(Float64,dimmax,dimmax),zeros(Float64,dimmax,dimmax)] for i=1:nthre]
     tMat = [ zeros(Float64,2*dimmax,2*dimmax) for i=1:nthre]
-    keys6j = [zeros(Int64,5) for i=1:nthreads()]
+    keys6j = [zeros(Int64,5) for i=1:nthre]
     ## for 221
     mats_nab,mats_nab_bar = prep_nab_bar_matrices(HFobj,Chan2bD)
     ### to prep. 122 util such as intermediate matrix
@@ -732,13 +732,16 @@ function IMSRGflow(binfo::basedat,HFobj::HamiltonianNormalOrdered,IMSRGobj::IMSR
         func_Eta(HFobj,IMSRGobj,Chan2b,dictMono,norms)
 
         # remnant for IMSRG-Net sampling
-        if Hsample > 0 
+        if 2 >= Hsample > 0 
             cond_1 = Hsample == 1 && ( (s <= 20.00  || s == 30.0  || s == 50.0 ) || valenceflow) # for DMD
             cond_2 = Hsample == 2 && ( (15.0 <= s <= 20.00  || s == 30.0  || s == 50.0 ) || valenceflow) # for IMSRG-Net
             if cond_1 || cond_2
                 Nested = deepcopy(IMSRGobj.Omega)
                 gather_omega_sofar_write(Hsample,istep, s, fvec, Omega, nOmega, tmpOp, binfo, Chan1b, Chan2bD, HFobj, IMSRGobj, dictMono, d6j_lj, PandyaObj,to,dict_idx_op_to_flatvec, dict_idx_flatvec_to_op,dict_if_idx_for_hdf5)
             end
+        elseif Hsample == 3 # Write out many-body operators in channnel rep.
+            write_Operator_hdf5(binfo, Chan2b, Omega, IMSRGobj.n_written_omega[1], s, 
+                                IMSRGobj.H.zerobody[1], "Omega")
         end
 
         print_flowstatus(istep,s,ncomm,norms,IMSRGobj,Chan2b)
@@ -945,6 +948,54 @@ function write_omega_bin(binfo::basedat,Chan2b::Vector{chan2b},n_written::Int,Om
 end
 
 
+function write_Operator_hdf5(
+    binfo::basedat, 
+    Chan2b::Vector{chan2b},
+    Op::Operator,
+    n_written::Int,
+    s::Float64,
+    E0::Float64,
+    label::String;
+    target_dir="OperatorsHDF5"
+)
+    if !isdir(target_dir)  && n_written==0
+        mkdir(target_dir)
+    end    
+    pid = getpid()
+    fname = "$target_dir/$(label)_$pid"*binfo.nuc.cnuc*"_s"*strip(@sprintf("%6.2f",s))*".h5"
+    nch = length(Op.twobody)
+    h5open(fname, "w") do file
+        write(file, "s", s)
+        write(file, "E0", E0)
+        write(file, "onebody_proton", Op.onebody[1])
+        write(file, "onebody_neutron", Op.onebody[2])  
+        write(file, "JPTz", [ (Chan2b[ch].J, Chan2b[ch].prty, Chan2b[ch].Tz) for ch in 1:nch ])
+        for ch in 1:nch
+            JPTz = Chan2b[ch].J, Chan2b[ch].prty, Chan2b[ch].Tz
+            write(file, "twobody_ch$(ch)_J$(JPTz[1])_P$(JPTz[2])_Tz$(JPTz[3])", Op.twobody[ch])
+        end
+    end
+    return nothing
+end
+
+
+function read_Operator_hdf5(
+    fn::String, 
+    )
+    
+    io = h5open(fn, "r")
+    s = read(io, "s")
+    E0 = read(io, "E0")
+    onebody_proton = read(io, "onebody_proton")
+    onebody_neutron = read(io, "onebody_neutron")
+    JPTz_list = read(io, "JPTz")
+    twobody = Vector{Matrix{Float64}}(undef, length(JPTz_list))
+    for (ch, JPTz) in enumerate(JPTz_list)
+        J, P, Tz = JPTz
+        twobody[ch] = read(io, "twobody_ch$(ch)_J$(J)_P$(P)_Tz$(Tz)")        
+    end    
+    return s, E0, onebody_proton, onebody_neutron, JPTz_list, twobody
+end
 
 """
     read_omega_bin!(nw,Op,verbose=false)

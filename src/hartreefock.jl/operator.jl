@@ -189,7 +189,7 @@ function Calculate_RCM(binfo,Chan1b,Chan2b,sps,Op_Rp2,dWS,to;non0_cm=true,non0_i
             bra = kets[ib]
             for ik = ib:npq
                 ket = kets[ik]
-                r1r2 = calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)                
+                r1r2 = calc_single_r1r2(binfo.emax*2, bra,ket,sps,J,dWS,b2,to)                
                 ## RCM term
                 if non0_cm
                     tRCM = 2.0 * r1r2/(A^2)
@@ -316,6 +316,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
     R2p_2b = 0.0
     R_MP1 = 0.0
     S1 = S2 = S3 = S4 = S7 = S8 = S9 = S10 = S11 = S12 = 0.0
+    nthre = Threads.maxthreadid()
     for ch = 1:nch
         tbc = Chan2b[ch] #J, prty, Tz 
         J = tbc.J; Tz = tbc.Tz
@@ -323,7 +324,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
         nkets = length(kets)
         if nkets == 0; continue;end
         D = @view MatOp[threadid()][1:nkets,1:nkets]
-        D2 = @view MatOp[threadid()+nthreads()][1:nkets,1:nkets]
+        D2 = @view MatOp[threadid()+nthre][1:nkets,1:nkets]
         Op2b = Omats[ch]       
         for ib = 1:nkets
             i,j = kets[ib]
@@ -495,7 +496,7 @@ function Calc_Expec(binfo,Chan1b,Chan2b,HFobj,Op_Rp2,dict_2b_ch,dWS,MatOp,to;hfm
     if hfmbptlevel
         allhs = vcat(holes[1],holes[2])
         allps = vcat(particles[1],particles[2])
-        nthre = nthreads()
+        nthre = Threads.maxthreadid()
         keychs = [ zeros(Int64,3) for i=1:nthre]
         S912s = [ zeros(Float64,nthre) for i=1:2]
         @inbounds @threads for idx_a in eachindex(allps)
@@ -583,7 +584,7 @@ Calc ``<r_1 \\cdot r_2>`` for a given 2b-channel.
 - `bra`: <ab| a&b: s.p.s. (n,l,j,tz)
 - `ket`: |cd> c&d: s.p.s. (n,l,j,tz)
 """
-function calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)
+function calc_single_r1r2(e2max, bra, ket, sps, J, dWS, b2, to)
     r1r2 = 0.0
     oa = sps[bra[1]]; ob = sps[bra[2]]
     oc = sps[ket[1]]; od = sps[ket[2]]
@@ -614,6 +615,7 @@ function calc_single_r1r2(bra,ket,sps,J,dWS,b2,to)
                         if !tri_check(Lab,Lam_ab,lam_ab);continue;end
                         asymm_factor = (abs(tza+tzc) + abs(tza+tzd) * (-1)^(lam_ab+Sab)) /2                        
                         if asymm_factor == 0.0; continue;end     
+                        #if 2*N_ab + Lam_ab + 2*n_ab 
                         lam_cd = lam_ab
                         n_ab = div(fab - 2*N_ab-Lam_ab -lam_ab,2) # determined by energy conservation                        
                         mosh_ab = get_dictHOB(N_ab,Lam_ab,n_ab,lam_ab,na,la,nb,lb,Lab,dictHOB)                                                                  

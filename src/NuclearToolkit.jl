@@ -3,6 +3,7 @@ module NuclearToolkit
 using AssociatedLegendrePolynomials
 using Arpack
 using Base.Threads
+using CairoMakie
 using CodecZlib
 using Combinatorics
 using DocStringExtensions
@@ -40,6 +41,7 @@ include("chiEFTint/dict_LECs.jl")
 include("chiEFTint/contact.jl")
 include("chiEFTint/pionexchange.jl")
 include("chiEFTint/angmom_algebra.jl")
+export red_nabla_l
 include("chiEFTint/eff3nf.jl")
 include("chiEFTint/main_chiEFTint.jl")
 include("chiEFTint/calibration.jl")
@@ -59,6 +61,7 @@ export test3NF
 
 ### NuclData.jl
 include("NuclData.jl/amedata.jl")
+export ame2020data
 
 ### HartreeFock.jl
 include("hartreefock.jl/def_struct.jl")
@@ -110,7 +113,13 @@ export gen_partition_from_snt
 
 include("Quantum/qsci.jl")
 #export read_bitstr, read_bitint
-export qsci_main
+export qsci_main, read_smsnt_dev
+include("Quantum/util_qsci.jl")
+export spin_tensor_decomposition, eval_monopoleV
+export ls_to_jj_coupling, check_ls_jj_roundtrip
+include("Quantum/eval_oprator.jl")
+include("Quantum/rdm.jl")
+
 end
 
 

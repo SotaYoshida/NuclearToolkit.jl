@@ -1,11 +1,3 @@
-struct single_sps
-    e::Int
-    n::Int
-    l::Int
-    j2::Int
-    tz::Int
-end
-
 struct sps_3Blab
     e1max::Int
     e1max_file::Int
@@ -14,8 +6,8 @@ struct sps_3Blab
     e3max_file::Int
     norbits::Int
     norbits_file::Int
-    sps::Dict{Int64,single_sps}
-    sps_file::Dict{Int64,single_sps}
+    sps::Dict{Int64,SingleParticleState}
+    sps_file::Dict{Int64,SingleParticleState}
 end
 
 struct Obj_3BME
@@ -94,8 +86,8 @@ function read_me3jgz(fn,count_ME_file, to; verbose=false)
 end
 
 function get_modelspace(e1max, e1max_file, e2max_file, e3max, e3max_file;verbose=false, l_descending_order=false)
-    sps = Dict{Int64,single_sps}()
-    sps_file = Dict{Int64,single_sps}()
+    sps = Dict{Int64, SingleParticleState}()
+    sps_file = Dict{Int64, SingleParticleState}()
     norbits_file = norbits_ms = 0
     for mode in ["File", "ModelSpace"]
         norbits = 0
@@ -110,7 +102,7 @@ function get_modelspace(e1max, e1max_file, e2max_file, e3max, e3max_file;verbose
                 for j2 = abs(2*l-1):2:2*l+1
                     for tz = -1:2:1
                         norbits += 1
-                        target[norbits] = single_sps(temax, n, l, j2, tz)
+                        target[norbits] = SingleParticleState(temax, n, l, j2, tz, [0.0], [false], [true], [false])
                         if verbose; println("norbits $norbits e = $temax  n $n l $l j2 $j2 tz $tz");end
                     end
                 end
@@ -127,7 +119,12 @@ end
 
 """
 Allocating 3BME vector and dictionary for the indices.
-Note that the dimension of `v3bme` is the one that is used for the 3BME (for modelspace) instead of the number of elements in the input ThBME file.
+Note that the dimension of `v3bme` is the one that is used for the 3BME (for working modelspace)
+instead of the number of elements in the input ThBME file.
+
+Note that T_3 = 1 case has 4 components (Tab, Tde) = (0, 0), (0, 1), (1, 0) (1,1), while T_3 = 0 case has only 1 component.
+The Tindex will be 2 * Tab + Tde + ((T2 - 1) // 2), i.e. 0: (0, 0, 1), 1: (0, 1, 0), 2: (1, 0, 0), 3: (1, 1, 1), 4: (1, 1, 3).
+This corresponds to the factor 5 in the total_dim counting below.
 """
 function allocate_3bme(sps_3b, ME_is_double=true)
     norbits = sps_3b.norbits
@@ -145,8 +142,8 @@ function allocate_3bme(sps_3b, ME_is_double=true)
             eb = sps[b].e
             lb = sps[b].l
             if ea+eb > e3max; continue; end
-            Jab_min = div(abs(sps[a].j2 - sps[b].j2),2)
-            Jab_max = div(abs(sps[a].j2 + sps[b].j2),2)
+            Jab_min = div(abs(sps[a].j - sps[b].j),2)
+            Jab_max = div(abs(sps[a].j + sps[b].j),2)
             for c = 1:2:b
                 ec = sps[c].e
                 lc = sps[c].l
@@ -164,14 +161,14 @@ function allocate_3bme(sps_3b, ME_is_double=true)
                             if (la + lb + lc + ld + le + lf) % 2 != 0; continue; end
                             orbit_hash = get_nkey6(a,b,c,d,e,f)
                             dict_3b_idx[orbit_hash] = total_dim
-                            Jde_min = div(abs(sps[d].j2 - sps[e].j2),2)
-                            Jde_max = div(abs(sps[d].j2 + sps[e].j2),2)
+                            Jde_min = div(abs(sps[d].j - sps[e].j),2)
+                            Jde_max = div(abs(sps[d].j + sps[e].j),2)
                             for Jab = Jab_min:Jab_max
                                 for Jde = Jde_min:Jde_max
-                                    J2_min = max( abs(2*Jab-sps[c].j2), abs(2*Jde-sps[f].j2) )
-                                    J2_max = min( 2*Jab+sps[c].j2, 2*Jde+sps[f].j2 )
+                                    J2_min = max( abs(2*Jab-sps[c].j), abs(2*Jde-sps[f].j) )
+                                    J2_max = min( 2*Jab+sps[c].j, 2*Jde+sps[f].j )
                                     for J2 = J2_min:2:J2_max
-                                        total_dim += 5
+                                        total_dim += 5 
                                     end
                                 end
                             end
@@ -251,17 +248,17 @@ function count_nreads(sps_3b, mode, to;verbose=false, save_verbose=false)
                 if ea+eb+ec > e3max; continue; end
 
                 # J_bra < J_ket
-                JabMax = div(oa.j2 + ob.j2,2)
-                JabMin = div(abs(oa.j2 - ob.j2),2)
+                JabMax = div(oa.j + ob.j,2)
+                JabMin = div(abs(oa.j - ob.j),2)
                 twoJCMindownbra = 0
-                if abs(oa.j2 -ob.j2) > oc.j2
-                    twoJCMindownbra = abs(oa.j2 -ob.j2) - oc.j2
-                elseif oc.j2 < (oa.j2+ob.j2)
+                if abs(oa.j -ob.j) > oc.j
+                    twoJCMindownbra = abs(oa.j -ob.j) - oc.j
+                elseif oc.j < (oa.j+ob.j)
                     twoJCMindownbra = 1
                 else
-                    twoJCMindownbra = oc.j2 - oa.j2 - ob.j2
+                    twoJCMindownbra = oc.j - oa.j - ob.j
                 end
-                twoJCMaxupbra = oa.j2 + ob.j2 + oc.j2 
+                twoJCMaxupbra = oa.j + ob.j + oc.j 
 
                 # loop for ket 
                 for idx_d = 1:2:idx_a
@@ -277,17 +274,17 @@ function count_nreads(sps_3b, mode, to;verbose=false, save_verbose=false)
                             if ed+ee+ef > e3max; continue; end
                             if (oa.l + ob.l + oc.l + od.l + oe.l + of.l) % 2 != 0; continue; end
 
-                            JdeMax = div(od.j2+oe.j2,2)
-                            JdeMin = div(abs(od.j2-oe.j2),2)
+                            JdeMax = div(od.j+oe.j,2)
+                            JdeMin = div(abs(od.j-oe.j),2)
                             twoJCMindownket = 0
-                            if abs(od.j2 -oe.j2) > of.j2
-                                twoJCMindownket = abs(od.j2 -oe.j2) - of.j2
-                            elseif of.j2 < (od.j2+oe.j2)
+                            if abs(od.j -oe.j) > of.j
+                                twoJCMindownket = abs(od.j -oe.j) - of.j
+                            elseif of.j < (od.j+oe.j)
                                 twoJCMindownket = 1
                             else
-                                twoJCMindownket = of.j2 - od.j2 - oe.j2
+                                twoJCMindownket = of.j - od.j - oe.j
                             end
-                            twoJCMaxupket = od.j2 + oe.j2 + of.j2
+                            twoJCMaxupket = od.j + oe.j + of.j
 
                             twoJCMindown = max(twoJCMindownbra, twoJCMindownket)
                             twoJCMaxup = min(twoJCMaxupbra, twoJCMaxupket)
@@ -298,8 +295,8 @@ function count_nreads(sps_3b, mode, to;verbose=false, save_verbose=false)
                             end
                             for Jab = JabMin:JabMax
                                 for Jde = JdeMin:JdeMax
-                                    twoJCMin = max( abs(2*Jab-oc.j2), abs(2*Jde-of.j2) )
-                                    twoJCMax = min( 2*Jab+oc.j2, 2*Jde+of.j2 )
+                                    twoJCMin = max( abs(2*Jab-oc.j), abs(2*Jde-of.j) )
+                                    twoJCMax = min( 2*Jab+oc.j, 2*Jde+of.j )
                                     if twoJCMin > twoJCMax; continue; end                                   
                                     blocksize = (div(twoJCMax - twoJCMin,2) + 1)*5
                                     nread += blocksize
@@ -346,17 +343,17 @@ function count_me3jgz(sps_3b::sps_3Blab;mode="File")
                 oc = sps[idx_c]
                 ec = oc.e
                 if ea+eb+ec > e3max_check; continue; end
-                JabMax = div(oa.j2 + ob.j2,2)
-                JabMin = div(abs(oa.j2 - ob.j2),2)
+                JabMax = div(oa.j + ob.j,2)
+                JabMin = div(abs(oa.j - ob.j),2)
                 twoJCMindownbra = 0
-                if abs(oa.j2 -ob.j2) > oc.j2
-                    twoJCMindownbra = abs(oa.j2 -ob.j2) - oc.j2
-                elseif oc.j2 < (oa.j2+ob.j2)
+                if abs(oa.j -ob.j) > oc.j
+                    twoJCMindownbra = abs(oa.j -ob.j) - oc.j
+                elseif oc.j < (oa.j+ob.j)
                     twoJCMindownbra = 1
                 else
-                    twoJCMindownbra = oc.j2 - oa.j2 - ob.j2
+                    twoJCMindownbra = oc.j - oa.j - ob.j
                 end
-                twoJCMaxupbra = oa.j2 + ob.j2 + oc.j2 
+                twoJCMaxupbra = oa.j + ob.j + oc.j 
                
                 for idx_d = 1:2:idx_a
                     od = sps[idx_d]
@@ -374,17 +371,17 @@ function count_me3jgz(sps_3b::sps_3Blab;mode="File")
                             if ed+ee+ef > e3max_check; continue; end                            
                             if (oa.l + ob.l + oc.l + od.l + oe.l + of.l) % 2 != 0; continue; end
                     
-                            JdeMax = div(od.j2 + oe.j2,2)
-                            JdeMin = div(abs(od.j2 - oe.j2),2)
+                            JdeMax = div(od.j + oe.j,2)
+                            JdeMin = div(abs(od.j - oe.j),2)
                             twoJCMindownket = 0
-                            if abs(od.j2 -oe.j2) > of.j2
-                                twoJCMindownket = abs(od.j2 -oe.j2) - of.j2
-                            elseif of.j2 < (od.j2+oe.j2)
+                            if abs(od.j -oe.j) > of.j
+                                twoJCMindownket = abs(od.j -oe.j) - of.j
+                            elseif of.j < (od.j+oe.j)
                                 twoJCMindownket = 1
                             else
-                                twoJCMindownket = of.j2 - od.j2 - oe.j2
+                                twoJCMindownket = of.j - od.j - oe.j
                             end
-                            twoJCMaxupket = od.j2 + oe.j2 + of.j2
+                            twoJCMaxupket = od.j + oe.j + of.j
 
                             twoJCMindown = max(twoJCMindownbra, twoJCMindownket)
                             twoJCMaxup = min(twoJCMaxupbra, twoJCMaxupket)
@@ -392,8 +389,8 @@ function count_me3jgz(sps_3b::sps_3Blab;mode="File")
 
                             for Jab = JabMin:JabMax
                                 for Jde = JdeMin:JdeMax
-                                    twoJCMin = max( abs(2*Jab-oc.j2), abs(2*Jde-of.j2) )
-                                    twoJCMax = min( 2*Jab+oc.j2, 2*Jde+of.j2 )
+                                    twoJCMin = max( abs(2*Jab-oc.j), abs(2*Jde-of.j) )
+                                    twoJCMax = min( 2*Jab+oc.j, 2*Jde+of.j )
                                     if twoJCMin > twoJCMax; continue; end
                                    
                                     blocksize = (div(twoJCMax - twoJCMin,2) + 1)*5
@@ -418,6 +415,7 @@ function valid_check(ea,eb,ec,ed,ee,ef,e1max,e2max,e3max)
     if ef > e1max; return false; end
     if ea+eb > e2max; return false; end
     if ea+ec > e2max; return false; end
+    if eb+ec > e2max; return false; end
     if ed+ee > e2max; return false; end
     if ed+ef > e2max; return false; end
     if ee+ef > e2max; return false; end
@@ -426,7 +424,7 @@ function valid_check(ea,eb,ec,ed,ee,ef,e1max,e2max,e3max)
     return true
 end
 
-function store_me3jgz!(sps_3b::sps_3Blab, ThBME,  v3bme, nreads_v3bme, dWS, dict_idxThBME)
+function store_me3jgz!(sps_3b::sps_3Blab, ThBME, v3bme, nreads_v3bme, dWS, dict_idxThBME)
     e1max = sps_3b.e1max
     e2max = e1max*2
     e1max_file = sps_3b.e1max_file 
@@ -451,17 +449,17 @@ function store_me3jgz!(sps_3b::sps_3Blab, ThBME,  v3bme, nreads_v3bme, dWS, dict
                 oc = sps[idx_c]
                 ec = oc.e
                 if ea+eb+ec > e3max; continue; end
-                JabMax = div(oa.j2 + ob.j2,2)
-                JabMin = div(abs(oa.j2 - ob.j2),2)
+                JabMax = div(oa.j + ob.j,2)
+                JabMin = div(abs(oa.j - ob.j),2)
                 twoJCMindownbra = 0
-                if abs(oa.j2 -ob.j2) > oc.j2
-                    twoJCMindownbra = abs(oa.j2 -ob.j2) - oc.j2
-                elseif oc.j2 < (oa.j2+ob.j2)
+                if abs(oa.j -ob.j) > oc.j
+                    twoJCMindownbra = abs(oa.j -ob.j) - oc.j
+                elseif oc.j < (oa.j+ob.j)
                     twoJCMindownbra = 1
                 else
-                    twoJCMindownbra = oc.j2 - oa.j2 - ob.j2
+                    twoJCMindownbra = oc.j - oa.j - ob.j
                 end
-                twoJCMaxupbra = oa.j2 + ob.j2 + oc.j2 
+                twoJCMaxupbra = oa.j + ob.j + oc.j 
                
                 # loop for ket 
                 for idx_d = 1:2:idx_a
@@ -485,17 +483,17 @@ function store_me3jgz!(sps_3b::sps_3Blab, ThBME,  v3bme, nreads_v3bme, dWS, dict
                             valid_for_ThBME = valid_check(ea,eb,ec,ed,ee,ef,e1max_file,e2max_file,e3max_file)
                             if !valid_for_ThBME; continue; end
 
-                            JdeMax = div(od.j2 + oe.j2,2)
-                            JdeMin = div(abs(od.j2 - oe.j2),2)
+                            JdeMax = div(od.j + oe.j,2)
+                            JdeMin = div(abs(od.j - oe.j),2)
                             twoJCMindownket = 0
-                            if abs(od.j2 -oe.j2) > of.j2
-                                twoJCMindownket = abs(od.j2 -oe.j2) - of.j2
-                            elseif of.j2 < (od.j2+oe.j2)
+                            if abs(od.j -oe.j) > of.j
+                                twoJCMindownket = abs(od.j -oe.j) - of.j
+                            elseif of.j < (od.j+oe.j)
                                 twoJCMindownket = 1
                             else
-                                twoJCMindownket = of.j2 - od.j2 - oe.j2
+                                twoJCMindownket = of.j - od.j - oe.j
                             end
-                            twoJCMaxupket = od.j2 + oe.j2 + of.j2
+                            twoJCMaxupket = od.j + oe.j + of.j
 
                             twoJCMindown = max(twoJCMindownbra, twoJCMindownket)
                             twoJCMaxup = min(twoJCMaxupbra, twoJCMaxupket)
@@ -506,8 +504,8 @@ function store_me3jgz!(sps_3b::sps_3Blab, ThBME,  v3bme, nreads_v3bme, dWS, dict
                             
                             for Jab = JabMin:JabMax
                                 for Jde = JdeMin:JdeMax
-                                    twoJCMin = max( abs(2*Jab-oc.j2), abs(2*Jde-of.j2) )
-                                    twoJCMax = min( 2*Jab+oc.j2, 2*Jde+of.j2 )
+                                    twoJCMin = max( abs(2*Jab-oc.j), abs(2*Jde-of.j) )
+                                    twoJCMax = min( 2*Jab+oc.j, 2*Jde+of.j )
                                     if twoJCMin > twoJCMax; continue; end
                                     blocksize = (div(twoJCMax - twoJCMin,2) + 1)*5
                                     for JTind = 0:twoJCMax-twoJCMin+1
@@ -528,8 +526,8 @@ function store_me3jgz!(sps_3b::sps_3Blab, ThBME,  v3bme, nreads_v3bme, dWS, dict
 
                                                 v3bme[v3idx] = ThBME[ThBME_idx] 
                                                 if (idx_a==idx_b && (tab+Jab)%2==0) || (idx_d==idx_e && (tde+Jde)%2==0); autozero=true;; end
-                                                if (idx_a==idx_b && idx_a==idx_c && twoT==3 && oa.j2<3); autozero = true; end
-                                                if (idx_d==idx_e && idx_d==idx_f && twoT==3 && od.j2<3); autozero = true; end
+                                                if (idx_a==idx_b && idx_a==idx_c && twoT==3 && oa.j<3); autozero = true; end
+                                                if (idx_d==idx_e && idx_d==idx_f && twoT==3 && od.j<3); autozero = true; end
                                                 # if (autozero && V > 1.e-8) 
                                                 #     @error "This should not happen V $V autozero $autozero"
                                                 # end
@@ -554,21 +552,21 @@ end
 function monopole_V3(E3max, sps_3b,dict_3b_idx,v3bme,dWS)
     n_orbits = sps_3b.norbits    
     sps = sps_3b.sps
-    keys = UInt64[ ]
+    stored_keys = UInt64[ ]
     for i = 1:n_orbits
         oi = sps[i]
         ei = oi.e 
         for j = i:n_orbits
             ej = sps[j].e
             oj = sps[j]
-            if oi.l != oj.l || oi.j2 != oj.j2 || oi.tz != oj.tz; continue; end
+            if oi.l != oj.l || oi.j != oj.j || oi.tz != oj.tz; continue; end
             for a = 1:n_orbits
                 oa = sps[a]
                 ea = sps[a].e
                 for b = 1:n_orbits
                     ob = sps[b]
                     eb = sps[b].e
-                    if oa.l != ob.l || oa.j2 != ob.j2 || oa.tz != ob.tz; continue; end
+                    if oa.l != ob.l || oa.j != ob.j || oa.tz != ob.tz; continue; end
                     for c = 1:n_orbits 
                         ec = sps[c].e
                         oc = sps[c]
@@ -576,35 +574,35 @@ function monopole_V3(E3max, sps_3b,dict_3b_idx,v3bme,dWS)
                         for d = 1:n_orbits
                             ed = sps[d].e
                             od = sps[d]
-                            if oc.l != od.l || oc.j2 != od.j2 || oc.tz != od.tz; continue; end
+                            if oc.l != od.l || oc.j != od.j || oc.tz != od.tz; continue; end
                             if eb + ed + ej > E3max; continue; end
                             if (oi.l + oa.l + ob.l + oc.l + od.l + oj.l) % 2 != 0; continue; end
                             key = get_nkey6(a,c,i,b,d,j)
-                            push!(keys ,key)
+                            push!(stored_keys ,key)
                         end
                     end
                 end
             end
         end
     end
-    nkeys = length(keys)
+    nkeys = length(stored_keys)
     println("Number of keys for V3mono: ", nkeys)
     Vmon3 = Dict{UInt64,Float64}()
     for idx = 1:nkeys
-        key = keys[idx]
+        key = stored_keys[idx]
         Vmon3[key] = 0.0
     end
     @threads for idx = 1:nkeys
-        key = keys[idx]
+        key = stored_keys[idx]
         Vmon3[key] = 0.0
         a,c,i,b,d,j = unhash_key6j(key)
         @assert key == get_nkey6(a,c,i,b,d,j) "key mismatch"
-        ja = sps[a].j2
-        jc = sps[c].j2
-        ji = sps[i].j2
-        jb = sps[b].j2
-        jd = sps[d].j2
-        jj = sps[j].j2
+        ja = sps[a].j
+        jc = sps[c].j
+        ji = sps[i].j
+        jb = sps[b].j
+        jd = sps[d].j
+        jj = sps[j].j
         j2min = div(max( abs(ja-jc), abs(jb-jd) ),2)
         j2max = div(min( ja+jc, jb+jd ),2)
         v = 0.0
@@ -617,12 +615,12 @@ function monopole_V3(E3max, sps_3b,dict_3b_idx,v3bme,dWS)
             end
         end
         Vmon3[key] += v /(ji+1)
-        #vallsum += Vmon3[key]
-        #if 4 <= idx <= 5 && Vmon3[idx] != 0.0
-        # if idx <= 10 && Vmon3[idx] != 0.0
-        #     println("idx $idx  vmon3 ", Vmon3[idx])
-        # end        
     end
+    # sorted_keys = sort(collect(keys(Vmon3)))
+    # for key in sorted_keys
+    #     value = Vmon3[key]
+    #     println("key: $key, value: $value")
+    # end
     println("norm(Vmon3) = ", norm(values(Vmon3)),)
     return Vmon3
 end
@@ -639,15 +637,23 @@ function get_V3_pn(indx, E3max, v3bme,Jab,Jde,J2,a,b,c,d,e,f,sps_3b,dict_3b_idx,
     Tmin = max( abs(tza+tzb+tzc), abs(tzd+tze+tzf) )
     for tab = div(abs(tza+tzb),2):1
         CG1 = dcg_spin[ get_nkey6_shift(1,tza,1,tzb,tab*2, tza+tzb) ]
+        #println("key1: ", get_nkey6_shift(1,tza,1,tzb,tab*2, tza+tzb), "CG1:", CG1)
         for tde = div(abs(tzd+tze),2):1
             CG2 = dcg_spin[ get_nkey6_shift(1,tzd,1,tze,tde*2, tzd+tze) ]
+            #key2 = get_nkey6_shift(1,tzd,1,tze,tde*2, tzd+tze)
             if CG1*CG2 == 0; continue; end
             Tmax = min(1+2*tab, 1+2*tde)
             for T2 = Tmin:2:Tmax
                 CG3 = dcg_spin[ get_nkey6_shift(tab*2, (tza+tzb), 1, tzc, T2, (tza+tzb+tzc)) ]
                 CG4 = dcg_spin[ get_nkey6_shift(tde*2, (tzd+tze), 1, tzf, T2, (tzd+tze+tzf)) ]
+                # key3 = get_nkey6_shift(tab*2, (tza+tzb), 1, tzc, T2, (tza+tzb+tzc))
+                # key4 = get_nkey6_shift(tde*2, (tzd+tze), 1, tzf, T2, (tzd+tze+tzf))
+                # println("key2 $key2 CG2 $CG2 key3 $key3 CG3 $CG3 key4 $key4 CG4 $CG4")
                 if CG3*CG4 == 0; continue; end
                 tbme = Get3BME_ISO(indx, E3max, v3bme,dict_3b_idx,sps_3b,Jab,Jde,J2,tab,tde,T2,a,b,c,d,e,f,dWS,V_in)
+                # if (a, b, c, d, e, f, J2) == (2, 1, 6, 2, 1, 6, 5)
+                #     println("tbme = $tbme for indices $a,$b,$c,$d,$e,$f, J2=$J2, tab=$tab, tde=$tde, T2=$T2 \n")
+                # end               
                 Vpn += (CG1*CG2*CG3*CG4) * tbme
             end
         end
@@ -745,8 +751,8 @@ function Get3BME_ISO(ind, E3max, v3bme,dict_3b_idx,sps_3b,
     if oa.e + ob.e + oc.e >  E3max; return 0.0; end
     if od.e + oe.e + of.e >  E3max; return 0.0; end
   
-    ja2 = oa.j2; jb2 = ob.j2; jc2 = oc.j2
-    jd2 = od.j2; je2 = oe.j2; jf2 = of.j2
+    ja2 = oa.j; jb2 = ob.j; jc2 = oc.j
+    jd2 = od.j; je2 = oe.j; jf2 = of.j
     Jab_min = div(abs(ja2-jb2),2); Jab_max = div(abs(ja2+jb2),2)
     Jde_min = div(abs(jd2-je2),2); Jde_max = div(abs(jd2+je2),2)
 
@@ -777,12 +783,23 @@ function Get3BME_ISO(ind, E3max, v3bme,dict_3b_idx,sps_3b,
                         Tindex = 2*tab + tde + div(T2-1,2)
                         idx = idx_3borbit + J_index + Tindex                        
                         v += Cj_abc * Cj_def * Ct_abc * Ct_def * v3bme[idx]
+
+                        # #if (a_in, b_in, c_in, d_in, e_in, f_in, J2) == (2, 1, 6, 2, 1, 6, 5)
+                        # if (a_in, b_in, c_in, d_in, e_in, f_in, J2) == (1, 1, 2, 1, 1, 2, 1)
+                        #     println("CGs ", Cj_abc*Cj_def * Ct_abc * Ct_def, " idx $idx  v3[idx] $(v3bme[idx])")
+                        # end
+
                     end
                 end
             end
             J_index += div(J2_max-J2+2,2)*5
         end
     end
+
+    # if (a_in, b_in, c_in, d_in, e_in, f_in, J2) == (2, 1, 6, 2, 1, 6, 5)
+    #     println("J_index $J_index count_inner $count_inner v $v")
+    #     println("Jab_min $Jab_min Jab_max $Jab_max Jde_min $Jde_min Jde_max $Jde_max")
+    # end
     return v
 end
 

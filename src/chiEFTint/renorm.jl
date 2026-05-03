@@ -16,7 +16,7 @@ function SRG(chiEFTobj,to)
 
     ndim = n_mesh*2
     n_ode = div(ndim*(ndim+1),2)
-    nthre = 1 #nthreads()
+    nthre = 1 
     Vs = [ zeros(Float64,ndim,ndim) for i = 1:nthre]
     Ts = [zeros(Float64,ndim,ndim) for i = 1:nthre]
     Hs = [zeros(Float64,ndim,ndim) for i = 1:nthre]

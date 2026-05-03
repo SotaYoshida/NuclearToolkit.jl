@@ -94,13 +94,13 @@ function readsnt(sntf, binfo::basedat)
     @inbounds for i = 1:lp
         ith,n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i]," "))[1:5])
         if (2*n+l <= emax_calc)
-            push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
+            push!(p_sps,SingleParticleState(2*n+l,n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     @inbounds for i = 1:lp
         ith, n,l,j,tz = map(x->parse(Int,x),rm_nan(split(lines[1+i+ln]," "))[1:5])
         if (2*n+l <= emax_calc)
-            push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
+            push!(n_sps,SingleParticleState(2*n+l,n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     lpn_calc = get_lpln_from_emax(emax_calc)
@@ -239,14 +239,14 @@ function readsnt_bin(sntf,binfo::basedat; use_Float64=false, neutron_drop=false)
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            push!(p_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
+            push!(p_sps,SingleParticleState(2*n+l,n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     @inbounds for i = 1:ln
         ith = read(f,Int); n = read(f,Int); l = read(f,Int)
         j = read(f,Int); tz = read(f,Int)
         if 2*n + l <= emax_calc;
-            push!(n_sps,SingleParticleState(n,l,j,tz,[0.0],[false],[false],[false]))
+            push!(n_sps,SingleParticleState(2*n+l,n,l,j,tz,[0.0],[false],[false],[false]))
         end
     end
     sps,dicts1b = make_sps_and_dict_isnt2ims(p_sps,n_sps,emax_calc)
@@ -586,6 +586,9 @@ function def_chan2b(binfo::basedat,dicts,sps)
                         end
                         intkey = get_nkey_from_abcdarr(tkey)
                         #println("tkey $tkey intkey $intkey")
+                        if !haskey(tdict,intkey)
+                            continue
+                        end
                         for JV in tdict[intkey]
                             tJ = JV[1]
                             v = JV[3] + JV[4] + JV[5] /Anum  + JV[6] * Anum                           

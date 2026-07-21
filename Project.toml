@@ -1,7 +1,7 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
-authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 version = "0.6.0"
+authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -53,6 +53,6 @@ Plots = "1"
 SpecialFunctions = "2"
 Statistics = "1"
 StatsBase = "0.33, 0.34"
-TimerOutputs = "0.5"
+TimerOutputs = "0.5, 1"
 WignerSymbols = "2"
 julia = "1.12"

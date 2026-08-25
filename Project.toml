@@ -1,7 +1,7 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
-authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 version = "0.6.0"
+authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -48,7 +48,7 @@ LatinHypercubeSampling = "1.8"
 MKL = "0.6, 0.7, 0.8, 0.9"
 MPI = "0.19, 0.20"
 Measures = "0.3"
-Parsers = "2.8"
+Parsers = "2.8, 3"
 Plots = "1"
 SpecialFunctions = "2"
 Statistics = "1"

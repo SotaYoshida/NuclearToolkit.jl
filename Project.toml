@@ -1,7 +1,7 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
-authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 version = "0.6.0"
+authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -38,7 +38,7 @@ CairoMakie = "0.13.6, 0.14, 0.15"
 CodecZlib = "0.7"
 ColorSchemes = "3.31.0"
 Combinatorics = "1"
-DocStringExtensions = "0.9"
+DocStringExtensions = "0.9, 0.10"
 FLoops = "0.2"
 Glob = "1"
 HDF5 = "0.16, 0.17"

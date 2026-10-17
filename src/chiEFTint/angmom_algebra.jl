@@ -284,7 +284,7 @@ function mydoublefactorial(n::Integer)
         throw(DomainError(n, "n must be nonnegative"))
     end
     z = Ref{BigInt}(0)
-    ccall((:__gmpz_2fac_ui, :libgmp), Cvoid, (Ref{BigInt}, UInt), z, UInt(n))
+    ccall((:__gmpz_2fac_ui, Base.GMP.libgmp), Cvoid, (Ref{BigInt}, UInt), z, UInt(n))
     return Float64(z[])
 end
 

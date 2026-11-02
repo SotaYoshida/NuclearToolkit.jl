@@ -38,13 +38,14 @@
         @test abs(Eref - Es[1]) < 1.e-6
     end
 
-    @testset "testing HFMBPT/IMSRG for Rp2 with BetaCM=1.0" begin
+    @testset "testing HFMBPT/IMSRG for Rp2 with BetaCM=0.0" begin
         nucs = ["He4"]
         sntf = "tbme_emn500n4lo_2n3n_srg10.0hw20emax2.snt.bin"
         hw = 20
         emax = 2
         IMSRGobj = hf_main(nucs,sntf,hw,emax;doIMSRG=true,Operators=["Rp2"],return_obj=true,fn_params="parameters/optional_parameters.jl")
-        Rp2_ref = 1.559825^2
+        # Relative-first HOB convention, independently checked in center_of_mass_test.jl.
+        Rp2_ref = 1.551384^2
         @test abs(IMSRGobj.ExpectationValues["Rp2"] - Rp2_ref)^2 < 1.e-6
     end
 

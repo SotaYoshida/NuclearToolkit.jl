@@ -1,6 +1,6 @@
 name = "NuclearToolkit"
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["SotaYoshida <syoshida@a.utsunomiya-u.ac.jp>"]
 
 [deps]

@@ -114,9 +114,9 @@ function difA_TCM(Op::Operator,Aold,Anew)
 end
 
 """
-TCM/A
+One-body part of ``T_{CM} = P_{CM}^2/(2mA)`` (without the Lawson coefficient).
 
-One doesn't have to calc. two-body part here, since the necessary part is already calculated in Vpp.
+The two-body part is added from Vpp by `update_dicts_withHCM!`.
 """
 function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
     hw = binfo.hw
@@ -136,7 +136,7 @@ function CalculateTCM!(Op,binfo,Chan1b,Chan2b,sps)
                 elseif na == nb-1
                   tij = 0.5 * sqrt( nb * (nb+lb+1/2) ) *hw/A
                 end
-                onebody[idx_b,idx_a] = onebody[idx_a,idx_b] = tij/A
+                onebody[idx_b,idx_a] = onebody[idx_a,idx_b] = tij
             end
         end
     end
@@ -618,13 +618,15 @@ function calc_single_r1r2(e2max, bra, ket, sps, J, dWS, b2, to)
                         #if 2*N_ab + Lam_ab + 2*n_ab 
                         lam_cd = lam_ab
                         n_ab = div(fab - 2*N_ab-Lam_ab -lam_ab,2) # determined by energy conservation                        
-                        mosh_ab = get_dictHOB(N_ab,Lam_ab,n_ab,lam_ab,na,la,nb,lb,Lab,dictHOB)                                                                  
+                        # HOB tables store the relative coordinate first,
+                        # followed by the center-of-mass coordinate.
+                        mosh_ab = get_dictHOB(n_ab,lam_ab,N_ab,Lam_ab,na,la,nb,lb,Lab,dictHOB)
                         if mosh_ab == 0.0;continue;end
 
                         for N_cd = max(0,N_ab-1):N_ab+1 
                             n_cd = div(fcd-2*N_cd-Lam_cd-lam_cd,2)
                             if n_cd < 0 || (n_ab!=n_cd && N_ab !=N_cd); continue;end
-                            mosh_cd = get_dictHOB(N_cd,Lam_cd,n_cd,lam_cd,nc,lc,nd,ld,Lcd,dictHOB)
+                            mosh_cd = get_dictHOB(n_cd,lam_cd,N_cd,Lam_cd,nc,lc,nd,ld,Lcd,dictHOB)
                             if mosh_cd == 0.0; continue;end
                             r2cm = 0.0;r2rel = 0.0
                             if n_ab == n_cd 

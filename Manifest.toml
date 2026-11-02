@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "f599587acfd09e55cfdf80adc374e31fda8a2cde"
+project_hash = "889969a7d6516c1ea75097dc84786aa049a2fd3e"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1273,7 +1273,7 @@ version = "1.3.0"
 deps = ["Arpack", "AssociatedLegendrePolynomials", "CairoMakie", "CodecZlib", "ColorSchemes", "Combinatorics", "DocStringExtensions", "FLoops", "Glob", "HDF5", "JLD2", "LaTeXStrings", "LatinHypercubeSampling", "LinearAlgebra", "MKL", "MPI", "Measures", "Parsers", "Plots", "Printf", "Random", "SpecialFunctions", "Statistics", "StatsBase", "TimerOutputs", "WignerSymbols"]
 path = "."
 uuid = "89bb3bae-bcec-43ae-87b7-9dd181dc6334"
-version = "0.6.0"
+version = "0.7.0"
 
 [[deps.Observables]]
 git-tree-sha1 = "7438a59546cf62428fc9d1bc94729146d37a7225"
@@ -1507,9 +1507,9 @@ version = "1.0.2"
 
 [[deps.Qt6Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Vulkan_Loader_jll", "Xorg_libSM_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_cursor_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "libinput_jll", "xkbcommon_jll"]
-git-tree-sha1 = "d7a4bff94f42208ce3cf6bc8e4e7d1d663e7ee8b"
+git-tree-sha1 = "144895f6166994730ee7ff8113b981fc360638f1"
 uuid = "c0090381-4147-56d7-9ebc-da0b1113ec56"
-version = "6.10.2+1"
+version = "6.10.2+2"
 
 [[deps.Qt6Declarative_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Qt6Base_jll", "Qt6ShaderTools_jll", "Qt6Svg_jll"]

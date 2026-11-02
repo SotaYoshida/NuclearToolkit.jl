@@ -4,6 +4,8 @@ using Test
 using Printf
 
 @testset "NuclearToolkit.jl" begin
+    include("angmom_algebra_test.jl")
+    include("center_of_mass_test.jl")
     include("chiEFTint_test.jl")
     include("HFMBPT_IMSRG_test.jl")
     include("ShellModel_test.jl")

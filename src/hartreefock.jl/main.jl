@@ -36,12 +36,12 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
     @assert isfile(sntf) "sntf:$sntf is not found!"
     
     io = select_io(false,"",nucs;use_stdout=true,fn=oupfn)
-    chiEFTparams = init_chiEFTparams(;io=nothing)
+    chiEFTparams = init_chiEFTparams(;fn_params=fn_params,io=nothing)
     HFdata = prepHFdata(nucs,ref,["E"],corenuc)
     @timeit to "prep dWS2n" begin
         need = "Rp2" in Operators || chiEFTparams.BetaCM != 0.0
         no_need_9j_HOB = !need
-        dWS = prep_dWS2n(chiEFTparams,to;emax_calc=min(emax_calc,e1max_file),no_need_9j_HOB=no_need_9j_HOB)
+        dWS = prep_dWS2n(chiEFTparams,to;emax_calc=emax_calc,no_need_9j_HOB=no_need_9j_HOB)
     end
 
     nthre = Threads.maxthreadid()
@@ -65,7 +65,8 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             aOp!(VCM,fac_HCM)            
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
             CalculateTCM!(TCM,binfo,Chan1b,Chan2bD.Chan2b,sps)
-            update_dicts_withHCM!(HCM,Chan2bD,dicts)
+            aOp!(TCM,BetaCM)
+            update_dicts_withHCM!(HCM,Chan2bD,dicts;BetaCM=BetaCM,A=A)
         end 
         MatOp = Matrix{Float64}[]
         if "Rp2" in Operators
@@ -89,7 +90,7 @@ function hf_main(nucs,sntf,hw,emax_calc;verbose=false,Operators=String[],is_show
             difA_RCM(VCM,Aold,A)
             aOp1_p_bOp2!(VCM,HCM,1.0,0.0)
             difA_TCM(TCM,Aold,A)
-            update_dicts_withHCM!(HCM,Chan2bD,dicts)
+            update_dicts_withHCM!(HCM,Chan2bD,dicts;BetaCM=BetaCM,A=A)
         end 
         recalc_v!(A,dicts)
         Hamil,dictsnt,Chan1b,Chan2bD,Gamma,maxnpq = store_1b2b(sps,dicts1b,dicts,binfo)    
@@ -170,7 +171,7 @@ function addHCM1b!(Hamil::Operator,HCM::Operator,fac=1.0)
     return nothing
 end
 
-function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
+function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts;BetaCM=0.0,A=1)
     Chan2b = Chan2bD.Chan2b
     nchan = length(Chan2b)
     @threads for ch = 1:nchan
@@ -193,7 +194,10 @@ function update_dicts_withHCM!(HCM::Operator,Chan2bD,dicts)
                 nkey = get_nkey_from_abcdarr(tkey)
                 for target in dicts[pnrank][nkey] #[ [totJ,V2b,Vjj,Vjj_2n3n,Vpp*hw,Hcm] ]
                     if J != target[1];continue;end
-                    target[6] = tHcm
+                    # The sixth entry is multiplied by A when assembling H.
+                    # Vpp*hw (entry 5) contains -p1⋅p2/m, so the CM kinetic
+                    # term +BetaCM*p1⋅p2/(m*A) has the opposite sign.
+                    target[6] = tHcm - BetaCM * target[5] / A^2
                 end
             end
         end
